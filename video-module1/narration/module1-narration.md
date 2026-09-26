@@ -686,7 +686,7 @@ Davantage de transistors ne garantit ni davantage de travail utile, ni un coût 
 
 Sources et approfondissements. Les fondamentaux physiques sont vérifiés à partir de ressources universitaires et de documentation technique. Les ressources anciennes restent pertinentes pour les principes ; elles ne constituent pas une preuve des performances ou des calendriers industriels de 2026. Les schémas de ce cours sont pédagogiques et originaux.
 
-Sept sources viennent du cours MIT 6.012. Lecture 1, introduction aux semi-conducteurs : porteurs, silicium, dopage et transport. Lecture 4, électrostatique des jonctions p-n : zone appauvrie et équilibre de la jonction.
+Six sources viennent du cours MIT 6.012. Lecture 1, introduction aux semi-conducteurs : porteurs, silicium, dopage et transport. Lecture 4, électrostatique des jonctions p-n : zone appauvrie et équilibre de la jonction.
 
 Lecture 9, capacités MOS : champ de grille et inversion. Lecture 14, bases de l'inverseur : inverseur et niveaux logiques. Lecture 15, circuits CMOS : délais et consommation. Lecture 16, la feuille de route de la miniaturisation CMOS : fuite sous le seuil et miniaturisation.
 
