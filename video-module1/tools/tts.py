@@ -36,7 +36,8 @@ TIMINGS = ROOT / "src" / "generated" / "timings.json"
 MODELS = ROOT / "tools" / "models"
 
 SAMPLE_RATE = 24000
-GAP_S = 0.5  # silence entre deux phrases (cadence posée)
+GAP_S = 0.5  # silence entre deux phrases d'une même étape
+BEAT_GAP_S = 1.0  # respiration entre deux étapes animées (beats)
 
 # Prononciation : appliquée au texte envoyé à la voix, jamais aux sous-titres.
 PRONUNCIATION = [
@@ -193,12 +194,12 @@ def trim(samples, threshold=0.01):
 
 def build_scene(engine, scene):
     parts, sentences, cursor = [], [], 0.0
-    gap = np.zeros(int(GAP_S * SAMPLE_RATE), dtype=np.float32)
     for i, sentence in enumerate(scene["sentences"]):
         audio = trim(engine.synth(to_speech_text(sentence)))
         if i > 0:
-            parts.append(gap)
-            cursor += GAP_S
+            pause = BEAT_GAP_S if sentence.get("beat") != scene["sentences"][i - 1].get("beat") else GAP_S
+            parts.append(np.zeros(int(pause * SAMPLE_RATE), dtype=np.float32))
+            cursor += pause
         length = len(audio) / SAMPLE_RATE
         sentences.append({"start": round(cursor, 3), "end": round(cursor + length, 3)})
         parts.append(audio)
@@ -214,7 +215,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--engine", choices=ENGINES, default="kokoro")
     ap.add_argument("--voice")
-    ap.add_argument("--speed", type=float, default=0.9)
+    ap.add_argument("--speed", type=float, default=0.87)
     ap.add_argument("--only", help="identifiant de scène, ex. S01")
     ap.add_argument("--episode", help="identifiant d'épisode, ex. E03")
     args = ap.parse_args()
