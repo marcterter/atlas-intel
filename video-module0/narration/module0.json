@@ -1,0 +1,24 @@
+{
+  "module": "Module 0 — Comprendre toute la chaîne de l'infrastructure IA",
+  "episodes": [
+    {
+      "id": "E00",
+      "num": "00",
+      "title": "Le but du module",
+      "slug": "le-but-du-module",
+      "scenes": [
+        {
+          "id": "E00-S01",
+          "visual": "TitleChain",
+          "sentences": [
+            { "text": "Module 0.", "say": "Module zéro." },
+            { "text": "Comprendre toute la chaîne de l'infrastructure IA." },
+            { "text": "Du sable au token." },
+            { "text": "Un cours, suivi d'un cahier de validation, conçu pour Marc." },
+            { "text": "Les repères industriels sont arrêtés au 11 septembre 2026." }
+          ]
+        }
+      ]
+    }
+  ]
+}
