@@ -1,7 +1,11 @@
 import React from "react";
-import { TitleChain } from "./E00";
+import { SceneDef } from "../data";
+import { Fallback } from "./Fallback";
+import { S01 } from "./S01";
 
-// Associe la clé « visual » de narration/module0.json à son composant.
-export const visuals: Record<string, React.FC> = {
-  TitleChain,
+export { Fallback };
+
+// Visuel propre à chaque scène (identifiant de narration/module0.json).
+export const visuals: Record<string, React.FC<{ scene: SceneDef }>> = {
+  S01,
 };

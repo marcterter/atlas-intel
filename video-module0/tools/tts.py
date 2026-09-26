@@ -12,7 +12,7 @@ Moteurs :
   say         macOS uniquement — voix système (Thomas, Amélie…)
 
 Exemples :
-  python3 tools/tts.py --only E00-S01
+  python3 tools/tts.py --only S01
   python3 tools/tts.py --episode E03 --engine elevenlabs
   python3 tools/tts.py            # tout le module
 """
@@ -56,6 +56,15 @@ PRONUNCIATION = [
     (r"\bASML\b", "A S M L"),
     (r"\bNVIDIA\b", "ènvidia"),
     (r"\bBroadcom\b", "Brodcom"),
+    (r"lithographi", "litographi"),
+    (r"arithméti", "aritméti"),
+    (r"\bAWS\b", "A W S"),
+    (r"\bKLA\b", "K L A"),
+    (r"\bJSR\b", "J S R"),
+    (r"\bASE\b", "A S E"),
+    (r"\bHPE\b", "H P E"),
+    (r"\bSEC\b", "S E C"),
+    (r"\bSK\b", "S K"),
     (r"\bMWh\b", "mégawattheures"),
     (r"\bMW\b", "mégawatts"),
     (r"\bkW\b", "kilowatts"),
@@ -182,16 +191,15 @@ def main():
     ap.add_argument("--engine", choices=ENGINES, default="kokoro")
     ap.add_argument("--voice")
     ap.add_argument("--speed", type=float, default=1.0)
-    ap.add_argument("--only", help="identifiant de scène, ex. E00-S01")
+    ap.add_argument("--only", help="identifiant de scène, ex. S01")
     ap.add_argument("--episode", help="identifiant d'épisode, ex. E03")
     args = ap.parse_args()
 
     data = json.loads(NARRATION.read_text(encoding="utf-8"))
-    scenes = [s for ep in data["episodes"] for s in ep["scenes"]]
+    episodes = [ep for ep in data["episodes"] if not args.episode or ep["id"] == args.episode]
+    scenes = [s for ep in episodes for s in ep["scenes"]]
     if args.only:
         scenes = [s for s in scenes if s["id"] == args.only]
-    elif args.episode:
-        scenes = [s for s in scenes if s["id"].startswith(args.episode + "-")]
     if not scenes:
         sys.exit("Aucune scène sélectionnée")
 

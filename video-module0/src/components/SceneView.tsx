@@ -1,19 +1,22 @@
 import React from "react";
 import { AbsoluteFill, Audio, Sequence, staticFile } from "remotion";
 import { SceneDef, getTiming } from "../data";
-import { visuals } from "../scenes";
+import { Fallback, visuals } from "../scenes";
 import { FPS, HEAD_S } from "../theme";
-import { CueContext } from "./motion";
+import { ChapterTag } from "./ChapterTag";
+import { CueContext, Cues } from "./motion";
 import { Subtitles } from "./Subtitles";
 
 export const SceneView: React.FC<{ scene: SceneDef }> = ({ scene }) => {
   const timing = getTiming(scene.id);
   const offset = Math.round(HEAD_S * FPS);
-  const Visual = visuals[scene.visual];
-  if (!Visual) throw new Error(`Visuel inconnu : ${scene.visual}`);
+  const Visual = visuals[scene.id] ?? Fallback;
 
-  const cues = {
-    at: (i: number, delayS = 0) => offset + (timing.sentences[i].start + delayS) * FPS,
+  const startOf = (i: number, delayS: number) => offset + (timing.sentences[i].start + delayS) * FPS;
+  const cues: Cues = {
+    s: (i, delayS = 0) => startOf(i, delayS),
+    beat: (b, delayS = 0) => startOf(scene.sentences.findIndex((x) => x.beat === b), delayS),
+    end: offset + timing.duration * FPS,
   };
 
   return (
@@ -22,8 +25,9 @@ export const SceneView: React.FC<{ scene: SceneDef }> = ({ scene }) => {
         <Audio src={staticFile(`audio/${scene.id}.wav`)} />
       </Sequence>
       <CueContext.Provider value={cues}>
-        <Visual />
+        <Visual scene={scene} />
       </CueContext.Provider>
+      <ChapterTag num={scene.chapter} title={scene.chapterTitle.replace(/'/g, "’")} />
       <Subtitles sentences={scene.sentences} timing={timing} offset={offset} />
     </AbsoluteFill>
   );

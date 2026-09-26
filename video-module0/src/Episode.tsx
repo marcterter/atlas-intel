@@ -3,7 +3,6 @@ import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { Background } from "./components/Background";
-import { ChapterTag } from "./components/ChapterTag";
 import { SceneView } from "./components/SceneView";
 import { EpisodeDef, SceneDef, sceneFrames } from "./data";
 import { TRANSITION_FRAMES } from "./theme";
@@ -20,20 +19,16 @@ const FadeFromToBlack: React.FC = () => {
   return <AbsoluteFill style={{ backgroundColor: "#000", opacity }} />;
 };
 
-const Frame: React.FC<{ episode: EpisodeDef; children: React.ReactNode }> = ({
-  episode,
-  children,
-}) => (
+const Frame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <AbsoluteFill>
     <Background />
     {children}
-    <ChapterTag num={episode.num} title={episode.title} />
     <FadeFromToBlack />
   </AbsoluteFill>
 );
 
 export const Episode: React.FC<{ episode: EpisodeDef }> = ({ episode }) => (
-  <Frame episode={episode}>
+  <Frame>
     <TransitionSeries>
       {episode.scenes.map((scene, i) => (
         <React.Fragment key={scene.id}>
@@ -53,11 +48,8 @@ export const Episode: React.FC<{ episode: EpisodeDef }> = ({ episode }) => (
 );
 
 // Une scène isolée, habillée comme dans l'épisode (pour validation).
-export const SingleScene: React.FC<{ episode: EpisodeDef; scene: SceneDef }> = ({
-  episode,
-  scene,
-}) => (
-  <Frame episode={episode}>
+export const SingleScene: React.FC<{ scene: SceneDef }> = ({ scene }) => (
+  <Frame>
     <SceneView scene={scene} />
   </Frame>
 );

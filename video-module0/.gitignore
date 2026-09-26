@@ -10,3 +10,4 @@ out
 output/*.mp4
 tools/models/
 __pycache__/
+public/audio/*.wav

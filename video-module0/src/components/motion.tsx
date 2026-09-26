@@ -1,11 +1,16 @@
 import { evolvePath } from "@remotion/paths";
 import React, { createContext, useContext } from "react";
-import { Easing, interpolate, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
 import { COLORS, FONT, FPS } from "../theme";
 
-// Chaque scène expose le début de ses phrases pour caler les animations sur la voix.
-export type Cues = { at: (sentence: number, delayS?: number) => number };
-export const CueContext = createContext<Cues>({ at: () => 0 });
+// Chaque scène expose le début de ses phrases (s) et de ses beats (beat), en frames,
+// pour caler les animations sur la voix. end = fin de la voix.
+export type Cues = {
+  s: (sentence: number, delayS?: number) => number;
+  beat: (beat: number, delayS?: number) => number;
+  end: number;
+};
+export const CueContext = createContext<Cues>({ s: () => 0, beat: () => 0, end: 0 });
 export const useCues = () => useContext(CueContext);
 
 const ease = Easing.inOut(Easing.cubic);
@@ -103,6 +108,26 @@ export const Counter: React.FC<{
     useGrouping: to >= 10000,
   });
   return <span style={{ fontVariantNumeric: "tabular-nums", ...style }}>{text}</span>;
+};
+
+// Groupe visible entre deux instants, avec fondu d'entrée et de sortie.
+export const Stage: React.FC<{ from: number; to?: number; children: React.ReactNode }> = ({
+  from,
+  to,
+  children,
+}) => {
+  const frame = useCurrentFrame();
+  const fadeIn = interpolate(frame, [from - 4, from + 10], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const fadeOut =
+    to === undefined
+      ? 1
+      : interpolate(frame, [to - 12, to], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const opacity = Math.min(fadeIn, fadeOut);
+  if (opacity <= 0) return null;
+  return <AbsoluteFill style={{ opacity }}>{children}</AbsoluteFill>;
 };
 
 export const textStyle = (size: number, weight = 200): React.CSSProperties => ({

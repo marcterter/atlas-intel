@@ -3,10 +3,53 @@ import { interpolate, useCurrentFrame } from "remotion";
 import { Sentence, SceneTiming } from "../data";
 import { COLORS, FONT, FPS } from "../theme";
 
-const FADE = 6;
+const FADE = 5;
 const HOLD_S = 0.5;
+const MAX_CHARS = 95;
 
-// Affiche la phrase en cours de lecture, calée sur les timings de la voix off.
+// Coupe une phrase longue en morceaux lisibles, de préférence après une ponctuation.
+const chunk = (text: string): string[] => {
+  if (text.length <= MAX_CHARS) return [text];
+  const words = text.split(" ");
+  const parts: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    const breakHere = current.length > MAX_CHARS * 0.55 && /[,;:]$/.test(current);
+    if ((candidate.length > MAX_CHARS || breakHere) && current) {
+      parts.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+  parts.push(current);
+  // Évite un dernier morceau orphelin de deux ou trois mots.
+  if (parts.length > 1 && parts[parts.length - 1].length < 25) {
+    const last = parts.pop()!;
+    parts[parts.length - 1] += ` ${last}`;
+  }
+  return parts;
+};
+
+type Cue = { text: string; from: number; to: number };
+
+const buildCues = (sentences: Sentence[], timing: SceneTiming): Cue[] =>
+  sentences.flatMap((sentence, i) => {
+    const t = timing.sentences[i];
+    const next = timing.sentences[i + 1];
+    const until = next ? next.start : t.end + HOLD_S;
+    const parts = chunk(sentence.text.replace(/'/g, "’"));
+    const total = parts.reduce((sum, p) => sum + p.length, 0);
+    let cursor = t.start;
+    return parts.map((text, j) => {
+      const from = cursor;
+      cursor += ((t.end - t.start) * text.length) / total;
+      return { text, from, to: j === parts.length - 1 ? until : cursor };
+    });
+  });
+
+// Affiche le morceau de phrase en cours de lecture, calé sur la voix off.
 export const Subtitles: React.FC<{
   sentences: Sentence[];
   timing: SceneTiming;
@@ -14,18 +57,11 @@ export const Subtitles: React.FC<{
 }> = ({ sentences, timing, offset }) => {
   const frame = useCurrentFrame();
   const t = (frame - offset) / FPS;
+  const cue = buildCues(sentences, timing).find((c) => t >= c.from && t < c.to);
+  if (!cue) return null;
 
-  const index = timing.sentences.findIndex((s, i) => {
-    const next = timing.sentences[i + 1];
-    const until = next ? next.start : s.end + HOLD_S;
-    return t >= s.start && t < until;
-  });
-  if (index === -1) return null;
-
-  const s = timing.sentences[index];
-  const next = timing.sentences[index + 1];
-  const inAt = offset + s.start * FPS;
-  const outAt = offset + (next ? next.start : s.end + HOLD_S) * FPS;
+  const inAt = offset + cue.from * FPS;
+  const outAt = offset + cue.to * FPS;
   const opacity = Math.min(
     interpolate(frame, [inAt, inAt + FADE], [0, 1], { extrapolateRight: "clamp" }),
     interpolate(frame, [outAt - FADE, outAt], [1, 0], { extrapolateLeft: "clamp" }),
@@ -35,7 +71,7 @@ export const Subtitles: React.FC<{
     <div
       style={{
         position: "absolute",
-        bottom: 64,
+        bottom: 60,
         left: 0,
         right: 0,
         display: "flex",
@@ -44,7 +80,7 @@ export const Subtitles: React.FC<{
     >
       <div
         style={{
-          maxWidth: 1400,
+          maxWidth: 1320,
           textAlign: "center",
           fontFamily: FONT,
           fontWeight: 300,
@@ -55,7 +91,7 @@ export const Subtitles: React.FC<{
           opacity,
         }}
       >
-        {sentences[index].text.replace(/'/g, "’")}
+        {cue.text}
       </div>
     </div>
   );

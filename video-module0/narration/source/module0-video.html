@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Module 0 — Du sable au token</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#16324a; --navy2:#22486a; --sig:#2f7fd6; --sig-soft:#dcebfa; --amber:#c98a1e; --amber-soft:#fbf1dc;
+  --paper:#f4f7fa; --card:#ffffff; --ink:#172029; --ink2:#3d4c5a; --ink3:#6b7a88; --line:#d6dee6; --th:#16324a; --thtxt:#ffffff;
+  --font:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --navy:#9cc4ea; --navy2:#14283a; --sig:#5fa3e8; --sig-soft:#16304a; --amber:#e2a94c; --amber-soft:#2e2412;
+  --paper:#0f1821; --card:#182432; --ink:#e7edf3; --ink2:#b9c5d0; --ink3:#8595a4; --line:#2b3a4a; --th:#22486a; --thtxt:#e7edf3;
+}}
+:root[data-theme="dark"]{
+  --navy:#9cc4ea; --navy2:#14283a; --sig:#5fa3e8; --sig-soft:#16304a; --amber:#e2a94c; --amber-soft:#2e2412;
+  --paper:#0f1821; --card:#182432; --ink:#e7edf3; --ink2:#b9c5d0; --ink3:#8595a4; --line:#2b3a4a; --th:#22486a; --thtxt:#e7edf3;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45;display:flex;flex-direction:column;overflow:hidden}
+*{box-sizing:border-box}
+
+/* ── en-tête */
+header{padding:10px 16px 8px;border-bottom:1px solid var(--line);background:var(--card);flex:none}
+.chap{font-size:12px;color:var(--ink3)}
+.ttl{font-size:16px;font-weight:600;color:var(--navy);margin-top:1px}
+.pbar{height:3px;background:var(--line);margin-top:8px;border-radius:2px;overflow:hidden}
+.pbar i{display:block;height:100%;width:0;background:var(--sig);transition:width .4s}
+
+/* ── scène */
+#stage{flex:1;overflow-y:auto;padding:14px 16px 20px;max-width:760px;width:100%;margin:0 auto;-webkit-overflow-scrolling:touch}
+#stage h2{font-size:18px;font-weight:600;color:var(--navy);margin:6px 0 10px;line-height:1.25}
+#stage p{margin:8px 0}
+#stage small{color:var(--ink2);font-size:13px}
+.center{text-align:center}
+.rv{opacity:0;transform:translateY(8px);transition:opacity .45s ease,transform .45s ease}
+.rv.on{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){.rv{transition:none;transform:none}}
+tr.rv{transform:none}
+tr.rv.on{opacity:1}
+
+.hero{padding:28px 0 12px;text-align:center}
+.kicker{font-size:12px;color:var(--ink3);letter-spacing:.02em}
+.ht{font-size:44px;font-weight:600;color:var(--navy);line-height:1;margin:8px 0 10px}
+.hs{font-size:18px;color:var(--ink2)}
+.hs2{font-size:22px;font-weight:500;color:var(--sig);margin-top:6px}
+.fivef{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:16px 0}
+.fivef span{background:var(--sig-soft);color:var(--navy);padding:8px 14px;border-radius:20px;font-weight:500}
+
+.lst{padding-left:20px;margin:6px 0}
+.lst li{margin:6px 0}
+.lst.q li{margin:10px 0}
+.lst.inl li{margin:4px 0}
+
+.tw{overflow-x:auto;margin:6px 0 10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{background:var(--th);color:var(--thtxt);text-align:left;padding:7px 8px;font-weight:500;vertical-align:top}
+td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.k{font-weight:500;color:var(--navy);white-space:nowrap}
+@media (max-width:420px){ td.k{white-space:normal} }
+
+.note{background:var(--amber-soft);border-left:3px solid var(--amber);padding:8px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:14px}
+.analyst,.fact{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:10px 0;background:var(--card);font-size:14px}
+.analyst span,.fact span{display:block;font-size:12px;font-weight:600;margin-bottom:3px}
+.analyst span{color:var(--amber)}.fact span{color:var(--sig)}
+.def{background:var(--sig-soft);padding:10px 12px;border-radius:8px;margin:8px 0;font-size:14px}
+.def b{color:var(--navy);font-size:16px;margin-right:6px}
+.eq{background:var(--navy2);color:#fff;padding:12px 14px;border-radius:8px;margin:10px 0;font-size:16px;font-weight:500;text-align:center;line-height:1.4}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .eq{color:var(--ink)} }
+:root[data-theme="dark"] .eq{color:var(--ink)}
+.eq b{color:#ffd57a}
+.big{font-size:30px;font-weight:600;color:var(--navy);text-align:center;margin:18px 0 4px;line-height:1.2}
+.bigsub{text-align:center;color:var(--ink3);font-size:14px}
+
+.chain{margin:8px 0}
+.cn{text-align:center}
+.cbox{display:inline-block;background:var(--card);border:1px solid var(--line);padding:8px 14px;border-radius:8px;max-width:100%}
+.carr{color:var(--sig);font-size:18px;line-height:1.1}
+.hchain{display:flex;flex-wrap:wrap;gap:4px 2px;align-items:center;margin:8px 0}
+.hbox{display:inline-block;background:var(--card);border:1px solid var(--line);padding:5px 10px;border-radius:6px;font-size:13px}
+.harr{color:var(--sig);padding:0 4px}
+
+.step{display:flex;gap:12px;margin:12px 0;align-items:flex-start}
+.sn{flex:none;width:30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600}
+.tok{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 4px}
+.tok span{background:var(--sig-soft);padding:3px 8px;border-radius:5px;font-size:13px}
+.tok.num span{background:var(--card);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.tok.gen span{background:var(--card);border:1px solid var(--sig)}
+.tok.gen .cur{border-style:dashed;color:var(--ink3)}
+.waits{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.waits span{border:1px dashed var(--ink3);padding:3px 8px;border-radius:5px;font-size:13px;color:var(--ink2)}
+.duo,.trio{display:grid;gap:8px;margin:10px 0}
+.duo{grid-template-columns:1fr 1fr}.trio{grid-template-columns:repeat(3,1fr)}
+@media (max-width:480px){.trio{grid-template-columns:1fr}}
+.duo>div,.trio>div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;text-align:center}
+.duo b,.trio b{color:var(--navy)}
+.nest{margin:12px auto;max-width:420px;text-align:center;font-weight:500}
+.nest div{border:1px solid var(--line);border-radius:10px;padding:8px 8px 10px;background:var(--card)}
+.nest .n5{background:var(--paper)}.nest .n4{background:var(--card);margin-top:6px}.nest .n3{background:var(--sig-soft);margin-top:6px}.nest .n2{background:var(--card);margin-top:6px}.nest .n1{background:var(--navy);color:#fff;margin-top:6px;border:none}
+.stack{margin:10px auto;max-width:380px}
+.lay{padding:8px 12px;text-align:center;border:1px solid var(--line);font-weight:500}
+.lay small{display:block;font-weight:400;color:var(--ink2)}
+.l1{background:var(--navy);color:#fff;width:40%;margin:0 auto;border-radius:6px 6px 0 0}
+.l2{background:var(--sig-soft);width:70%;margin:0 auto}
+.l3{background:var(--card);border-radius:0 0 6px 6px}
+.l0{margin-top:10px;background:var(--amber-soft);border-radius:6px}
+.pie{display:flex;align-items:center;gap:14px;margin:8px 0;font-size:14px}
+.pieg{flex:none;width:70px;height:70px;border-radius:50%;background:conic-gradient(var(--sig) 0 12%,var(--line) 12% 100%)}
+.hbm{display:flex;align-items:flex-end;gap:14px;justify-content:center;margin:10px 0}
+.hbmstack{display:flex;flex-direction:column-reverse;align-items:center;gap:2px}
+.hbmstack i{display:block;width:70px;height:6px;background:var(--sig);border-radius:2px}
+.hbmstack small{margin-top:4px;color:var(--ink2)}
+.hbmgpu{width:110px;height:84px;background:var(--navy);color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:500}
+.roof{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:8px 0;font-size:14px}
+.rrow{display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--line);background:var(--card)}
+.rrow:last-child{border-bottom:none}
+.rrow.res{background:var(--amber-soft);font-weight:500}
+.rrow.dim{color:var(--ink3);text-decoration:line-through}
+.dens{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0;font-size:13px;text-align:center}
+.dens i{display:block;height:36px;border-radius:6px;margin-bottom:6px}
+.d1 i{background:linear-gradient(90deg,#f6c56d,#f6c56d)}
+.d2 i{background:radial-gradient(circle at 50% 50%,#e0521f 0 22%,#f8dcb0 24% 100%)}
+.cold,.loop{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;margin:8px 0;font-size:13px}
+.cold span,.loop span{background:var(--card);border:1px solid var(--line);padding:5px 10px;border-radius:6px}
+.cold .a,.loop .a{background:none;border:none;color:var(--sig);padding:0}
+.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:10px 0;font-size:12px;text-align:center}
+.timeline span{padding:8px 4px;background:var(--card);border-top:3px solid var(--sig);border-radius:0 0 6px 6px}
+.timeline span:nth-child(2){border-color:var(--amber)}.timeline span:nth-child(4){border-color:var(--amber)}
+.params{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.params span{background:var(--card);border:1px solid var(--line);padding:6px 10px;border-radius:6px;font-size:14px}
+.params b{color:var(--navy)}
+.fourq{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.fourq span{background:var(--sig-soft);padding:10px;border-radius:8px;text-align:center;font-weight:500;color:var(--navy)}
+.case{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;margin:10px 0;font-size:14px}
+.case ol{margin:8px 0 0;padding-left:20px}
+.case li{margin:4px 0}
+.scale{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:10px 0;font-size:12px;text-align:center}
+.scale span{padding:8px 4px;border-radius:6px;color:#fff}
+.s1{background:#b23c3c}.s2{background:#d18a2b}.s3{background:#2f7fd6}.s4{background:#2c8a5a}
+.map{width:100%;max-width:420px;display:block;margin:0 auto}
+.map rect{fill:var(--card);stroke:var(--navy);stroke-width:1.2}
+.map rect.hi{fill:var(--sig-soft)}
+.map rect.side{fill:var(--amber-soft);stroke:var(--amber)}
+.map rect.out{fill:var(--navy);stroke:none}
+.map text{font-family:var(--font);font-size:10.5px;fill:var(--ink);text-anchor:middle}
+.map rect.out+text{fill:#fff}
+.map line{stroke:var(--ink3);stroke-width:1.2}
+
+/* ── sous-titres et transport */
+#sub{flex:none;padding:10px 16px;font-size:15px;line-height:1.45;color:var(--ink);background:var(--card);border-top:1px solid var(--line);min-height:64px;max-height:132px;overflow-y:auto}
+body.nosub #sub{display:none}
+.ctl{flex:none;display:flex;align-items:center;gap:6px;padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line)}
+.ctl button,.ctl select{font-family:var(--font);font-size:14px;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:8px 10px;cursor:pointer;min-height:40px}
+.ctl button:focus-visible,.ctl select:focus-visible{outline:2px solid var(--sig);outline-offset:1px}
+#play{background:var(--navy);color:#fff;border:none;font-size:18px;min-width:56px}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) #play{color:var(--paper)} }
+#counter{font-size:12px;color:var(--ink3);margin-left:auto;font-variant-numeric:tabular-nums}
+#voice{max-width:120px}
+#menuPanel{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:70%;overflow-y:auto;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 30px rgba(0,0,0,.15);transform:translateY(105%);transition:transform .3s;padding:10px 12px calc(16px + env(safe-area-inset-bottom,0px));z-index:20}
+#menuPanel.open{transform:none}
+.mc{margin:6px 0 12px}
+.mcn{font-size:12px;color:var(--ink3);margin:6px 0 2px}
+.mi{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:9px 4px;font-family:var(--font);font-size:14px;color:var(--ink);cursor:pointer}
+.mi:hover{color:var(--sig)}
+#overlay{position:fixed;inset:0;background:rgba(22,50,74,.92);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;z-index:30;cursor:pointer}
+#overlay.hide{display:none}
+#overlay .o1{font-size:13px;opacity:.8}
+#overlay .o2{font-size:34px;font-weight:600;margin:8px 0}
+#overlay .o3{font-size:16px;margin-bottom:26px;opacity:.9}
+#overlay .o4{border:2px solid #fff;border-radius:30px;padding:12px 26px;font-size:17px;font-weight:500}
+#overlay .o5{font-size:12px;opacity:.7;margin-top:18px;max-width:320px}
+#novoice{background:var(--amber-soft);color:var(--ink);font-size:12px;padding:6px 16px;flex:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="chap" id="chap"></div>
+  <div class="ttl" id="ttl"></div>
+  <div class="pbar"><i id="bar"></i></div>
+</header>
+<div id="novoice" hidden>Voix de synthèse indisponible sur ce navigateur : l'animation se déroule avec les sous-titres.</div>
+<main id="stage" aria-live="polite"></main>
+<div id="sub"></div>
+<div class="ctl">
+  <button id="menu" aria-label="Chapitres">☰</button>
+  <button id="prev" aria-label="Précédent">‹</button>
+  <button id="play">▶</button>
+  <button id="next" aria-label="Suivant">›</button>
+  <select id="rate" aria-label="Vitesse"><option value="0.9">0,9×</option><option value="1" selected>1×</option><option value="1.15">1,15×</option><option value="1.3">1,3×</option></select>
+  <select id="voice" aria-label="Voix"></select>
+  <button id="subToggle" aria-label="Sous-titres">ST</button>
+  <span id="counter"></span>
+</div>
+<div id="menuPanel"></div>
+<div id="overlay" role="button" tabindex="0">
+  <div class="o1">Formation infrastructure IA</div>
+  <div class="o2">Module 0</div>
+  <div class="o3">Du sable au token — vidéo animée avec voix</div>
+  <div class="o4">Lancer la lecture</div>
+  <div class="o5">Active le son. La voix est celle de ton appareil (choix possible dans la barre du bas). Espace : lecture/pause, flèches : scènes.</div>
+</div>
+<script>
+// Helpers pour construire les visuels. b = index du beat à partir duquel l'élément apparaît.
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const R = (b, html, cls='') => `<div class="rv ${cls}" data-b="${b}">${html}</div>`;
+const H = (b, t) => R(b, `<h2>${t}</h2>`);
+const P = (b, t, cls='') => R(b, `<p>${t}</p>`, cls);
+const NOTE = (b, t) => R(b, `<div class="note">${t}</div>`);
+const AN = (b, t) => R(b, `<div class="analyst"><span>Point analyste</span>${t}</div>`);
+const FACT = (b, t) => R(b, `<div class="fact"><span>Fait publié</span>${t}</div>`);
+const EQ = (b, t) => R(b, `<div class="eq">${t}</div>`);
+const BIG = (b, t, sub='') => R(b, `<div class="big">${t}</div>${sub?`<div class="bigsub">${sub}</div>`:''}`);
+const L = (b0, items, cls='') => `<ul class="lst ${cls}">${items.map((it,i)=>`<li class="rv" data-b="${b0+i}">${it}</li>`).join('')}</ul>`;
+const T = (b0, heads, rows, step=1) => `<div class="tw"><table><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr class="rv" data-b="${b0+Math.floor(i*step)}">${r.map((c,j)=>`<td${j===0?' class="k"':''}>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+const CHAIN = (b0, items, step=1) => `<div class="chain">${items.map((it,i)=>`<div class="cn rv" data-b="${b0+Math.floor(i*step)}"><div class="cbox">${it}</div>${i<items.length-1?'<div class="carr">↓</div>':''}</div>`).join('')}</div>`;
+const HCHAIN = (b0, items, step=1) => `<div class="hchain">${items.map((it,i)=>`<span class="rv" data-b="${b0+Math.floor(i*step)}"><span class="hbox">${it}</span>${i<items.length-1?'<span class="harr">→</span>':''}</span>`).join('')}</div>`;
+
+const SCENES = [];
+const S = (chapter, title, visual, beats) => SCENES.push({chapter, title, visual, beats});
+
+/* ───────────── 1. OUVERTURE ───────────── */
+S('Ouverture', 'Module 0',
+  R(0, `<div class="hero"><div class="kicker">Formation infrastructure IA</div><div class="ht">Module 0</div><div class="hs">Comprendre toute la chaîne de l'infrastructure IA</div><div class="hs2">Du sable au token</div></div>`)
+  + R(1, `<p class="center">Cours et cahier de validation pour Marc<br><small>Repères industriels arrêtés au 11 septembre 2026</small></p>`)
+  + R(2, `<div class="fivef"><span>Calculer</span><span>Mémoriser</span><span>Communiquer</span><span>Alimenter</span><span>Refroidir</span></div>`),
+  [
+   "Formation infrastructure IA, module zéro. Comprendre toute la chaîne de l'infrastructure IA, du sable au token.",
+   "C'est un cours et un cahier de validation, avec des repères industriels arrêtés au 11 septembre 2026. Le but de ce premier module : comprendre la machine entière avant d'en démonter chaque pièce. À la fin, tu dois pouvoir situer une entreprise dans la chaîne, expliquer son utilité et identifier ce qui pourrait limiter la production d'IA.",
+   "Une infrastructure IA réunit cinq fonctions interdépendantes : calculer, mémoriser, communiquer, alimenter et refroidir. Ajouter des processeurs ne suffit pas si une autre fonction empêche de les utiliser efficacement."
+  ]);
+
+S('Ouverture', 'Les compétences à acquérir',
+  H(0,'Les compétences à acquérir') + L(0, [
+   "Expliquer ce qui se passe matériellement lorsqu'une IA répond.",
+   "Distinguer conception, fabrication et assemblage d'une puce.",
+   "Comprendre les rôles du calcul, de la mémoire et du réseau.",
+   "Situer le die, le packaging, le substrat et le circuit imprimé.",
+   "Relier les performances informatiques à l'électricité et au refroidissement.",
+   "Distinguer capacité annoncée, capacité opérationnelle et production vendue.",
+   "Reconstruire un chiffre d'affaires fournisseur à partir d'une architecture.",
+   "Expliquer pourquoi une technologie indispensable ne garantit pas un bon investissement."
+  ]),
+  [
+   "Voici les huit compétences à acquérir. Première : expliquer ce qui se passe matériellement lorsqu'une IA répond.",
+   "Deuxième : distinguer conception, fabrication et assemblage d'une puce.",
+   "Troisième : comprendre les rôles du calcul, de la mémoire et du réseau.",
+   "Quatrième : situer le die, le packaging, le substrat et le circuit imprimé.",
+   "Cinquième : relier les performances informatiques à l'électricité et au refroidissement.",
+   "Sixième : distinguer capacité annoncée, capacité opérationnelle et production vendue.",
+   "Septième : reconstruire un chiffre d'affaires fournisseur à partir d'une architecture.",
+   "Huitième : expliquer pourquoi une technologie indispensable ne garantit pas un bon investissement."
+  ]);
+
+S('Ouverture', 'Comment travailler ce document',
+  H(0,'Comment travailler ce document') + CHAIN(0, ['Lire pour comprendre les fonctions','Revenir sur les équations, les entreprises et les unités','Test après les sources : réponses avec tes mots, calculs montrés'])
+  + BIG(3, '80 / 100', 'Seuil de validation avant le module 1'),
+  [
+   "Comment travailler ce document. Lis d'abord pour comprendre les fonctions.",
+   "Reviens ensuite sur les équations, les entreprises et les unités.",
+   "Le test commence après les sources. Réponds avec tes mots, en montrant tes calculs ; aucune réponse n'est fournie dans le cahier.",
+   "Validation à 80 sur 100. En dessous, nous reprendrons les notions mal comprises avant de passer au module 1."
+  ]);
+
+/* ───────────── 2. LA CARTE DU SYSTÈME ───────────── */
+const MAP = `<svg class="map" viewBox="0 0 360 330" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ink3)"/></marker></defs>
+<g class="rv" data-b="0">
+<rect x="5" y="8" width="105" height="34" rx="4"/><text x="57" y="29">Matériaux, wafers</text>
+<rect x="127" y="8" width="105" height="34" rx="4"/><text x="180" y="29">Équipements</text>
+<rect x="250" y="8" width="105" height="34" rx="4"/><text x="302" y="29">Conception</text>
+</g>
+<g class="rv" data-b="1">
+<line x1="57" y1="42" x2="150" y2="68" marker-end="url(#ah)"/><line x1="180" y1="42" x2="180" y2="68" marker-end="url(#ah)"/><line x1="302" y1="42" x2="210" y2="68" marker-end="url(#ah)"/>
+<rect x="127" y="70" width="105" height="34" rx="4" class="hi"/><text x="180" y="91">Fabrication des puces</text>
+</g>
+<g class="rv" data-b="2">
+<line x1="160" y1="104" x2="90" y2="130" marker-end="url(#ah)"/><line x1="200" y1="104" x2="230" y2="130" marker-end="url(#ah)"/>
+<rect x="30" y="132" width="105" height="34" rx="4"/><text x="82" y="153">Puces de calcul</text>
+<rect x="175" y="132" width="105" height="34" rx="4"/><text x="227" y="153">Puces mémoire</text>
+</g>
+<g class="rv" data-b="3">
+<line x1="82" y1="166" x2="140" y2="192" marker-end="url(#ah)"/><line x1="227" y1="166" x2="170" y2="192" marker-end="url(#ah)"/>
+<rect x="75" y="194" width="160" height="34" rx="4"/><text x="155" y="215">Assemblage et cartes</text>
+<line x1="155" y1="228" x2="155" y2="252" marker-end="url(#ah)"/>
+<rect x="55" y="254" width="200" height="34" rx="4" class="hi"/><text x="155" y="275">Serveurs et racks en réseau</text>
+</g>
+<g class="rv" data-b="4">
+<line x1="255" y1="266" x2="285" y2="228" marker-end="url(#ah)"/><line x1="255" y1="271" x2="285" y2="271" marker-end="url(#ah)"/>
+<rect x="290" y="200" width="65" height="46" rx="4" class="side"/><text x="322" y="220">Alimentation</text><text x="322" y="234">électrique</text>
+<rect x="290" y="254" width="65" height="34" rx="4" class="side"/><text x="322" y="275">Refroidissement</text>
+</g>
+<g class="rv" data-b="5">
+<line x1="155" y1="288" x2="155" y2="304" marker-end="url(#ah)"/>
+<rect x="55" y="306" width="200" height="22" rx="4" class="out"/><text x="155" y="321">Cloud, logiciels, modèles, tokens</text>
+</g>
+</svg>`;
+S('La carte du système', 'La carte du système',
+  H(0,'La carte du système') + MAP,
+  [
+   "La carte du système. La chaîne comporte des branches qui se rejoignent. En amont : les matériaux et les wafers, les équipements industriels, et la conception des circuits.",
+   "Ces trois branches convergent vers la fabrication des puces.",
+   "De la fabrication sortent deux familles : les puces de calcul et les puces mémoire. La mémoire et le processeur sont fabriqués séparément.",
+   "Elles se rejoignent à l'assemblage et aux cartes, puis dans les serveurs et racks en réseau.",
+   "L'électricité arrive par une autre infrastructure : l'alimentation électrique et le refroidissement viennent se greffer sur les serveurs et racks.",
+   "Enfin, le cloud et les logiciels exploitent cet ensemble physique pour produire des modèles et des tokens."
+  ]);
+
+S('La carte du système', "Une usine qui transforme de l'électricité en réponses",
+  H(0,"Une usine qui transforme de l'électricité en réponses")
+  + T(1, ['Fonction','Image mentale','Question à poser'], [
+    ['Calculer','Les cuisiniers','Peuvent-ils effectuer assez d\'opérations ?'],
+    ['Mémoriser','Les ingrédients sur le plan de travail','Les données sont-elles disponibles assez vite ?'],
+    ['Communiquer','Les passages entre les postes','Les informations arrivent-elles à temps ?'],
+    ['Alimenter','L\'énergie de la cuisine','La puissance nécessaire est-elle disponible ?'],
+    ['Refroidir','L\'évacuation de la chaleur','Peut-on fonctionner sans surchauffe ?']])
+  + P(6, "Ajouter des cuisiniers n'accélère pas le service si les ingrédients n'arrivent pas.")
+  + NOTE(7, "<b>Bottleneck</b> signifie goulot d'étranglement : la contrainte qui limite le résultat global."),
+  [
+   "Pense à une usine qui transforme de l'électricité en réponses, ou mieux, à une cuisine.",
+   "Calculer, ce sont les cuisiniers. La question à poser : peuvent-ils effectuer assez d'opérations ?",
+   "Mémoriser, ce sont les ingrédients sur le plan de travail. Les données sont-elles disponibles assez vite ?",
+   "Communiquer, ce sont les passages entre les postes. Les informations arrivent-elles à temps ?",
+   "Alimenter, c'est l'énergie de la cuisine. La puissance nécessaire est-elle disponible ?",
+   "Refroidir, c'est l'évacuation de la chaleur. Peut-on fonctionner sans surchauffe ?",
+   "Ajouter des cuisiniers n'accélère pas le service si les ingrédients n'arrivent pas. L'analogie donne le bon réflexe : chercher ce qui fait attendre le reste du système. Dans une machine, ces attentes dépendent de contraintes physiques et de programmes précis.",
+   "Retiens le mot : bottleneck signifie goulot d'étranglement, la contrainte qui limite le résultat global."
+  ]);
+
+/* ───────────── 3. DE TA QUESTION À LA RÉPONSE ───────────── */
+S('De ta question à la réponse', 'Étapes 1 et 2',
+  H(0,'De ta question à la réponse')
+  + R(0, `<div class="step"><div class="sn">1</div><div><b>Le texte devient des nombres</b><div class="tok"><span>Le</span><span>mot</span><span>infra</span><span>struc</span><span>ture</span><span>.</span></div><div class="tok num"><span>4213</span><span>882</span><span>19</span><span>7701</span><span>325</span><span>13</span></div></div></div>`)
+  + R(2, `<div class="step"><div class="sn">2</div><div><b>Le modèle est disponible en mémoire</b><div class="hchain"><span class="hbox">Stockage</span><span class="harr">→</span><span class="hbox">Mémoires des processeurs</span></div><small>Paramètres = poids : nombres ajustés pendant l'apprentissage</small></div></div>`),
+  [
+   "Suivons maintenant le chemin de ta question jusqu'à la réponse. Étape 1 : le texte devient des nombres. Le texte est découpé en tokens. Un token peut correspondre à un mot, un fragment de mot ou un signe.",
+   "Ces unités sont ensuite représentées par des nombres. Un token n'est donc pas systématiquement un mot.",
+   "Étape 2 : le modèle est disponible en mémoire. Un modèle contient des paramètres, aussi appelés poids : des nombres ajustés pendant son apprentissage. Avant de servir des utilisateurs, ils sont chargés depuis le stockage vers les mémoires utilisées par les processeurs. Ils peuvent ensuite y rester pour traiter de nombreuses demandes."
+  ]);
+
+S('De ta question à la réponse', 'Étape 3 : les processeurs',
+  H(0,'Étape 3 : les processeurs effectuent les calculs')
+  + T(1, ['Type','Signification','Rôle à retenir'], [
+    ['CPU','Central Processing Unit, processeur central','Tâches générales, coordination et traitement.'],
+    ['GPU','Graphics Processing Unit, processeur graphique','Nombreux calculs parallèles adaptés à une partie des opérations de l\'IA.'],
+    ['ASIC','Application Specific Integrated Circuit, circuit spécialisé','Conception privilégiant certaines tâches ou certains besoins.']])
+  + NOTE(4, "Ces catégories ne décrivent pas toutes des frontières absolues : un GPU est lui-même un circuit intégré spécialisé au sens large. Les analystes IA opposent souvent les plateformes GPU aux accélérateurs personnalisés des grands clouds."),
+  [
+   "Étape 3 : les processeurs effectuent les calculs. Trois types à connaître.",
+   "Le CPU, Central Processing Unit ou processeur central : tâches générales, coordination et traitement.",
+   "Le GPU, Graphics Processing Unit ou processeur graphique : de nombreux calculs parallèles, adaptés à une partie des opérations de l'IA.",
+   "L'ASIC, Application Specific Integrated Circuit ou circuit spécialisé : une conception qui privilégie certaines tâches ou certains besoins.",
+   "Attention : ces catégories ne décrivent pas toutes des frontières absolues. Un GPU est lui-même un circuit intégré spécialisé au sens large. Dans le langage des analystes IA, on oppose souvent les plateformes GPU aux accélérateurs personnalisés des grands clouds."
+  ]);
+
+S('De ta question à la réponse', 'Étapes 4 et 5',
+  H(0,'Étapes 4 et 5')
+  + R(0, `<div class="step"><div class="sn">4</div><div><b>Les composants échangent</b><div class="waits"><span>lecture mémoire</span><span>résultat d'un autre accélérateur</span><span>communication réseau</span><span>tâche logicielle préalable</span></div></div></div>`)
+  + R(1, `<div class="step"><div class="sn">5</div><div><b>La réponse se construit</b><div class="tok gen"><span>La</span><span>réponse</span><span>arrive</span><span>token</span><span>par</span><span>token</span><span class="cur">…</span></div></div></div>`)
+  + R(2, `<div class="duo"><div><b>Inférence</b><br>utilisation du modèle entraîné</div><div><b>Entraînement</b><br>processus qui ajuste ses paramètres</div></div>`),
+  [
+   "Étape 4 : les composants échangent. Quand le modèle ou le travail est réparti entre plusieurs accélérateurs, ceux-ci échangent des données. Ils peuvent attendre une lecture mémoire, un résultat d'un autre accélérateur, une communication réseau ou une tâche logicielle préalable.",
+   "Étape 5 : la réponse se construit. Dans une génération de texte autorégressive classique, le système produit successivement les tokens de sortie en tenant compte du contexte et des tokens précédents.",
+   "Deux mots à ne jamais confondre : l'inférence est l'utilisation du modèle entraîné. L'entraînement est le processus qui ajuste ses paramètres."
+  ]);
+
+S('De ta question à la réponse', "Le vocabulaire de l'infrastructure",
+  H(0,"Le vocabulaire de l'infrastructure")
+  + R(0, `<div class="nest"><div class="n5">Cloud<div class="n4">Data center<div class="n3">Cluster<div class="n2">Rack<div class="n1">Serveur</div></div></div></div></div></div>`)
+  + AN(1, "Acheter une puissance de calcul théorique ne garantit pas de produire beaucoup de réponses utiles. La performance dépend du système et du travail demandé."),
+  [
+   "Le vocabulaire de l'infrastructure, de l'intérieur vers l'extérieur. Un serveur est une machine informatique. Un rack est une baie accueillant des équipements. Un cluster est un ensemble de machines qui travaillent ensemble. Un data center est le site qui les héberge. Le cloud fournit et gère des ressources informatiques à distance.",
+   "Point analyste. Acheter une puissance de calcul théorique ne garantit pas de produire beaucoup de réponses utiles. La performance dépend du système et du travail demandé."
+  ]);
+
+/* ───────────── 4. LES OBJETS ───────────── */
+S('Les objets', 'De la fabrication au serveur (1/2)',
+  H(0,'Les objets de la fabrication au serveur')
+  + T(1, ['Objet','Définition','Pourquoi il compte'], [
+    ['Silicium purifié','Matériau de départ de nombreuses puces.','Pureté et propriétés conditionnent la fabrication.'],
+    ['Wafer','Disque sur lequel on fabrique de nombreux circuits.','Une usine traite des wafers avant d\'obtenir des puces séparées.'],
+    ['Transistor','Dispositif minuscule contrôlant un courant.','Des ensembles de transistors réalisent calcul et mémorisation.'],
+    ['Die','Morceau de semi-conducteur contenant un circuit, après découpe.','C\'est la puce physique nue.'],
+    ['Packaging','Techniques d\'assemblage, de protection et de connexion.','Rend les dies utilisables dans le système.']]),
+  [
+   "Passons aux objets, de la fabrication au serveur.",
+   "Le silicium purifié : matériau de départ de nombreuses puces. Sa pureté et ses propriétés conditionnent la fabrication.",
+   "Le wafer : un disque sur lequel on fabrique de nombreux circuits. Une usine traite des wafers avant d'obtenir des puces séparées.",
+   "Le transistor : un dispositif minuscule contrôlant un courant. Des ensembles de transistors réalisent calcul et mémorisation.",
+   "Le die : un morceau de semi-conducteur contenant un circuit, après découpe. C'est la puce physique nue.",
+   "Le packaging : les techniques d'assemblage, de protection et de connexion. Il rend les dies utilisables dans le système."
+  ]);
+
+S('Les objets', 'De la fabrication au serveur (2/2)',
+  H(0,'Les objets de la fabrication au serveur')
+  + T(1, ['Objet','Définition','Pourquoi il compte'], [
+    ['Interposer','Couche intermédiaire d\'interconnexion, dans certaines architectures.','Permet de nombreuses connexions fines entre dies.'],
+    ['Substrat de boîtier','Support électrique et mécanique du package.','Relie les connexions fines des puces à la carte.'],
+    ['PCB','Printed Circuit Board ou circuit imprimé.','Porte composants et pistes conductrices à l\'échelle d\'une carte.'],
+    ['Serveur','Machine comprenant processeurs, mémoires et autres éléments.','Exécute les tâches.'],
+    ['Rack et cluster','Baie d\'équipements et ensemble de machines interconnectées.','Organisent les ressources et permettent de répartir les travaux.']]),
+  [
+   "Suite des objets.",
+   "L'interposer : une couche intermédiaire d'interconnexion, dans certaines architectures. Il permet de nombreuses connexions fines entre dies.",
+   "Le substrat de boîtier : support électrique et mécanique du package. Il relie les connexions fines des puces à la carte.",
+   "Le PCB, Printed Circuit Board ou circuit imprimé : il porte composants et pistes conductrices à l'échelle d'une carte.",
+   "Le serveur : une machine comprenant processeurs, mémoires et autres éléments. Il exécute les tâches.",
+   "Le rack et le cluster : baie d'équipements et ensemble de machines interconnectées. Ils organisent les ressources et permettent de répartir les travaux."
+  ]);
+
+S('Les objets', 'Trois supports, et comment les circuits sont construits',
+  H(0,'Trois supports différents')
+  + R(0, `<div class="stack"><div class="lay l1">Die</div><div class="lay l2">Substrat de boîtier <small>supporte et connecte le package</small></div><div class="lay l3">PCB <small>relie des composants à l'échelle d'une carte</small></div><div class="lay l0">Wafer <small>sert à fabriquer les puces</small></div></div>`)
+  + NOTE(1, "Le mot anglais <b>substrate</b> peut aussi désigner un support de fabrication : demande toujours de quel substrat il s'agit.")
+  + H(2,'Comment les circuits sont construits')
+  + HCHAIN(2, ['Dépôt','Lithographie','Gravure','Nettoyage','Contrôles'], 0)
+  + P(3, "Le <b>yield</b>, ou rendement de fabrication, est la part des unités satisfaisant les critères requis."),
+  [
+   "Trois supports différents, à ne pas confondre. Le wafer sert à fabriquer les puces. Le substrat de boîtier supporte et connecte le package. Le PCB relie des composants à l'échelle d'une carte.",
+   "Piège de vocabulaire : le mot anglais substrate peut aussi désigner un support de fabrication. Demande toujours de quel substrat il s'agit.",
+   "Comment les circuits sont construits. La fabrication construit et modifie des couches sur le wafer : dépôt de matériaux, définition de motifs par lithographie, gravure, nettoyage et contrôles. La lithographie est une étape centrale parmi plusieurs procédés interdépendants. Source 1, ASML.",
+   "Le yield, ou rendement de fabrication, est la part des unités satisfaisant les critères requis. Une capacité brute importante peut donner peu de produits vendables si le rendement est faible."
+  ]);
+
+/* ───────────── 5. LES FOURNISSEURS ───────────── */
+S('Les fournisseurs', 'En amont des systèmes (1/2)',
+  H(0,'Les fournisseurs en amont des systèmes')
+  + NOTE(0, "Ces acteurs illustrent les métiers. Leur présence ne signifie pas qu'ils fournissent tous le même client ou le même système. Positions de marché et relations clients seront approfondies et datées dans les modules concernés.")
+  + T(1, ['Brique','Acteurs repères','Clients et difficulté à examiner'], [
+    ['Wafers','Shin-Etsu, SUMCO, GlobalWafers','Fabricants de puces : pureté, qualité et qualification.'],
+    ['Matériaux de procédé','Air Liquide, Merck, JSR','Usines de puces : régularité des gaz, produits chimiques et résines.'],
+    ['Conception assistée','Synopsys, Cadence, Siemens EDA','Concepteurs de puces : complexité des circuits et coût des erreurs.'],
+    ['Blocs de conception','Arm, Synopsys, Cadence','Concepteurs : compatibilité, performances et licences.'],
+    ['Lithographie','ASML ; Nikon et Canon sur d\'autres segments','Fabricants de puces : précision, productivité et coût.']]),
+  [
+   "Les fournisseurs en amont des systèmes. Ces acteurs illustrent les métiers. Leur présence ne signifie pas qu'ils fournissent tous le même client ou le même système. Les positions de marché et les relations clients seront approfondies et datées dans les modules concernés.",
+   "Les wafers : Shin-Etsu, SUMCO, GlobalWafers. Leurs clients sont les fabricants de puces ; la difficulté à examiner : pureté, qualité et qualification.",
+   "Les matériaux de procédé : Air Liquide, Merck, JSR. Clients : les usines de puces ; à examiner : la régularité des gaz, des produits chimiques et des résines.",
+   "La conception assistée : Synopsys, Cadence, Siemens EDA. Clients : les concepteurs de puces ; à examiner : la complexité des circuits et le coût des erreurs.",
+   "Les blocs de conception : Arm, Synopsys, Cadence. Clients : les concepteurs ; à examiner : compatibilité, performances et licences.",
+   "La lithographie : ASML, et Nikon et Canon sur d'autres segments. Clients : les fabricants de puces ; à examiner : précision, productivité et coût."
+  ]);
+
+S('Les fournisseurs', 'En amont des systèmes (2/2)',
+  H(0,'Les fournisseurs en amont des systèmes')
+  + T(1, ['Brique','Acteurs repères','Clients et difficulté à examiner'], [
+    ['Dépôt et gravure','Applied Materials, Lam Research, Tokyo Electron','Fabricants de puces : maîtrise des procédés et reproductibilité.'],
+    ['Inspection et mesure','KLA, ASML','Fabricants de puces : détecter les défauts sans ralentir excessivement.'],
+    ['Fabrication sous contrat','TSMC, Samsung Foundry, Intel Foundry','Concepteurs de puces : rendement et capacité qualifiée.'],
+    ['Mémoire','SK hynix, Micron, Samsung','Fabricants de systèmes et de puces assemblées : capacité, débit et rendement.'],
+    ['Packaging et test','TSMC, ASE, Amkor','Concepteurs : complexité des assemblages, rendement et test.']]),
+  [
+   "Suite des fournisseurs amont.",
+   "Dépôt et gravure : Applied Materials, Lam Research, Tokyo Electron. Clients : les fabricants de puces ; à examiner : maîtrise des procédés et reproductibilité.",
+   "Inspection et mesure : KLA et ASML. Clients : les fabricants de puces ; à examiner : détecter les défauts sans ralentir excessivement.",
+   "Fabrication sous contrat : TSMC, Samsung Foundry, Intel Foundry. Clients : les concepteurs de puces ; à examiner : rendement et capacité qualifiée.",
+   "Mémoire : SK hynix, Micron, Samsung. Clients : les fabricants de systèmes et de puces assemblées ; à examiner : capacité, débit et rendement.",
+   "Packaging et test : TSMC, ASE, Amkor. Clients : les concepteurs ; à examiner : complexité des assemblages, rendement et test."
+  ]);
+
+S('Les fournisseurs', 'Les métiers à ne pas confondre',
+  H(0,'Les métiers à ne pas confondre')
+  + T(0, ['Terme','Signification'], [
+    ['EDA','Electronic Design Automation : logiciels de conception et de vérification électroniques.'],
+    ['IP','Intellectual Property : ici, notamment des blocs de conception réutilisables dans une puce.'],
+    ['Foundry','Fonderie : fabrique des puces pour des clients.'],
+    ['Fab','L\'usine physique.'],
+    ['Fabless','Conçoit des puces sans exploiter sa propre fabrication de wafers pour ces produits.']], 0.5)
+  + R(3, `<div class="trio"><div><b>NVIDIA</b><br>conçoit notamment des accélérateurs</div><div><b>TSMC</b><br>services de fabrication et de packaging</div><div><b>ASML</b><br>équipements de lithographie</div></div>`)
+  + P(4, "Leurs revenus ne dépendent pas des mêmes unités ni du même calendrier."),
+  [
+   "Les métiers à ne pas confondre. EDA signifie Electronic Design Automation : les logiciels de conception et de vérification électroniques. IP signifie Intellectual Property : ici, notamment des blocs de conception réutilisables dans une puce.",
+   "Une foundry, ou fonderie, fabrique des puces pour des clients. Une fab est l'usine physique.",
+   "Les entreprises dites fabless conçoivent des puces sans exploiter leur propre fabrication de wafers pour ces produits.",
+   "Repère pratique. NVIDIA conçoit notamment des accélérateurs ; TSMC fournit des services de fabrication et de packaging ; ASML fournit des équipements de lithographie.",
+   "Leurs revenus ne dépendent pas des mêmes unités ni du même calendrier."
+  ]);
+/* ───────────── 6. DES SUBSTRATS AU CLOUD ───────────── */
+S('Les fournisseurs', "Des substrats à l'exploitation cloud (1/2)",
+  H(0,"Des substrats à l'exploitation cloud")
+  + T(1, ['Brique','Acteurs repères','Clients et difficulté à examiner'], [
+    ['Accélérateurs','NVIDIA, AMD ; équipes internes de grands clouds','Exploitants et intégrateurs : performance utile et logiciels.'],
+    ['Substrats de boîtier','Ibiden, Shinko, Unimicron','Packaging : connexions fines, dimensions et déformation.'],
+    ['Matériaux de substrat','Ajinomoto','Fabricants de substrats : propriétés et qualification.'],
+    ['Cartes et systèmes','Quanta, Wiwynn, Foxconn, Dell, HPE','Exploitants : industrialisation, intégration et fiabilité.'],
+    ['Réseaux','Broadcom, NVIDIA, Arista, Marvell','Fabricants de systèmes et exploitants : débit, latence et consommation.']]),
+  [
+   "Descendons maintenant des substrats à l'exploitation cloud.",
+   "Les accélérateurs : NVIDIA, AMD, et les équipes internes de grands clouds. Clients : exploitants et intégrateurs ; à examiner : performance utile et logiciels.",
+   "Les substrats de boîtier : Ibiden, Shinko, Unimicron. Client : le packaging ; à examiner : connexions fines, dimensions et déformation.",
+   "Les matériaux de substrat : Ajinomoto. Clients : les fabricants de substrats ; à examiner : propriétés et qualification.",
+   "Cartes et systèmes : Quanta, Wiwynn, Foxconn, Dell, HPE. Clients : les exploitants ; à examiner : industrialisation, intégration et fiabilité.",
+   "Réseaux : Broadcom, NVIDIA, Arista, Marvell. Clients : fabricants de systèmes et exploitants ; à examiner : débit, latence et consommation."
+  ]);
+
+S('Les fournisseurs', "Des substrats à l'exploitation cloud (2/2)",
+  H(0,"Des substrats à l'exploitation cloud")
+  + T(1, ['Brique','Acteurs repères','Clients et difficulté à examiner'], [
+    ['Optique','Coherent, Lumentum, Fabrinet','Fabricants de modules et de systèmes : composants, assemblage et test.'],
+    ['Conversion électrique','Infineon, onsemi, Monolithic Power Systems','Alimentations et cartes : pertes, chaleur et densité.'],
+    ['Électricité et refroidissement','Schneider Electric, Eaton, Vertiv','Constructeurs et exploitants : délais, puissance et intégration.'],
+    ['Cloud et hébergement','AWS, Microsoft Azure, Google Cloud, CoreWeave, Equinix','Entreprises et développeurs : utilisation, financement et raccordement.']]),
+  [
+   "Suite de la chaîne aval.",
+   "Optique : Coherent, Lumentum, Fabrinet. Clients : fabricants de modules et de systèmes ; à examiner : composants, assemblage et test.",
+   "Conversion électrique : Infineon, onsemi, Monolithic Power Systems. Clients : alimentations et cartes ; à examiner : pertes, chaleur et densité.",
+   "Électricité et refroidissement : Schneider Electric, Eaton, Vertiv. Clients : constructeurs et exploitants ; à examiner : délais, puissance et intégration.",
+   "Cloud et hébergement : AWS, Microsoft Azure, Google Cloud, CoreWeave, Equinix. Clients : entreprises et développeurs ; à examiner : utilisation, financement et raccordement."
+  ]);
+
+S('Les fournisseurs', 'Un fournisseur indirect : Ajinomoto',
+  H(0,'Un fournisseur indirect à comprendre')
+  + HCHAIN(0, ['Ajinomoto (film ABF)','Fabricants de substrats','Packaging','Accélérateur'], 0)
+  + P(1, "Ce cas montre pourquoi l'analyse doit descendre au deuxième et au troisième rang de fournisseurs.")
+  + H(2,'Exposition technique et exposition financière')
+  + R(2, `<div class="pie"><div class="pieg"></div><div><b>Activité technologique intéressante</b><br>… mais petite part des revenus du groupe</div></div>`)
+  + AN(3, "La prochaine question n'est pas seulement « est-ce indispensable ? », mais « combien cela pèse-t-il, combien d'unités sont vendues et avec quelle marge ? »"),
+  [
+   "Un fournisseur indirect à comprendre. Ajinomoto fournit notamment l'ABF, Ajinomoto Build-up Film : un film isolant utilisé dans certains substrats multicouches de semi-conducteurs performants. Son rôle se situe en amont du package. Il fournit les fabricants de substrats. Source 2.",
+   "Ce cas montre pourquoi l'analyse doit descendre au deuxième et au troisième rang de fournisseurs. Une fonction critique peut se cacher dans un groupe connu pour une tout autre activité.",
+   "Exposition technique et exposition financière. Une entreprise peut posséder une activité technologique intéressante qui ne représente qu'une petite part de ses revenus. Il faut estimer sa contribution réelle aux bénéfices du groupe et la capacité de cette contribution à croître.",
+   "Point analyste. La prochaine question n'est pas seulement : est-ce indispensable ? Mais : combien cela pèse-t-il, combien d'unités sont vendues, et avec quelle marge ?"
+  ]);
+
+/* ───────────── 7. CALCUL, MÉMOIRE, COMMUNICATION ───────────── */
+S('Calcul, mémoire, communication', 'La puissance de calcul et la mémoire',
+  H(0,'La puissance de calcul')
+  + R(0, `<div class="def"><b>FLOPS</b> Floating-Point Operations Per Second : opérations en virgule flottante par seconde.<br><small>Comparer deux chiffres exige de vérifier la précision des nombres, le type d'opération et les conditions de mesure.</small></div>`)
+  + H(1,'Les trois dimensions de la mémoire')
+  + T(1, ['Notion','Question','Erreur à éviter'], [
+    ['Capacité','Combien de données tiennent en mémoire ?','Confondre volume disponible et vitesse.'],
+    ['Bande passante','Combien de données sont transférées par seconde ?','Croire qu\'une grande capacité assure un débit élevé.'],
+    ['Latence','Quel délai avant d\'obtenir la donnée ?','Confondre délai individuel et débit total.']]),
+  [
+   "Calcul, mémoire et communication. D'abord la puissance de calcul. FLOPS signifie Floating-Point Operations Per Second : opérations en virgule flottante par seconde. C'est une mesure de capacité de calcul. Comparer deux chiffres exige de vérifier la précision des nombres, le type d'opération et les conditions de mesure.",
+   "Les trois dimensions de la mémoire. La capacité : combien de données tiennent en mémoire ? L'erreur à éviter : confondre volume disponible et vitesse.",
+   "La bande passante : combien de données sont transférées par seconde ? L'erreur : croire qu'une grande capacité assure un débit élevé.",
+   "La latence : quel délai avant d'obtenir la donnée ? L'erreur : confondre délai individuel et débit total."
+  ]);
+
+S('Calcul, mémoire, communication', 'HBM et coopération entre machines',
+  H(0,'HBM, High Bandwidth Memory')
+  + R(0, `<div class="hbm"><div class="hbmstack"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><small>12 dies empilés</small></div><div class="hbmgpu">Processeur</div></div>`)
+  + FACT(1, "16 mars 2026 : Micron annonce des livraisons en volume de HBM4 de 36 Go, douze dies mémoire empilés, bande passante supérieure à 2,8 To/s par empilement selon ses spécifications. La version 48 Go à seize dies était alors au stade des échantillons. [3]")
+  + H(2,'La coopération entre machines')
+  + HCHAIN(2, ['Équipement','Switch','Liaison optique : électrique → lumière → électrique','Équipement'], 0)
+  + P(3, "Plus de calcul rend les échanges plus importants <b>si</b> le travail réclame davantage de communication. Ce n'est pas une proportion automatique."),
+  [
+   "HBM signifie High Bandwidth Memory : mémoire à très haute bande passante. Des dies mémoire empilés et de nombreuses connexions permettent un débit élevé. Dans des assemblages avancés, elle est placée près du processeur pour l'alimenter en données.",
+   "Fait publié. Le 16 mars 2026, Micron a annoncé des livraisons en volume de HBM4 de 36 gigaoctets, avec douze dies mémoire empilés et une bande passante supérieure à 2,8 téraoctets par seconde par empilement, selon ses spécifications. La version de 48 gigaoctets à seize dies était alors au stade des échantillons. Échantillonnage et production en volume sont deux étapes différentes. Source 3.",
+   "La coopération entre machines. Le réseau transporte les informations entre équipements. Un switch, ou commutateur, oriente les données. Une liaison optique convertit des signaux électriques en lumière, puis réalise la conversion inverse à l'arrivée.",
+   "Plus de calcul rend les échanges plus importants si le travail réclame davantage de communication. Le lien dépend du modèle, de la répartition des tâches et du logiciel. Ce n'est pas une proportion automatique."
+  ]);
+
+S('Calcul, mémoire, communication', 'Pourquoi doubler le calcul peut peu changer le résultat',
+  H(0,'Pourquoi doubler le calcul peut peu changer le résultat')
+  + P(0, "L'<b>intensité arithmétique</b> est le nombre d'opérations effectuées par octet transféré depuis un niveau de mémoire donné.")
+  + EQ(1, "Calcul soutenable ≤ min ( calcul maximal ; débit mémoire × intensité arithmétique )")
+  + R(2, `<div class="roof"><div class="rrow"><span>Calcul maximal</span><b>1 000 Mds op/s</b></div><div class="rrow"><span>Débit mémoire</span><b>100 Mds octets/s</b></div><div class="rrow"><span>Intensité</span><b>2 op / octet</b></div><div class="rrow res"><span>Plafond mémoire</span><b>100 × 2 = 200 Mds op/s</b></div></div>`)
+  + R(3, `<div class="roof"><div class="rrow dim"><span>Calcul doublé</span><b>2 000 Mds op/s</b></div><div class="rrow res"><span>Plafond mémoire</span><b>toujours 200 Mds op/s</b></div></div>`)
+  + R(4, `<ul class="lst inl"><li>Meilleur débit mémoire</li><li>Plus de réutilisation des données proches du processeur</li><li>Un logiciel réduisant les transferts</li></ul>`),
+  [
+   "Pourquoi doubler le calcul peut peu changer le résultat. L'intensité arithmétique est le nombre d'opérations effectuées par octet transféré depuis un niveau de mémoire donné.",
+   "Une approximation utile, appelée modèle roofline, donne le plafond suivant : le calcul soutenable est inférieur ou égal au minimum entre le calcul maximal et le débit mémoire multiplié par l'intensité arithmétique.",
+   "Exemple fictif. Un processeur peut effectuer 1 000 milliards d'opérations par seconde. La mémoire fournit 100 milliards d'octets par seconde. Si le travail réalise 2 opérations par octet transféré, le plafond mémoire est de 200 milliards d'opérations par seconde.",
+   "Doubler uniquement le calcul ne change pas ce plafond.",
+   "Les leviers sont alors un meilleur débit mémoire, plus de réutilisation des données proches du processeur, ou un logiciel réduisant les transferts. Le réseau et la coordination peuvent imposer d'autres limites."
+  ]);
+
+/* ───────────── 8. ÉLECTRICITÉ ET CHALEUR ───────────── */
+S("L'électricité et la chaleur", 'Deux relations physiques',
+  H(0,"L'électricité et la chaleur")
+  + P(0, "Les composants n'utilisent pas directement la tension du réseau. L'électricité est transportée, transformée et distribuée jusqu'aux puces. Chaque conversion comporte des pertes ; l'énergie consommée finit presque entièrement en chaleur à évacuer.")
+  + EQ(1, "P = U × I")
+  + P(1, "P puissance (watts), U tension (volts), I intensité (ampères). À puissance identique, augmenter la tension réduit l'intensité nécessaire.")
+  + EQ(2, "Pertes résistives = R × I²")
+  + R(2, `<div class="duo"><div>I ÷ 2<br><b>→ pertes ÷ 4</b></div><div>à résistance constante</div></div>`)
+  + NOTE(3, "Une tension plus élevée n'est pas un gain gratuit à tous les niveaux : il faut convertir, isoler, protéger, intégrer."),
+  [
+   "L'électricité et la chaleur. Les composants n'utilisent pas directement la tension du réseau électrique. L'électricité est transportée, transformée et distribuée jusqu'aux puces. Chaque conversion comporte des pertes. L'énergie consommée par les équipements finit presque entièrement en chaleur à évacuer.",
+   "Deux relations physiques à connaître. Première : P égale U fois I. P est la puissance en watts, U la tension en volts et I l'intensité en ampères. À puissance identique, augmenter la tension réduit l'intensité nécessaire.",
+   "Deuxième : les pertes résistives égalent R fois I au carré. R est la résistance du conducteur. Si l'intensité est divisée par deux, les pertes résistives sont divisées par quatre à résistance constante. Cela aide à comprendre l'intérêt de tensions de distribution plus élevées dans certaines parties du système.",
+   "Il faut ensuite convertir cette électricité pour les composants, en respectant les contraintes d'isolation, de protection et d'intégration. Une tension plus élevée n'est donc pas un gain gratuit à tous les niveaux."
+  ]);
+
+S("L'électricité et la chaleur", "Suivre l'électricité jusqu'à la puce",
+  H(0,"Suivre l'électricité jusqu'à la puce")
+  + HCHAIN(0, ['Réseau électrique','Poste de transformation','Distribution et protection du site','Alimentation secourue','Alimentations des équipements','Régulation près des puces'], 0)
+  + H(1,'La puissance et la densité thermique')
+  + R(1, `<div class="dens"><div class="d1"><i></i>même puissance, grande surface</div><div class="d2"><i></i>petite surface : plus difficile</div></div>`)
+  + R(2, `<div class="cold"><span>Puce</span><span class="a">→</span><span>Cold plate</span><span class="a">→</span><span>Liquide</span><span class="a">→</span><span>Échangeurs</span></div><p><small>Le liquide transporte la chaleur ; il ne la fait pas disparaître. Liquide et air peuvent se combiner. [4]</small></p>`),
+  [
+   "Suivre l'électricité jusqu'à la puce : réseau électrique, poste de transformation, distribution et protection du site, alimentation secourue selon l'architecture, alimentations des équipements, puis régulation près des puces. Le détail varie selon les installations ; nous le reconstruirons dans le module consacré à l'énergie.",
+   "La puissance et la densité thermique. La difficulté du refroidissement dépend aussi de la densité de chaleur. Évacuer une puissance sur une petite surface peut être plus difficile que sur une grande surface. Des racks plus denses concentrent la puissance électrique et les besoins de refroidissement.",
+   "Le refroidissement liquide au contact des composants utilise des cold plates, ou plaques froides. La chaleur passe de la puce vers le liquide, puis vers des échangeurs. Le liquide transporte la chaleur ; il ne la fait pas disparaître. Les installations peuvent combiner liquide et air. Source 4, Vertiv."
+  ]);
+
+S("L'électricité et la chaleur", 'La chaîne causale',
+  H(0,'La chaîne causale')
+  + CHAIN(0, ['Davantage de puissance par rack','Intensités et chaleur à gérer','Évolution de la distribution électrique et du refroidissement','Composants et intégration supplémentaires','Changement du contenu fournisseur par rack'])
+  + AN(5, "Vérifier séparément la puissance par rack, le nombre de racks et la puissance totale du site. Des racks plus puissants n'impliquent pas nécessairement plus de puissance totale si leur nombre diminue."),
+  [
+   "La chaîne causale. Davantage de puissance par rack…",
+   "… donc des intensités et de la chaleur à gérer…",
+   "… donc une évolution de la distribution électrique et du refroidissement…",
+   "… donc des composants et une intégration supplémentaires…",
+   "… donc un changement du contenu fournisseur par rack.",
+   "Point analyste. Il faut vérifier séparément la puissance par rack, le nombre de racks et la puissance totale du site. Des racks plus puissants n'impliquent pas nécessairement plus de puissance totale si leur nombre diminue."
+  ]);
+
+/* ───────────── 9. FLUX ET CONTRAINTES ───────────── */
+S('Flux et contraintes', 'Les trois flux',
+  H(0,'Les flux et les contraintes actuelles')
+  + T(0, ['Flux','Parcours simplifié','Question'], [
+    ['Objets physiques','Matériaux, puces, systèmes, installation','Qu\'est-ce qui peut effectivement être livré ?'],
+    ['Données','Stockage, mémoire, processeurs, réseau','Qu\'est-ce qui limite le travail utile ?'],
+    ['Argent','Clients, services IA, infrastructures, fournisseurs','Qui facture quoi, quand et avec quelle marge ?']])
+  + R(3, `<div class="timeline"><span>Équipementier vend</span><span>Puces fabriquées</span><span>Cloud paie ses serveurs</span><span>Clients arrivent</span></div>`)
+  + NOTE(4, "<b>Attention au double comptage.</b> Le prix d'un serveur inclut la valeur de plusieurs composants. Additionner le marché des serveurs et celui de leurs composants ne mesure pas une dépense finale indépendante."),
+  [
+   "Les flux et les contraintes actuelles. Trois flux traversent la chaîne. Les objets physiques : matériaux, puces, systèmes, installation. La question : qu'est-ce qui peut effectivement être livré ?",
+   "Les données : stockage, mémoire, processeurs, réseau. La question : qu'est-ce qui limite le travail utile ?",
+   "L'argent : clients, services IA, infrastructures, fournisseurs. La question : qui facture quoi, quand et avec quelle marge ?",
+   "Un équipementier peut vendre ses machines longtemps avant que les puces fabriquées servent des utilisateurs. Un cloud peut payer ses serveurs longtemps avant d'avoir assez de clients. Les bénéfices n'arrivent pas au même moment dans chaque couche.",
+   "Attention au double comptage. Le prix d'un serveur inclut la valeur de plusieurs composants. Additionner le marché des serveurs et celui de leurs composants ne mesure pas une dépense finale indépendante."
+  ]);
+
+S('Flux et contraintes', 'Trois repères industriels vérifiés',
+  H(0,'Trois repères industriels vérifiés')
+  + FACT(0, "11 août 2026 : TSMC approuve des investissements couvrant notamment fabrication avancée, packaging et installations industrielles. Une autorisation d'investissement n'est pas une capacité immédiatement productive. [5]")
+  + FACT(1, "L'Agence internationale de l'énergie décrit en 2026 des contraintes de raccordement et le recours de certains développeurs américains à la production électrique sur site. [6]")
+  + FACT(2, "Mars 2026 : Broadcom annonce des livraisons en volume du commutateur Tomahawk 6 de 102,4 térabits/s. C'est le débit agrégé du commutateur, pas celui d'une connexion individuelle. [7]"),
+  [
+   "Trois repères industriels vérifiés. Fait publié : le 11 août 2026, TSMC a approuvé des investissements couvrant notamment fabrication avancée, packaging et installations industrielles. Une autorisation d'investissement n'est pas une capacité immédiatement productive. Source 5.",
+   "Fait publié : l'Agence internationale de l'énergie décrit en 2026 des contraintes de raccordement et le recours de certains développeurs américains à la production électrique sur site. Source 6.",
+   "Fait publié : Broadcom a annoncé en mars 2026 des livraisons en volume du commutateur Tomahawk 6 de 102,4 térabits par seconde. Ce chiffre est le débit agrégé du commutateur, pas celui d'une connexion individuelle. Source 7."
+  ]);
+
+S('Flux et contraintes', 'Matrice initiale des bottlenecks',
+  H(0,'Matrice initiale des bottlenecks')
+  + NOTE(0, "Ces contraintes peuvent coexister. Les périodes sont des horizons d'investigation, pas un classement universel des pénuries ni des prévisions certaines.")
+  + T(1, ['Horizon','Contrainte et réponse à vérifier','Bénéficiaires possibles et limite suivante'], [
+    ['2026–2027','Fabrication et packaging : capacité installée, qualifiée et rendement.','Fonderies, équipementiers ; mémoire ou test ensuite.'],
+    ['2026–2028','Mémoire : débit, capacité et volumes réellement livrés.','Mémoire, interconnexions ; puissance ou chaleur ensuite.'],
+    ['2026–2029','Électricité : dates de raccordement et de mise sous tension.','Équipements et ingénierie ; coût et exploitation ensuite.'],
+    ['2027–2031','Communication : adoption effective des architectures.','Réseau et optique ; test et maintenance ensuite.'],
+    ['Toute période','Demande solvable : contrats, utilisation et prix réalisés.','Exploitants efficaces ; rentabilité du client final.']]),
+  [
+   "Matrice initiale des bottlenecks. Lecture analytique : ces contraintes peuvent coexister. Les périodes sont des horizons d'investigation, pas un classement universel des pénuries ni des prévisions certaines.",
+   "2026 à 2027 : fabrication et packaging. À vérifier : capacité installée, qualifiée, et rendement. Bénéficiaires possibles : fonderies et équipementiers ; limite suivante : mémoire ou test.",
+   "2026 à 2028 : mémoire. À vérifier : débit, capacité et volumes réellement livrés. Bénéficiaires : mémoire et interconnexions ; ensuite, puissance ou chaleur.",
+   "2026 à 2029 : électricité. À vérifier : dates de raccordement et de mise sous tension. Bénéficiaires : équipements et ingénierie ; ensuite, coût et exploitation.",
+   "2027 à 2031 : communication. À vérifier : adoption effective des architectures. Bénéficiaires : réseau et optique ; ensuite, test et maintenance.",
+   "Toute période : la demande solvable. À vérifier : contrats, utilisation et prix réalisés. Bénéficiaires : les exploitants efficaces ; limite suivante : la rentabilité du client final."
+  ]);
+
+/* ───────────── 10. TECHNOLOGIES ET PHOTONIQUE ───────────── */
+S('Les technologies qui déplacent les contraintes', 'Six évolutions à suivre',
+  H(0,'Les technologies qui déplacent les contraintes')
+  + NOTE(0, "Pistes d'analyse pour les cinq prochaines années. Calendriers et adoption dépendront des performances, des coûts et de la fiabilité des solutions.")
+  + T(1, ['Évolution','Problème visé','Compromis et valeur à suivre'], [
+    ['Mémoire plus dense et plus rapide','Capacité insuffisante et attente des données.','Empilement et test ; coût, rendement et chaleur.'],
+    ['Chiplets','Limites de taille ou de coût d\'une puce unique.','Plusieurs dies coopèrent ; interconnexions et assemblage plus complexes.'],
+    ['Optique rapprochée des puces','Contraintes de certaines liaisons électriques rapides.','Moteurs optiques et lasers ; maintenance, fiabilité et test.'],
+    ['Tension de distribution plus élevée','Intensités et pertes dans certaines parties du système.','Conversion et protection ; isolation et intégration.'],
+    ['Refroidissement liquide','Concentration de la chaleur.','Plaques froides et échangeurs ; coût et exploitation.'],
+    ['Optimisation des modèles et logiciels','Trop de calculs ou de transferts par résultat.','Meilleure efficacité ; qualité, flexibilité et complexité.']]),
+  [
+   "Les technologies qui déplacent les contraintes. Les évolutions suivantes sont des pistes d'analyse pour les cinq prochaines années. Leurs calendriers et leur adoption dépendront des performances, des coûts et de la fiabilité des solutions.",
+   "Mémoire plus dense et plus rapide. Problème visé : capacité insuffisante et attente des données. Compromis : empilement et test ; coût, rendement et chaleur.",
+   "Chiplets. Problème visé : limites de taille ou de coût d'une puce unique. Compromis : plusieurs dies coopèrent, avec des interconnexions et un assemblage plus complexes.",
+   "Optique rapprochée des puces. Problème visé : contraintes de certaines liaisons électriques rapides. Compromis : moteurs optiques et lasers ; maintenance, fiabilité et test.",
+   "Tension de distribution plus élevée. Problème visé : intensités et pertes dans certaines parties du système. Compromis : conversion et protection ; isolation et intégration.",
+   "Refroidissement liquide. Problème visé : concentration de la chaleur. Compromis : plaques froides et échangeurs ; coût et exploitation.",
+   "Optimisation des modèles et logiciels. Problème visé : trop de calculs ou de transferts par résultat. Compromis : meilleure efficacité, contre qualité, flexibilité et complexité."
+  ]);
+
+S('Les technologies qui déplacent les contraintes', 'Le cas de la photonique',
+  H(0,'Le cas de la photonique')
+  + R(0, `<div class="def"><b>CPO</b> Co-Packaged Optics : des fonctions optiques intégrées au voisinage d'une puce dans un même assemblage.<br><small>But : réduire certaines liaisons électriques rapides et leurs contraintes. Broadcom présente déjà des produits fondés sur cette approche ; leur existence ne prouve pas une adoption universelle. [8]</small></div>`)
+  + P(1, "La chaîne à reconstruire pour ta conviction photonique :")
+  + CHAIN(1, ['Davantage de communication nécessaire','Distances et débits requis','Choix cuivre ou optique','Architecture des modules','Composants nécessaires','Fournisseurs qualifiés','Revenus'], 0)
+  + NOTE(2, "Le passage à une nouvelle architecture peut agrandir le marché optique total tout en supprimant une fonction chez un fournisseur particulier.")
+  + H(3,'Trois signaux à surveiller')
+  + L(3, ['<b>Qualification</b> : le produit est-il simplement démontré, testé par un client ou validé pour un déploiement ?','<b>Industrialisation</b> : quelle capacité fonctionne effectivement, avec quel rendement ?','<b>Valeur</b> : quel composant gagne ou perd du contenu par système, et à quel prix ?']),
+  [
+   "Le cas de la photonique. CPO signifie Co-Packaged Optics : des fonctions optiques sont intégrées au voisinage d'une puce dans un même assemblage. Le but est notamment de réduire certaines liaisons électriques rapides et leurs contraintes. Broadcom présente déjà des produits fondés sur cette approche. Leur existence ne prouve pas une adoption universelle. Source 8.",
+   "Pour ta conviction photonique, la chaîne à reconstruire est la suivante : davantage de communication nécessaire, donc distances et débits requis, donc choix cuivre ou optique, donc architecture des modules, donc composants nécessaires, donc fournisseurs qualifiés, donc revenus.",
+   "Le passage à une nouvelle architecture peut agrandir le marché optique total tout en supprimant une fonction chez un fournisseur particulier.",
+   "Trois signaux à surveiller. Qualification : le produit est-il simplement démontré, testé par un client, ou validé pour un déploiement ?",
+   "Industrialisation : quelle capacité fonctionne effectivement, avec quel rendement ?",
+   "Valeur : quel composant gagne ou perd du contenu par système, et à quel prix ?"
+  ]);
+/* ───────────── 11. PREMIER MODÈLE ÉCONOMIQUE ───────────── */
+S('Premier modèle économique', 'Du site au nombre de racks',
+  H(0,'Premier modèle économique')
+  + NOTE(0, "Toutes les données de cet exemple sont fictives et pédagogiques. Elles ne décrivent ni un produit commercial ni une installation réelle.")
+  + R(1, `<div class="params"><span>Site <b>12 MW</b></span><span>PUE <b>1,20</b></span><span>Rack <b>100 kW</b></span></div>`)
+  + R(2, `<div class="def"><b>PUE</b> Power Usage Effectiveness : énergie totale du site ÷ énergie des équipements informatiques.<br><small>Ici supposé applicable aux puissances au point étudié.</small></div>`)
+  + EQ(3, "Puissance informatique = 12 MW ÷ 1,20 = <b>10 MW</b>")
+  + P(3, "<small>Les 2 MW restants : autres consommations et pertes du site dans ce modèle.</small>")
+  + EQ(4, "Nombre de racks = 10 000 kW ÷ 100 kW = <b>100</b>")
+  + NOTE(5, "Maximum théorique si toute la puissance informatique est affectée à ces racks. Une étude réelle réserve les consommations des autres équipements et les marges nécessaires."),
+  [
+   "Premier modèle économique. Toutes les données de cet exemple sont fictives et pédagogiques. Elles ne décrivent ni un produit commercial ni une installation réelle.",
+   "Du site au nombre de racks. Considérons un site avec 12 mégawatts de puissance totale, un PUE de 1,20 et des racks consommant chacun 100 kilowatts au point de fonctionnement retenu.",
+   "PUE signifie Power Usage Effectiveness : le rapport entre l'énergie totale consommée par le site et l'énergie des équipements informatiques. Pour cet exemple, nous supposons ce rapport applicable aux puissances au point étudié.",
+   "Puissance informatique égale 12 mégawatts divisés par 1,20, soit 10 mégawatts. Les 2 mégawatts restants représentent les autres consommations et pertes du site dans ce modèle.",
+   "Nombre de racks égale 10 000 kilowatts divisés par 100 kilowatts, soit 100 racks.",
+   "C'est un maximum théorique si toute la puissance informatique est affectée à ces racks. Une étude réelle doit réserver les consommations des autres équipements et les marges nécessaires."
+  ]);
+
+S('Premier modèle économique', 'Des racks au contenu fournisseur',
+  H(0,'Des racks aux accélérateurs')
+  + EQ(0, "100 racks × 64 accélérateurs = <b>6 400 accélérateurs</b>")
+  + P(0, "<small>Les 100 kW par rack sont supposés inclure les autres composants présents dans ces racks.</small>")
+  + H(1,'Des accélérateurs au contenu fournisseur')
+  + EQ(1, "6 400 × 8 × 200 € = <b>10 240 000 €</b>")
+  + EQ(2, "10 240 000 € × 25 % = <b>2 560 000 €</b>")
+  + P(2, "<small>Un chiffre d'affaires potentiel de livraison. Ni un revenu annuel automatiquement récurrent, ni un bénéfice.</small>")
+  + EQ(3, "CA = systèmes livrés × composants par système × prix moyen × part obtenue")
+  + R(4, `<div class="duo"><div><b>ASP</b><br>Average Selling Price, prix moyen de vente</div><div><b>BOM</b><br>Bill of Materials, nomenclature : liste et quantités des composants du système</div></div>`),
+  [
+   "Des racks aux accélérateurs. Supposons 64 accélérateurs par rack. La puissance de 100 kilowatts par rack est supposée inclure les autres composants présents dans ces racks. 100 racks fois 64 accélérateurs égale 6 400 accélérateurs.",
+   "Des accélérateurs au contenu fournisseur. Supposons un composant présent huit fois par accélérateur, vendu 200 euros. 6 400 fois 8 fois 200 euros égale 10 240 000 euros. Cela représente la valeur totale de ce composant dans l'installation fictive.",
+   "Si un fournisseur obtient 25 % des volumes : 10 240 000 euros fois 25 % égale 2 560 000 euros. C'est un chiffre d'affaires potentiel de livraison. Ce n'est ni un revenu annuel automatiquement récurrent, ni un bénéfice.",
+   "La formule à réutiliser : chiffre d'affaires égale systèmes livrés, fois composants par système, fois prix moyen, fois part obtenue.",
+   "ASP signifie Average Selling Price, ou prix moyen de vente. BOM signifie Bill of Materials, ou nomenclature des composants : la liste et les quantités nécessaires à la construction du système."
+  ]);
+
+/* ───────────── 12. TOKENS ET MARGE ───────────── */
+S('Du matériel aux tokens et à la marge', 'Le coût par token',
+  H(0,'Une première approximation du coût par token')
+  + EQ(0, "Coût par token = coûts attribuables au service ÷ tokens produits")
+  + L(1, ['Numérateur et dénominateur sur la même période','Coûts : amortissement ou location du matériel, énergie, réseau, hébergement, maintenance, exploitation'], 'inl')
+  + P(2, "Pour comparer deux systèmes : fixe un modèle, une qualité de réponse et des exigences de délai comparables. Les tokens d'entrée et de sortie ne mobilisent pas nécessairement les ressources de la même manière.")
+  + R(3, `<div class="loop"><span>Amélioration technique</span><span class="a">→</span><span>coût unitaire ↓</span><span class="a">→</span><span>demande ↑</span><span class="a">→</span><span>obsolescence des anciens équipements ↑</span></div>`),
+  [
+   "Du matériel aux tokens et à la marge. Une première approximation du coût par token : coût par token égale coûts attribuables au service, divisés par tokens produits.",
+   "Le numérateur et le dénominateur portent sur la même période. Les coûts peuvent comprendre l'amortissement ou la location du matériel, l'énergie, le réseau, l'hébergement, la maintenance et l'exploitation.",
+   "Pour comparer deux systèmes, fixe un modèle, une qualité de réponse et des exigences de délai comparables. Les tokens d'entrée et de sortie ne mobilisent pas nécessairement les ressources de la même manière.",
+   "Le résultat dépend du prix d'achat, de l'utilisation réelle, du logiciel, du travail demandé et de la durée de compétitivité du matériel. Une amélioration technique peut réduire le coût unitaire, augmenter la demande et accélérer l'obsolescence d'anciens équipements."
+  ]);
+
+S('Du matériel aux tokens et à la marge', 'Qui peut protéger ses profits',
+  H(0,'Qui peut protéger ses profits')
+  + R(0, `<div class="def"><b>Moat</b> Avantage concurrentiel durable : protège l'entreprise contre la concurrence et l'érosion des profits.</div>`)
+  + T(1, ['Protection possible','Exemple de mécanisme','Risque à vérifier'], [
+    ['Technologie difficile à reproduire','Précision, savoir-faire, brevets.','Alternative technique.'],
+    ['Fournisseur qualifié','Coût et délai pour changer de fournisseur.','Qualification d\'un concurrent.'],
+    ['Plateforme et logiciels','Compatibilité et outils adoptés par les clients.','Migration vers une autre plateforme.'],
+    ['Capacité rare','Difficulté d\'ajouter rapidement de l\'offre.','Surcapacité ultérieure.'],
+    ['Intégration fiable','Maîtrise de la construction du système.','Concurrence sur les prix.'],
+    ['Électricité accessible','Ressource locale difficile à obtenir.','Coût excessif ou faible utilisation.']]),
+  [
+   "Qui peut protéger ses profits. Le moat est un avantage concurrentiel durable. Il protège l'entreprise contre la concurrence et l'érosion des profits. Six protections possibles, chacune avec son risque.",
+   "Une technologie difficile à reproduire : précision, savoir-faire, brevets. Risque : une alternative technique.",
+   "Un fournisseur qualifié : coût et délai pour changer de fournisseur. Risque : la qualification d'un concurrent.",
+   "Une plateforme et des logiciels : compatibilité et outils adoptés par les clients. Risque : migration vers une autre plateforme.",
+   "Une capacité rare : difficulté d'ajouter rapidement de l'offre. Risque : surcapacité ultérieure.",
+   "Une intégration fiable : maîtrise de la construction du système. Risque : concurrence sur les prix.",
+   "Une électricité accessible : ressource locale difficile à obtenir. Risque : coût excessif ou faible utilisation."
+  ]);
+
+S('Du matériel aux tokens et à la marge', 'Les passages à vérifier dans une thèse',
+  H(0,'Les passages à vérifier dans une thèse')
+  + HCHAIN(0, ['Besoin technique','Produit adopté','Volumes livrés','Prix réalisé','Marge','Trésorerie','Valeur pour l\'actionnaire'], 0)
+  + P(1, "Une thèse peut échouer à chacun de ces passages.")
+  + L(2, ['Un composant plus présent dans chaque rack peut subir une baisse de prix qui limite la progression des revenus.','Une hausse des revenus peut demander tant d\'investissement qu\'elle produit peu de trésorerie.'], 'inl')
+  + R(4, `<div class="duo"><div><b>Capex</b><br>Capital Expenditure : dépenses d'investissement</div><div><b>TAM</b><br>Total Addressable Market : marché théoriquement accessible selon un périmètre défini. Pas des ventes garanties.</div></div>`),
+  [
+   "Les passages à vérifier dans une thèse : besoin technique, produit adopté, volumes livrés, prix réalisé, marge, trésorerie, valeur pour l'actionnaire.",
+   "Une thèse peut échouer à chacun de ces passages.",
+   "Un composant plus présent dans chaque rack peut subir une baisse de prix qui limite la progression des revenus.",
+   "Une hausse des revenus peut demander tant d'investissement qu'elle produit peu de trésorerie.",
+   "Capex signifie Capital Expenditure : dépenses d'investissement. TAM signifie Total Addressable Market : marché théoriquement accessible selon un périmètre défini. Le TAM ne correspond pas à des ventes garanties."
+  ]);
+
+/* ───────────── 13. SCÉNARIOS ET ENTREPRISES ───────────── */
+S('Scénarios et entreprises', 'Scénarios favorables et défavorables',
+  H(0,'Scénarios et entreprises à retenir')
+  + NOTE(0, "Ces scénarios sont des hypothèses d'analyse, pas des recommandations d'achat.")
+  + T(1, ['Domaine','Scénario favorable','Scénario défavorable'], [
+    ['Mémoire avancée','Contenu par accélérateur en hausse et offre qualifiée limitée.','Nouvelles capacités et baisse des prix.'],
+    ['Packaging','Assemblages complexes et valeur ajoutée croissante.','Défauts et coûts absorbant cette valeur.'],
+    ['Photonique','Plus de liaisons et de débit.','Adoption différée ou déplacement de valeur entre composants.'],
+    ['Électricité et froid','Puissance installée et densité croissantes.','Retards, annulations et concurrence sur les prix.'],
+    ['Cloud IA','Bonne utilisation et demande solvable durable.','Prix de location en baisse et matériel sous-utilisé.']]),
+  [
+   "Scénarios et entreprises à retenir. Ces scénarios sont des hypothèses d'analyse, pas des recommandations d'achat.",
+   "Mémoire avancée. Favorable : contenu par accélérateur en hausse et offre qualifiée limitée. Défavorable : nouvelles capacités et baisse des prix.",
+   "Packaging. Favorable : assemblages complexes et valeur ajoutée croissante. Défavorable : défauts et coûts absorbant cette valeur.",
+   "Photonique. Favorable : plus de liaisons et de débit. Défavorable : adoption différée ou déplacement de valeur entre composants.",
+   "Électricité et froid. Favorable : puissance installée et densité croissantes. Défavorable : retards, annulations et concurrence sur les prix.",
+   "Cloud IA. Favorable : bonne utilisation et demande solvable durable. Défavorable : prix de location en baisse et matériel sous-utilisé."
+  ]);
+
+S('Scénarios et entreprises', 'Ce que le marché pourrait mal comprendre',
+  H(0,'Ce que le marché pourrait mal comprendre')
+  + L(0, ['<b>Hypothèse 1.</b> Confondre commandes et consommation finale. Les équipements commandés serviront-ils une demande suffisante pour rentabiliser les capacités ?','<b>Hypothèse 2.</b> Sous-estimer le déplacement de valeur dans la photonique. Quels composants gagnent du contenu et lesquels deviennent moins nécessaires ?','<b>Hypothèse 3.</b> Confondre puissance annoncée et capacité productive. Le site est-il raccordé, équipé, testé et réellement utilisé ?'])
+  + AN(3, "À chaque analyse, demande aussi si la croissance attendue est déjà intégrée dans le cours de Bourse."),
+  [
+   "Ce que le marché pourrait mal comprendre. Hypothèse 1 : confondre commandes et consommation finale. Les équipements commandés serviront-ils une demande suffisante pour rentabiliser les capacités ?",
+   "Hypothèse 2 : sous-estimer le déplacement de valeur dans la photonique. Quels composants gagnent du contenu, et lesquels deviennent moins nécessaires ?",
+   "Hypothèse 3 : confondre puissance annoncée et capacité productive. Le site est-il raccordé, équipé, testé et réellement utilisé ?",
+   "À chaque analyse, demande aussi si la croissance attendue est déjà intégrée dans le cours de Bourse."
+  ]);
+
+S('Scénarios et entreprises', 'Dix repères pour ranger les entreprises dans ta carte',
+  H(0,'Dix repères pour ranger les entreprises dans ta carte')
+  + T(0, ['Entreprise','Symbole repère','Fonction'], [
+    ['NVIDIA','NVDA','Accélérateurs et plateforme de calcul.'],
+    ['TSMC','TSM aux États-Unis','Fabrication sous contrat et packaging.'],
+    ['ASML','ASML','Lithographie.'],
+    ['SK hynix','000660 en Corée','Mémoire.'],
+    ['Micron','MU','Mémoire.'],
+    ['Broadcom','AVGO','Puces réseau et silicium personnalisé.'],
+    ['Cadence','CDNS','Logiciels de conception électronique.'],
+    ['Ajinomoto','2802 au Japon','Notamment matériaux isolants pour substrats.'],
+    ['Coherent','COHR','Composants et technologies photoniques.'],
+    ['Vertiv','VRT','Alimentation et refroidissement.']], 0.5),
+  [
+   "Dix repères pour ranger les entreprises dans ta carte. NVIDIA, NVDA : accélérateurs et plateforme de calcul. TSMC, TSM aux États-Unis : fabrication sous contrat et packaging.",
+   "ASML : lithographie. SK hynix, code 000660 en Corée : mémoire.",
+   "Micron, MU : mémoire. Broadcom, AVGO : puces réseau et silicium personnalisé.",
+   "Cadence, CDNS : logiciels de conception électronique. Ajinomoto, 2802 au Japon : notamment matériaux isolants pour substrats.",
+   "Coherent, COHR : composants et technologies photoniques. Vertiv, VRT : alimentation et refroidissement."
+  ]);
+
+/* ───────────── 14. UNITÉS ET GLOSSAIRE ───────────── */
+S('Unités et glossaire', 'Les unités de départ',
+  H(0,'Les unités')
+  + T(0, ['Repère','Utilité'], [
+    ['1 octet = 8 bits','Éviter la confusion entre débits réseau et mémoire.'],
+    ['1 Go = 10⁹ octets (convention décimale)','Mesurer une capacité. Un Gio utilise une convention binaire différente.'],
+    ['1 To/s = 10¹² octets par seconde','Mesurer un débit.'],
+    ['1 kW = 1 000 W ; 1 MW = 1 000 kW','Passer du composant au site.'],
+    ['1 GW = 1 000 MW','Comparer de grandes infrastructures.'],
+    ['1 MW pendant 1 heure = 1 MWh','Distinguer puissance et énergie.'],
+    ['1 MW constant pendant un an = 8 760 MWh','Consommation annuelle hors année bissextile.'],
+    ['PUE = énergie totale ÷ énergie informatique','Relier le site à ses équipements informatiques.']], 0.5),
+  [
+   "Les unités de départ. Un octet égale 8 bits : cela évite la confusion entre débits réseau et mémoire. Un gigaoctet égale 10 puissance 9 octets en convention décimale, pour mesurer une capacité ; un gibioctet utilise une convention binaire différente.",
+   "Un téraoctet par seconde égale 10 puissance 12 octets par seconde, pour mesurer un débit. Un kilowatt égale 1 000 watts, un mégawatt égale 1 000 kilowatts : pour passer du composant au site.",
+   "Un gigawatt égale 1 000 mégawatts, pour comparer de grandes infrastructures. Un mégawatt pendant une heure égale un mégawattheure : c'est la distinction entre puissance et énergie.",
+   "Un mégawatt constant pendant un an égale 8 760 mégawattheures, consommation annuelle hors année bissextile. Et le PUE égale énergie totale divisée par énergie informatique, pour relier le site à ses équipements."
+  ]);
+
+S('Unités et glossaire', 'Les concepts essentiels',
+  H(0,'Les concepts essentiels')
+  + T(0, ['Terme','Définition et utilité'], [
+    ['Token','Unité traitée ou produite par le modèle ; mesure une partie de l\'activité IA.'],
+    ['Inférence','Utilisation d\'un modèle entraîné pour produire le service.'],
+    ['Wafer et die','Disque de fabrication et puce nue qui en est issue.'],
+    ['Packaging','Assemblage et connexion des puces dans un système utilisable.'],
+    ['HBM','Mémoire à très haute bande passante proche de l\'accélérateur.'],
+    ['Bande passante et latence','Quantité transférable par seconde et délai d\'un transfert.'],
+    ['Yield','Rendement : part des unités répondant aux critères requis.'],
+    ['Bottleneck','Contrainte qui limite le résultat global.'],
+    ['BOM et ASP','Nomenclature des composants et prix moyen de vente.'],
+    ['Capex et TAM','Dépenses d\'investissement et marché total théoriquement accessible.'],
+    ['Moat','Avantage concurrentiel qui aide à protéger les profits.']], 0.5),
+  [
+   "Les concepts essentiels, en révision rapide. Token : unité traitée ou produite par le modèle ; mesure une partie de l'activité IA. Inférence : utilisation d'un modèle entraîné pour produire le service.",
+   "Wafer et die : disque de fabrication et puce nue qui en est issue. Packaging : assemblage et connexion des puces dans un système utilisable.",
+   "HBM : mémoire à très haute bande passante proche de l'accélérateur. Bande passante et latence : quantité transférable par seconde, et délai d'un transfert.",
+   "Yield, ou rendement : part des unités répondant aux critères requis. Bottleneck : contrainte qui limite le résultat global.",
+   "BOM et ASP : nomenclature des composants et prix moyen de vente. Capex et TAM : dépenses d'investissement et marché total théoriquement accessible.",
+   "Moat : avantage concurrentiel qui aide à protéger les profits."
+  ]);
+
+S('Unités et glossaire', 'Résumé investisseur',
+  H(0,'Résumé investisseur')
+  + HCHAIN(0, ['Travail à accomplir','Calcul, mémoire, échanges','Fabriqué, assemblé, installé, alimenté, refroidi'], 0)
+  + R(1, `<div class="fourq"><span>Quelle fonction ?</span><span>Quelle contrainte ?</span><span>Quel fournisseur qualifié ?</span><span>Quelle traduction en bénéfices ?</span></div>`)
+  + P(2, "La rareté industrielle peut créer du pouvoir de négociation. De nouvelles capacités, une architecture différente ou une demande insuffisante peuvent le faire disparaître.")
+  + BIG(3, "Identifie la contrainte, puis compte ce qui permet de la résoudre.", "avant de chercher le gagnant"),
+  [
+   "Résumé investisseur. Pars du travail que le système doit accomplir. Ce travail exige calcul, mémoire et échanges. Les composants doivent être fabriqués, assemblés, installés, alimentés et refroidis.",
+   "À chaque couche, quatre questions : quelle fonction, quelle contrainte, quel fournisseur qualifié, et quelle traduction en bénéfices ?",
+   "La rareté industrielle peut créer du pouvoir de négociation. De nouvelles capacités, une architecture différente ou une demande insuffisante peuvent le faire disparaître.",
+   "Avant de chercher le gagnant, identifie la contrainte et compte ce qui permet de la résoudre."
+  ]);
+
+/* ───────────── 15. SOURCES ───────────── */
+S('Sources et méthode', 'Sources et méthode de lecture',
+  H(0,'Sources et méthode de lecture')
+  + NOTE(0, "Les caractéristiques annoncées par les fabricants restent des caractéristiques constructeur ; elles ne constituent pas une garantie de performance sur toutes les applications.")
+  + T(1, ['#','Source','Ce qu\'elle documente'], [
+    ['1','ASML — Six crucial steps in semiconductor manufacturing','Procédés de dépôt, lithographie et gravure.'],
+    ['2','Ajinomoto — Our Technologies','Rôle du film ABF et fourniture aux fabricants de substrats.'],
+    ['3','Micron — HBM4 in High-Volume Production, Vera Rubin','Communiqué du 16 mars 2026 : production et échantillonnage HBM4.'],
+    ['4','Vertiv — End-to-End AI Power and Cooling Solutions','Plaques froides et refroidissement liquide.'],
+    ['5','TSMC via SEC — Board resolutions of August 11 2026','Autorisations d\'investissement fabrication et packaging.'],
+    ['6','AIE — Key Questions on Energy and AI','Synthèse 2026 : raccordement et production électrique sur site.'],
+    ['7','Broadcom — First 102.4 Tbps Switch in Production Volume','Annonce du 12 mars 2026 sur Tomahawk 6.'],
+    ['8','Broadcom — Tomahawk 6 Davisson with Co-Packaged Optics','Architecture de commutateur intégrant de l\'optique.']], 0.5)
+  + R(5, `<div class="trio"><div><b>Fait publié</b><br>information attribuée à une source identifiée</div><div><b>Exemple pédagogique</b><br>nombres fictifs servant à apprendre un calcul</div><div><b>Hypothèse</b><br>relation ou scénario à tester avec des données</div></div>`),
+  [
+   "Sources et méthode de lecture. Les références documentent les procédés et les repères industriels cités. Les caractéristiques annoncées par les fabricants restent des caractéristiques constructeur ; elles ne constituent pas une garantie de performance sur toutes les applications.",
+   "Source 1, ASML, Six crucial steps in semiconductor manufacturing : procédés de dépôt, lithographie et gravure. Source 2, Ajinomoto, Our Technologies : rôle du film ABF et fourniture aux fabricants de substrats.",
+   "Source 3, Micron, HBM4 en production de volume pour NVIDIA Vera Rubin, communiqué du 16 mars 2026. Source 4, Vertiv, solutions de puissance et de refroidissement pour l'IA : plaques froides et refroidissement liquide.",
+   "Source 5, TSMC via la SEC, résolutions du conseil du 11 août 2026 : autorisations d'investissement. Source 6, Agence internationale de l'énergie, Key Questions on Energy and AI, synthèse 2026.",
+   "Source 7, Broadcom, premier commutateur 102,4 térabits par seconde en volume de production, annonce du 12 mars 2026. Source 8, Broadcom, Tomahawk 6 Davisson avec Co-Packaged Optics.",
+   "Faits, estimations et hypothèses. Fait publié : information attribuée à une source identifiée. Exemple pédagogique : nombres fictifs servant à apprendre un calcul. Hypothèse : relation ou scénario à tester avec des données. Les cours et corrections devront conserver ces distinctions. La validation du module mesure la compréhension et le raisonnement, pas la capacité à réciter des annonces industrielles."
+  ]);
+
+/* ───────────── 16. LE TEST ───────────── */
+S('Le test', 'Partie A — Compréhension (25 points)',
+  H(0,'Partie A • Test de compréhension • 25 points')
+  + NOTE(0, "5 points par question. Première tentative sans regarder le cours. Si tu bloques, écris ton raisonnement et ce qui te manque. Aucun corrigé n'est inclus.")
+  + L(1, ['<b>A1.</b> Quelle différence fais-tu entre NVIDIA, TSMC et ASML dans la fabrication d\'un système IA ?','<b>A2.</b> Explique la différence entre capacité mémoire et bande passante mémoire.','<b>A3.</b> Distingue un die, un substrat de boîtier et un PCB.','<b>A4.</b> Quelle différence y a-t-il entre entraînement et inférence ?','<b>A5.</b> Un développeur annonce un data center de 200 MW. Pourquoi cela ne suffit-il pas à connaître sa production de tokens ou ses revenus ?'], 'q'),
+  [
+   "Le test commence. Partie A, test de compréhension, 25 points, 5 points par question. Première tentative sans regarder le cours. Si tu bloques, écris ton raisonnement et ce qui te manque. Aucun corrigé n'est inclus.",
+   "A1. Quelle différence fais-tu entre NVIDIA, TSMC et ASML dans la fabrication d'un système IA ?",
+   "A2. Explique la différence entre capacité mémoire et bande passante mémoire.",
+   "A3. Distingue un die, un substrat de boîtier et un PCB.",
+   "A4. Quelle différence y a-t-il entre entraînement et inférence ?",
+   "A5. Un développeur annonce un data center de 200 mégawatts. Pourquoi cela ne suffit-il pas à connaître sa production de tokens ou ses revenus ?"
+  ]);
+
+S('Le test', 'Partie B — Raisonnement (30 points)',
+  H(0,'Partie B • Test de raisonnement • 30 points')
+  + NOTE(0, "10 points par question. Déroule les relations de cause à effet. Une conclusion juste sans explication ne suffit pas à montrer la maîtrise.")
+  + L(1, ['<b>B1.</b> Un accélérateur double sa puissance de calcul mais conserve la même bande passante mémoire. Dans quel cas le gain réel peut-il être faible ? Donne deux façons d\'améliorer la situation.','<b>B2.</b> Un fabricant peut livrer davantage d\'accélérateurs, mais son client attend son raccordement électrique. Explique le déplacement du bottleneck et deux conséquences économiques possibles.','<b>B3.</b> Pourquoi une forte croissance de la photonique pourrait-elle ne pas profiter à une entreprise qui vend déjà des composants optiques ?'], 'q'),
+  [
+   "Partie B, test de raisonnement, 30 points, 10 points par question. Déroule les relations de cause à effet. Une conclusion juste sans explication ne suffit pas à montrer la maîtrise.",
+   "B1. Un accélérateur double sa puissance de calcul mais conserve la même bande passante mémoire. Dans quel cas le gain réel peut-il être faible ? Donne deux façons d'améliorer la situation.",
+   "B2. Un fabricant peut livrer davantage d'accélérateurs, mais son client attend son raccordement électrique. Explique le déplacement du bottleneck et deux conséquences économiques possibles.",
+   "B3. Pourquoi une forte croissance de la photonique pourrait-elle ne pas profiter à une entreprise qui vend déjà des composants optiques ?"
+  ]);
+
+S('Le test', 'Partie C — Cas pratiques analyste (30 points)',
+  H(0,'Partie C • Cas pratiques analyste • 30 points')
+  + R(1, `<div class="case"><b>C1 • Du site aux racks • 15 points</b><div class="params"><span>Puissance totale <b>24 MW</b></span><span>PUE <b>1,20</b></span><span>Rack <b>125 kW</b></span></div><small>Toute la puissance informatique est affectée aux racks ; le rapport PUE est supposé applicable au point étudié.</small><ol><li>Calcule la puissance informatique disponible.</li><li>Calcule le nombre théorique de racks.</li><li>Donne deux raisons pour lesquelles le nombre réellement exploitable pourrait être inférieur.</li></ol></div>`)
+  + R(2, `<div class="case"><b>C2 • Du composant aux revenus • 15 points</b><div class="params"><span><b>2 000</b> racks livrés</span><span><b>32</b> modules optiques / rack</span><span>ASP <b>500 €</b></span><span>Part <b>40 %</b></span></div><ol><li>Calcule le nombre total de modules.</li><li>Calcule la valeur totale des modules.</li><li>Calcule le chiffre d'affaires du fournisseur.</li><li>Explique pourquoi ce chiffre n'est pas son bénéfice et n'est pas automatiquement récurrent chaque année.</li></ol></div>`),
+  [
+   "Partie C, cas pratiques analyste, 30 points, 15 points par cas.",
+   "C1, du site aux racks. Hypothèses : puissance totale de 24 mégawatts ; PUE de 1,20 ; consommation de 125 kilowatts par rack. Toute la puissance informatique est affectée aux racks. Le rapport énergétique du PUE est supposé applicable au point de fonctionnement étudié. Un : calcule la puissance informatique disponible. Deux : calcule le nombre théorique de racks. Trois : donne deux raisons pour lesquelles le nombre réellement exploitable pourrait être inférieur.",
+   "C2, du composant aux revenus. Hypothèses fictives : 2 000 racks livrés ; 32 modules optiques par rack ; prix moyen de 500 euros par module ; un fournisseur remporte 40 % des volumes. Un : calcule le nombre total de modules. Deux : calcule la valeur totale des modules. Trois : calcule le chiffre d'affaires du fournisseur. Quatre : explique pourquoi ce chiffre n'est pas son bénéfice et n'est pas automatiquement récurrent chaque année."
+  ]);
+
+S('Le test', 'Partie D — Test de Feynman et barème',
+  H(0,'Partie D • Test de Feynman • 15 points')
+  + P(0, "Explique pourquoi acheter davantage de GPU ne suffit pas toujours à produire davantage de tokens, à trois interlocuteurs :")
+  + L(1, ['<b>D1</b> (5 pts) À un client sans connaissances techniques, en trois phrases.','<b>D2</b> (5 pts) À un analyste financier, en reliant utilisation du matériel et rentabilité.','<b>D3</b> (5 pts) À un interlocuteur technique, en utilisant calcul, bande passante mémoire et communication.'], 'q')
+  + H(4,'Le barème et la suite')
+  + T(4, ['Partie','Maximum'], [['Compréhension','25'],['Raisonnement','30'],['Application analyste','30'],['Feynman','15'],['<b>Total</b>','<b>100</b>']], 0)
+  + R(5, `<div class="scale"><span class="s1">&lt; 60 insuffisant</span><span class="s2">60–79 partiel</span><span class="s3">80–89 validé</span><span class="s4">90–100 maîtrise solide</span></div>`),
+  [
+   "Partie D, test de Feynman, 15 points. Explique pourquoi acheter davantage de GPU ne suffit pas toujours à produire davantage de tokens. Adapte ton explication aux trois interlocuteurs suivants.",
+   "D1, 5 points : à un client sans connaissances techniques, en trois phrases.",
+   "D2, 5 points : à un analyste financier, en reliant utilisation du matériel et rentabilité.",
+   "D3, 5 points : à un interlocuteur technique, en utilisant calcul, bande passante mémoire et communication.",
+   "Le barème : compréhension 25, raisonnement 30, application analyste 30, Feynman 15, total 100.",
+   "Moins de 60 : insuffisant. De 60 à 79 : compréhension partielle. De 80 à 89 : module validé. De 90 à 100 : maîtrise solide. Après tes réponses : correction question par question, rappels sur les erreurs et note. En dessous de 80, rattrapage ciblé puis 3 à 5 nouvelles questions. Le module 1 commence après validation."
+  ]);
+
+S('Fin', 'Fin du module 0',
+  R(0, `<div class="hero"><div class="kicker">Formation infrastructure IA</div><div class="ht">Module 0 terminé</div><div class="hs">Du sable au token</div></div>`)
+  + R(1, `<div class="fivef"><span>Calculer</span><span>Mémoriser</span><span>Communiquer</span><span>Alimenter</span><span>Refroidir</span></div>`)
+  + P(2, "<small class='center'>Réponds au test avec tes mots et tes calculs, puis envoie tes réponses pour la correction.</small>"),
+  [
+   "Fin du module 0. Tu as maintenant la carte entière : du sable au token.",
+   "Cinq fonctions, toujours : calculer, mémoriser, communiquer, alimenter, refroidir. Et une question réflexe : qu'est-ce qui fait attendre le reste du système ?",
+   "Réponds au test avec tes mots et tes calculs, puis envoie tes réponses pour la correction. Le module 1 commence après validation."
+  ]);
+
+</script>
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const stage = $('#stage'), sub = $('#sub'), chap = $('#chap'), ttl = $('#ttl');
+  const btnPlay = $('#play'), btnPrev = $('#prev'), btnNext = $('#next'), btnMenu = $('#menu'), menuEl = $('#menuPanel');
+  const bar = $('#bar'), counter = $('#counter'), rateSel = $('#rate'), voiceSel = $('#voice'), subToggle = $('#subToggle'), overlay = $('#overlay');
+  const totalBeats = SCENES.reduce((a,s)=>a+s.beats.length,0);
+  let si = 0, bi = 0, playing = false, seq = 0, timer = null, voices = [], voice = null;
+  const synth = window.speechSynthesis;
+  const canSpeak = !!synth && 'SpeechSynthesisUtterance' in window;
+
+  // ── mémoriser la position (convenance locale)
+  try { const p = JSON.parse(localStorage.getItem('m0pos')||'null'); if (p && p.si < SCENES.length) { si = p.si; bi = 0; } } catch(e){}
+  const savePos = () => { try { localStorage.setItem('m0pos', JSON.stringify({si})); } catch(e){} };
+
+  // ── voix
+  function loadVoices(){
+    if (!canSpeak) return;
+    voices = synth.getVoices().filter(v => (v.lang||'').toLowerCase().startsWith('fr'));
+    voiceSel.innerHTML = '';
+    if (!voices.length) { voiceSel.innerHTML = '<option>Aucune voix française</option>'; voice = null; return; }
+    const pref = ['Google français','Thomas','Amélie','Audrey','Aurélie','Daniel','Microsoft'];
+    voices.sort((a,b)=> score(b)-score(a));
+    function score(v){ const i = pref.findIndex(p=>v.name.includes(p)); return (i<0?0:pref.length-i) + (v.lang==='fr-FR'?0.5:0) + (v.localService?0:0.2); }
+    voices.forEach((v,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=v.name.replace('Microsoft ','').replace(' Online (Natural)','').slice(0,28); voiceSel.appendChild(o); });
+    voice = voices[0]; voiceSel.value = 0;
+  }
+  if (canSpeak) { loadVoices(); synth.onvoiceschanged = loadVoices; }
+  voiceSel.onchange = () => { voice = voices[+voiceSel.value] || null; if (playing) restartBeat(); };
+  rateSel.onchange = () => { if (playing) restartBeat(); };
+
+  // ── rendu d'une scène
+  function renderScene(){
+    const s = SCENES[si];
+    chap.textContent = s.chapter; ttl.textContent = s.title;
+    stage.innerHTML = s.visual;
+    stage.scrollTop = 0;
+    revealUpTo(bi);
+    updateProgress();
+    savePos();
+    document.title = `Module 0 — ${s.title}`;
+  }
+  function revealUpTo(b){
+    stage.querySelectorAll('.rv').forEach(el => { const n = +el.getAttribute('data-b'); el.classList.toggle('on', n <= b); });
+    // faire défiler vers le dernier élément révélé
+    const last = [...stage.querySelectorAll('.rv.on')].filter(el=>+el.getAttribute('data-b')===b).pop();
+    if (last && last.scrollIntoView) { try { last.scrollIntoView({block:'nearest', behavior:'smooth'}); } catch(e){} }
+  }
+  function updateProgress(){
+    let done = 0; for (let i=0;i<si;i++) done += SCENES[i].beats.length; done += bi;
+    bar.style.width = (100*done/totalBeats).toFixed(2)+'%';
+    counter.textContent = `${si+1} / ${SCENES.length}`;
+  }
+
+  // ── lecture d'un beat
+  function playBeat(){
+    const s = SCENES[si]; const text = s.beats[bi];
+    revealUpTo(bi); sub.textContent = text; updateProgress();
+    const my = ++seq;
+    speak(text, () => { if (my !== seq || !playing) return; advance(); });
+  }
+  function advance(){
+    const s = SCENES[si];
+    if (bi < s.beats.length - 1) { bi++; playBeat(); return; }
+    if (si < SCENES.length - 1) { si++; bi = 0; timer = setTimeout(()=>{ if(!playing) return; renderScene(); playBeat(); }, 700); return; }
+    playing = false; syncButtons(); sub.textContent = 'Fin du module 0.';
+  }
+  function speak(text, done){
+    stopSpeech();
+    const rate = parseFloat(rateSel.value) || 1;
+    if (canSpeak && voice) {
+      const parts = text.match(/[^.!?;:]+[.!?;:]+["»]?\s*|[^.!?;:]+$/g) || [text];
+      let i = 0;
+      const next = () => {
+        if (i >= parts.length) { timer = setTimeout(done, 250); return; }
+        const u = new SpeechSynthesisUtterance(parts[i++].trim());
+        u.voice = voice; u.lang = voice.lang || 'fr-FR'; u.rate = rate; u.pitch = 1;
+        let ended = false;
+        const fin = () => { if (ended) return; ended = true; clearTimeout(guard); next(); };
+        u.onend = fin; u.onerror = fin;
+        // garde-fou si le navigateur n'émet jamais onend
+        const guard = setTimeout(fin, (u.text.length * 90 / rate) + 4000);
+        window.__u = u; // éviter la collecte anticipée (Safari)
+        synth.speak(u);
+      };
+      next();
+    } else {
+      // repli sans voix : durée estimée de lecture
+      timer = setTimeout(done, Math.max(2500, text.length * 55 / rate));
+    }
+  }
+  function stopSpeech(){ clearTimeout(timer); if (canSpeak) try { synth.cancel(); } catch(e){} }
+  function restartBeat(){ seq++; stopSpeech(); playBeat(); }
+
+  // ── contrôles
+  function syncButtons(){ btnPlay.textContent = playing ? '❚❚' : '▶'; btnPlay.setAttribute('aria-label', playing?'Pause':'Lecture'); document.body.classList.toggle('playing', playing); }
+  function play(){ if (playing) return; playing = true; overlay.classList.add('hide'); syncButtons(); if (canSpeak && !voices.length) loadVoices(); playBeat(); }
+  function pause(){ playing = false; seq++; stopSpeech(); syncButtons(); }
+  btnPlay.onclick = () => playing ? pause() : play();
+  overlay.onclick = play;
+  btnNext.onclick = () => { if (si < SCENES.length-1) { si++; bi = 0; goto(); } };
+  btnPrev.onclick = () => { if (bi > 0 || si === 0) { bi = 0; } else { si--; bi = 0; } goto(); };
+  function goto(){ seq++; stopSpeech(); renderScene(); if (playing) playBeat(); else { revealUpTo(SCENES[si].beats.length); sub.textContent = SCENES[si].beats[0]; } menuEl.classList.remove('open'); }
+
+  // menu des chapitres
+  const chapters = []; SCENES.forEach((s,i)=>{ if (!chapters.length || chapters[chapters.length-1].name !== s.chapter) chapters.push({name:s.chapter, start:i, items:[]}); chapters[chapters.length-1].items.push({i, t:s.title}); });
+  menuEl.innerHTML = chapters.map(c => `<div class="mc"><div class="mcn">${c.name}</div>${c.items.map(it=>`<button class="mi" data-i="${it.i}">${it.t}</button>`).join('')}</div>`).join('');
+  menuEl.onclick = e => { const b = e.target.closest('.mi'); if (!b) return; si = +b.dataset.i; bi = 0; goto(); };
+  btnMenu.onclick = () => menuEl.classList.toggle('open');
+  subToggle.onclick = () => { document.body.classList.toggle('nosub'); subToggle.textContent = document.body.classList.contains('nosub') ? 'ST off' : 'ST'; };
+
+  document.addEventListener('keydown', e => { if (e.target.tagName === 'SELECT') return; if (e.code==='Space'){ e.preventDefault(); btnPlay.click(); } if (e.code==='ArrowRight') btnNext.click(); if (e.code==='ArrowLeft') btnPrev.click(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && playing) pause(); });
+  window.addEventListener('pagehide', stopSpeech);
+
+  // ── état initial
+  renderScene(); revealUpTo(SCENES[si].beats.length); sub.textContent = SCENES[si].beats[0]; syncButtons();
+  if (!canSpeak) $('#novoice').hidden = false;
+})();
+
+</script>
+</body>
+</html>

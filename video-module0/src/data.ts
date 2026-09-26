@@ -2,8 +2,14 @@ import narration from "../narration/module0.json";
 import timingsJson from "./generated/timings.json";
 import { FPS, HEAD_S, TAIL_S, TRANSITION_FRAMES } from "./theme";
 
-export type Sentence = { text: string; say?: string };
-export type SceneDef = { id: string; visual: string; sentences: Sentence[] };
+export type Sentence = { text: string; beat: number; say?: string };
+export type SceneDef = {
+  id: string;
+  chapter: string;
+  chapterTitle: string;
+  title: string;
+  sentences: Sentence[];
+};
 export type EpisodeDef = {
   id: string;
   num: string;
@@ -18,6 +24,8 @@ export type SceneTiming = {
 
 export const episodes = narration.episodes as EpisodeDef[];
 const timings = timingsJson as Record<string, SceneTiming>;
+
+export const hasTiming = (sceneId: string) => sceneId in timings;
 
 export const getTiming = (sceneId: string): SceneTiming => {
   const t = timings[sceneId];

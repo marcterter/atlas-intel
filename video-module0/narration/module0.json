@@ -1,21 +1,2538 @@
 {
-  "module": "Module 0 — Comprendre toute la chaîne de l'infrastructure IA",
+  "module": "Module 0 — Du sable au token",
   "episodes": [
     {
-      "id": "E00",
-      "num": "00",
-      "title": "Le but du module",
-      "slug": "le-but-du-module",
+      "id": "E01",
+      "num": "01",
+      "title": "Ouverture et carte du système",
+      "slug": "ouverture-et-carte-du-systeme",
       "scenes": [
         {
-          "id": "E00-S01",
-          "visual": "TitleChain",
+          "id": "S01",
+          "chapter": "00",
+          "chapterTitle": "Ouverture",
+          "title": "Module 0",
           "sentences": [
-            { "text": "Module 0.", "say": "Module zéro." },
-            { "text": "Comprendre toute la chaîne de l'infrastructure IA." },
-            { "text": "Du sable au token." },
-            { "text": "Un cours, suivi d'un cahier de validation, conçu pour Marc." },
-            { "text": "Les repères industriels sont arrêtés au 11 septembre 2026." }
+            {
+              "text": "Formation infrastructure IA, module zéro.",
+              "beat": 0
+            },
+            {
+              "text": "Comprendre toute la chaîne de l'infrastructure IA, du sable au token.",
+              "beat": 0
+            },
+            {
+              "text": "C'est un cours et un cahier de validation, avec des repères industriels arrêtés au 11 septembre 2026.",
+              "beat": 1
+            },
+            {
+              "text": "Le but de ce premier module : comprendre la machine entière avant d'en démonter chaque pièce.",
+              "beat": 1
+            },
+            {
+              "text": "À la fin, tu dois pouvoir situer une entreprise dans la chaîne, expliquer son utilité et identifier ce qui pourrait limiter la production d'IA.",
+              "beat": 1
+            },
+            {
+              "text": "Une infrastructure IA réunit cinq fonctions interdépendantes : calculer, mémoriser, communiquer, alimenter et refroidir.",
+              "beat": 2
+            },
+            {
+              "text": "Ajouter des processeurs ne suffit pas si une autre fonction empêche de les utiliser efficacement.",
+              "beat": 2
+            }
+          ]
+        },
+        {
+          "id": "S02",
+          "chapter": "00",
+          "chapterTitle": "Ouverture",
+          "title": "Les compétences à acquérir",
+          "sentences": [
+            {
+              "text": "Voici les huit compétences à acquérir.",
+              "beat": 0
+            },
+            {
+              "text": "Première : expliquer ce qui se passe matériellement lorsqu'une IA répond.",
+              "beat": 0
+            },
+            {
+              "text": "Deuxième : distinguer conception, fabrication et assemblage d'une puce.",
+              "beat": 1
+            },
+            {
+              "text": "Troisième : comprendre les rôles du calcul, de la mémoire et du réseau.",
+              "beat": 2
+            },
+            {
+              "text": "Quatrième : situer le die, le packaging, le substrat et le circuit imprimé.",
+              "beat": 3
+            },
+            {
+              "text": "Cinquième : relier les performances informatiques à l'électricité et au refroidissement.",
+              "beat": 4
+            },
+            {
+              "text": "Sixième : distinguer capacité annoncée, capacité opérationnelle et production vendue.",
+              "beat": 5
+            },
+            {
+              "text": "Septième : reconstruire un chiffre d'affaires fournisseur à partir d'une architecture.",
+              "beat": 6
+            },
+            {
+              "text": "Huitième : expliquer pourquoi une technologie indispensable ne garantit pas un bon investissement.",
+              "beat": 7
+            }
+          ]
+        },
+        {
+          "id": "S03",
+          "chapter": "00",
+          "chapterTitle": "Ouverture",
+          "title": "Comment travailler ce document",
+          "sentences": [
+            {
+              "text": "Comment travailler ce document.",
+              "beat": 0
+            },
+            {
+              "text": "Lis d'abord pour comprendre les fonctions.",
+              "beat": 0
+            },
+            {
+              "text": "Reviens ensuite sur les équations, les entreprises et les unités.",
+              "beat": 1
+            },
+            {
+              "text": "Le test commence après les sources.",
+              "beat": 2
+            },
+            {
+              "text": "Réponds avec tes mots, en montrant tes calculs ; aucune réponse n'est fournie dans le cahier.",
+              "beat": 2
+            },
+            {
+              "text": "Validation à 80 sur 100.",
+              "beat": 3
+            },
+            {
+              "text": "En dessous, nous reprendrons les notions mal comprises avant de passer au module 1.",
+              "beat": 3
+            }
+          ]
+        },
+        {
+          "id": "S04",
+          "chapter": "01",
+          "chapterTitle": "La carte du système",
+          "title": "La carte du système",
+          "sentences": [
+            {
+              "text": "La carte du système.",
+              "beat": 0
+            },
+            {
+              "text": "La chaîne comporte des branches qui se rejoignent.",
+              "beat": 0
+            },
+            {
+              "text": "En amont : les matériaux et les wafers, les équipements industriels, et la conception des circuits.",
+              "beat": 0
+            },
+            {
+              "text": "Ces trois branches convergent vers la fabrication des puces.",
+              "beat": 1
+            },
+            {
+              "text": "De la fabrication sortent deux familles : les puces de calcul et les puces mémoire.",
+              "beat": 2
+            },
+            {
+              "text": "La mémoire et le processeur sont fabriqués séparément.",
+              "beat": 2
+            },
+            {
+              "text": "Elles se rejoignent à l'assemblage et aux cartes, puis dans les serveurs et racks en réseau.",
+              "beat": 3
+            },
+            {
+              "text": "L'électricité arrive par une autre infrastructure : l'alimentation électrique et le refroidissement viennent se greffer sur les serveurs et racks.",
+              "beat": 4
+            },
+            {
+              "text": "Enfin, le cloud et les logiciels exploitent cet ensemble physique pour produire des modèles et des tokens.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S05",
+          "chapter": "01",
+          "chapterTitle": "La carte du système",
+          "title": "Une usine qui transforme de l'électricité en réponses",
+          "sentences": [
+            {
+              "text": "Pense à une usine qui transforme de l'électricité en réponses, ou mieux, à une cuisine.",
+              "beat": 0
+            },
+            {
+              "text": "Calculer, ce sont les cuisiniers.",
+              "beat": 1
+            },
+            {
+              "text": "La question à poser : peuvent-ils effectuer assez d'opérations ?",
+              "beat": 1
+            },
+            {
+              "text": "Mémoriser, ce sont les ingrédients sur le plan de travail.",
+              "beat": 2
+            },
+            {
+              "text": "Les données sont-elles disponibles assez vite ?",
+              "beat": 2
+            },
+            {
+              "text": "Communiquer, ce sont les passages entre les postes.",
+              "beat": 3
+            },
+            {
+              "text": "Les informations arrivent-elles à temps ?",
+              "beat": 3
+            },
+            {
+              "text": "Alimenter, c'est l'énergie de la cuisine.",
+              "beat": 4
+            },
+            {
+              "text": "La puissance nécessaire est-elle disponible ?",
+              "beat": 4
+            },
+            {
+              "text": "Refroidir, c'est l'évacuation de la chaleur.",
+              "beat": 5
+            },
+            {
+              "text": "Peut-on fonctionner sans surchauffe ?",
+              "beat": 5
+            },
+            {
+              "text": "Ajouter des cuisiniers n'accélère pas le service si les ingrédients n'arrivent pas.",
+              "beat": 6
+            },
+            {
+              "text": "L'analogie donne le bon réflexe : chercher ce qui fait attendre le reste du système.",
+              "beat": 6
+            },
+            {
+              "text": "Dans une machine, ces attentes dépendent de contraintes physiques et de programmes précis.",
+              "beat": 6
+            },
+            {
+              "text": "Retiens le mot : bottleneck signifie goulot d'étranglement, la contrainte qui limite le résultat global.",
+              "beat": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E02",
+      "num": "02",
+      "title": "De ta question aux objets physiques",
+      "slug": "de-ta-question-aux-objets-physiques",
+      "scenes": [
+        {
+          "id": "S06",
+          "chapter": "02",
+          "chapterTitle": "De ta question à la réponse",
+          "title": "Étapes 1 et 2",
+          "sentences": [
+            {
+              "text": "Suivons maintenant le chemin de ta question jusqu'à la réponse.",
+              "beat": 0
+            },
+            {
+              "text": "Étape 1 : le texte devient des nombres.",
+              "beat": 0
+            },
+            {
+              "text": "Le texte est découpé en tokens.",
+              "beat": 0
+            },
+            {
+              "text": "Un token peut correspondre à un mot, un fragment de mot ou un signe.",
+              "beat": 0
+            },
+            {
+              "text": "Ces unités sont ensuite représentées par des nombres.",
+              "beat": 1
+            },
+            {
+              "text": "Un token n'est donc pas systématiquement un mot.",
+              "beat": 1
+            },
+            {
+              "text": "Étape 2 : le modèle est disponible en mémoire.",
+              "beat": 2
+            },
+            {
+              "text": "Un modèle contient des paramètres, aussi appelés poids : des nombres ajustés pendant son apprentissage.",
+              "beat": 2
+            },
+            {
+              "text": "Avant de servir des utilisateurs, ils sont chargés depuis le stockage vers les mémoires utilisées par les processeurs.",
+              "beat": 2
+            },
+            {
+              "text": "Ils peuvent ensuite y rester pour traiter de nombreuses demandes.",
+              "beat": 2
+            }
+          ]
+        },
+        {
+          "id": "S07",
+          "chapter": "02",
+          "chapterTitle": "De ta question à la réponse",
+          "title": "Étape 3 : les processeurs",
+          "sentences": [
+            {
+              "text": "Étape 3 : les processeurs effectuent les calculs.",
+              "beat": 0
+            },
+            {
+              "text": "Trois types à connaître.",
+              "beat": 0
+            },
+            {
+              "text": "Le CPU, Central Processing Unit ou processeur central : tâches générales, coordination et traitement.",
+              "beat": 1
+            },
+            {
+              "text": "Le GPU, Graphics Processing Unit ou processeur graphique : de nombreux calculs parallèles, adaptés à une partie des opérations de l'IA.",
+              "beat": 2
+            },
+            {
+              "text": "L'ASIC, Application Specific Integrated Circuit ou circuit spécialisé : une conception qui privilégie certaines tâches ou certains besoins.",
+              "beat": 3
+            },
+            {
+              "text": "Attention : ces catégories ne décrivent pas toutes des frontières absolues.",
+              "beat": 4
+            },
+            {
+              "text": "Un GPU est lui-même un circuit intégré spécialisé au sens large.",
+              "beat": 4
+            },
+            {
+              "text": "Dans le langage des analystes IA, on oppose souvent les plateformes GPU aux accélérateurs personnalisés des grands clouds.",
+              "beat": 4
+            }
+          ]
+        },
+        {
+          "id": "S08",
+          "chapter": "02",
+          "chapterTitle": "De ta question à la réponse",
+          "title": "Étapes 4 et 5",
+          "sentences": [
+            {
+              "text": "Étape 4 : les composants échangent.",
+              "beat": 0
+            },
+            {
+              "text": "Quand le modèle ou le travail est réparti entre plusieurs accélérateurs, ceux-ci échangent des données.",
+              "beat": 0
+            },
+            {
+              "text": "Ils peuvent attendre une lecture mémoire, un résultat d'un autre accélérateur, une communication réseau ou une tâche logicielle préalable.",
+              "beat": 0
+            },
+            {
+              "text": "Étape 5 : la réponse se construit.",
+              "beat": 1
+            },
+            {
+              "text": "Dans une génération de texte autorégressive classique, le système produit successivement les tokens de sortie en tenant compte du contexte et des tokens précédents.",
+              "beat": 1
+            },
+            {
+              "text": "Deux mots à ne jamais confondre : l'inférence est l'utilisation du modèle entraîné.",
+              "beat": 2
+            },
+            {
+              "text": "L'entraînement est le processus qui ajuste ses paramètres.",
+              "beat": 2
+            }
+          ]
+        },
+        {
+          "id": "S09",
+          "chapter": "02",
+          "chapterTitle": "De ta question à la réponse",
+          "title": "Le vocabulaire de l'infrastructure",
+          "sentences": [
+            {
+              "text": "Le vocabulaire de l'infrastructure, de l'intérieur vers l'extérieur.",
+              "beat": 0
+            },
+            {
+              "text": "Un serveur est une machine informatique.",
+              "beat": 0
+            },
+            {
+              "text": "Un rack est une baie accueillant des équipements.",
+              "beat": 0
+            },
+            {
+              "text": "Un cluster est un ensemble de machines qui travaillent ensemble.",
+              "beat": 0
+            },
+            {
+              "text": "Un data center est le site qui les héberge.",
+              "beat": 0
+            },
+            {
+              "text": "Le cloud fournit et gère des ressources informatiques à distance.",
+              "beat": 0
+            },
+            {
+              "text": "Point analyste.",
+              "beat": 1
+            },
+            {
+              "text": "Acheter une puissance de calcul théorique ne garantit pas de produire beaucoup de réponses utiles.",
+              "beat": 1
+            },
+            {
+              "text": "La performance dépend du système et du travail demandé.",
+              "beat": 1
+            }
+          ]
+        },
+        {
+          "id": "S10",
+          "chapter": "03",
+          "chapterTitle": "Les objets",
+          "title": "De la fabrication au serveur (1/2)",
+          "sentences": [
+            {
+              "text": "Passons aux objets, de la fabrication au serveur.",
+              "beat": 0
+            },
+            {
+              "text": "Le silicium purifié : matériau de départ de nombreuses puces.",
+              "beat": 1
+            },
+            {
+              "text": "Sa pureté et ses propriétés conditionnent la fabrication.",
+              "beat": 1
+            },
+            {
+              "text": "Le wafer : un disque sur lequel on fabrique de nombreux circuits.",
+              "beat": 2
+            },
+            {
+              "text": "Une usine traite des wafers avant d'obtenir des puces séparées.",
+              "beat": 2
+            },
+            {
+              "text": "Le transistor : un dispositif minuscule contrôlant un courant.",
+              "beat": 3
+            },
+            {
+              "text": "Des ensembles de transistors réalisent calcul et mémorisation.",
+              "beat": 3
+            },
+            {
+              "text": "Le die : un morceau de semi-conducteur contenant un circuit, après découpe.",
+              "beat": 4
+            },
+            {
+              "text": "C'est la puce physique nue.",
+              "beat": 4
+            },
+            {
+              "text": "Le packaging : les techniques d'assemblage, de protection et de connexion.",
+              "beat": 5
+            },
+            {
+              "text": "Il rend les dies utilisables dans le système.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S11",
+          "chapter": "03",
+          "chapterTitle": "Les objets",
+          "title": "De la fabrication au serveur (2/2)",
+          "sentences": [
+            {
+              "text": "Suite des objets.",
+              "beat": 0
+            },
+            {
+              "text": "L'interposer : une couche intermédiaire d'interconnexion, dans certaines architectures.",
+              "beat": 1
+            },
+            {
+              "text": "Il permet de nombreuses connexions fines entre dies.",
+              "beat": 1
+            },
+            {
+              "text": "Le substrat de boîtier : support électrique et mécanique du package.",
+              "beat": 2
+            },
+            {
+              "text": "Il relie les connexions fines des puces à la carte.",
+              "beat": 2
+            },
+            {
+              "text": "Le PCB, Printed Circuit Board ou circuit imprimé : il porte composants et pistes conductrices à l'échelle d'une carte.",
+              "beat": 3
+            },
+            {
+              "text": "Le serveur : une machine comprenant processeurs, mémoires et autres éléments.",
+              "beat": 4
+            },
+            {
+              "text": "Il exécute les tâches.",
+              "beat": 4
+            },
+            {
+              "text": "Le rack et le cluster : baie d'équipements et ensemble de machines interconnectées.",
+              "beat": 5
+            },
+            {
+              "text": "Ils organisent les ressources et permettent de répartir les travaux.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S12",
+          "chapter": "03",
+          "chapterTitle": "Les objets",
+          "title": "Trois supports, et comment les circuits sont construits",
+          "sentences": [
+            {
+              "text": "Trois supports différents, à ne pas confondre.",
+              "beat": 0
+            },
+            {
+              "text": "Le wafer sert à fabriquer les puces.",
+              "beat": 0
+            },
+            {
+              "text": "Le substrat de boîtier supporte et connecte le package.",
+              "beat": 0
+            },
+            {
+              "text": "Le PCB relie des composants à l'échelle d'une carte.",
+              "beat": 0
+            },
+            {
+              "text": "Piège de vocabulaire : le mot anglais substrate peut aussi désigner un support de fabrication.",
+              "beat": 1
+            },
+            {
+              "text": "Demande toujours de quel substrat il s'agit.",
+              "beat": 1
+            },
+            {
+              "text": "Comment les circuits sont construits.",
+              "beat": 2
+            },
+            {
+              "text": "La fabrication construit et modifie des couches sur le wafer : dépôt de matériaux, définition de motifs par lithographie, gravure, nettoyage et contrôles.",
+              "beat": 2
+            },
+            {
+              "text": "La lithographie est une étape centrale parmi plusieurs procédés interdépendants.",
+              "beat": 2
+            },
+            {
+              "text": "Source 1, ASML.",
+              "beat": 2
+            },
+            {
+              "text": "Le yield, ou rendement de fabrication, est la part des unités satisfaisant les critères requis.",
+              "beat": 3
+            },
+            {
+              "text": "Une capacité brute importante peut donner peu de produits vendables si le rendement est faible.",
+              "beat": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E03",
+      "num": "03",
+      "title": "Les fournisseurs",
+      "slug": "les-fournisseurs",
+      "scenes": [
+        {
+          "id": "S13",
+          "chapter": "04",
+          "chapterTitle": "Les fournisseurs",
+          "title": "En amont des systèmes (1/2)",
+          "sentences": [
+            {
+              "text": "Les fournisseurs en amont des systèmes.",
+              "beat": 0
+            },
+            {
+              "text": "Ces acteurs illustrent les métiers.",
+              "beat": 0
+            },
+            {
+              "text": "Leur présence ne signifie pas qu'ils fournissent tous le même client ou le même système.",
+              "beat": 0
+            },
+            {
+              "text": "Les positions de marché et les relations clients seront approfondies et datées dans les modules concernés.",
+              "beat": 0
+            },
+            {
+              "text": "Les wafers : Shin-Etsu, SUMCO, GlobalWafers.",
+              "beat": 1
+            },
+            {
+              "text": "Leurs clients sont les fabricants de puces ; la difficulté à examiner : pureté, qualité et qualification.",
+              "beat": 1
+            },
+            {
+              "text": "Les matériaux de procédé : Air Liquide, Merck, JSR.",
+              "beat": 2
+            },
+            {
+              "text": "Clients : les usines de puces ; à examiner : la régularité des gaz, des produits chimiques et des résines.",
+              "beat": 2
+            },
+            {
+              "text": "La conception assistée : Synopsys, Cadence, Siemens EDA.",
+              "beat": 3
+            },
+            {
+              "text": "Clients : les concepteurs de puces ; à examiner : la complexité des circuits et le coût des erreurs.",
+              "beat": 3
+            },
+            {
+              "text": "Les blocs de conception : Arm, Synopsys, Cadence.",
+              "beat": 4
+            },
+            {
+              "text": "Clients : les concepteurs ; à examiner : compatibilité, performances et licences.",
+              "beat": 4
+            },
+            {
+              "text": "La lithographie : ASML, et Nikon et Canon sur d'autres segments.",
+              "beat": 5
+            },
+            {
+              "text": "Clients : les fabricants de puces ; à examiner : précision, productivité et coût.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S14",
+          "chapter": "04",
+          "chapterTitle": "Les fournisseurs",
+          "title": "En amont des systèmes (2/2)",
+          "sentences": [
+            {
+              "text": "Suite des fournisseurs amont.",
+              "beat": 0
+            },
+            {
+              "text": "Dépôt et gravure : Applied Materials, Lam Research, Tokyo Electron.",
+              "beat": 1
+            },
+            {
+              "text": "Clients : les fabricants de puces ; à examiner : maîtrise des procédés et reproductibilité.",
+              "beat": 1
+            },
+            {
+              "text": "Inspection et mesure : KLA et ASML.",
+              "beat": 2
+            },
+            {
+              "text": "Clients : les fabricants de puces ; à examiner : détecter les défauts sans ralentir excessivement.",
+              "beat": 2
+            },
+            {
+              "text": "Fabrication sous contrat : TSMC, Samsung Foundry, Intel Foundry.",
+              "beat": 3
+            },
+            {
+              "text": "Clients : les concepteurs de puces ; à examiner : rendement et capacité qualifiée.",
+              "beat": 3
+            },
+            {
+              "text": "Mémoire : SK hynix, Micron, Samsung.",
+              "beat": 4
+            },
+            {
+              "text": "Clients : les fabricants de systèmes et de puces assemblées ; à examiner : capacité, débit et rendement.",
+              "beat": 4
+            },
+            {
+              "text": "Packaging et test : TSMC, ASE, Amkor.",
+              "beat": 5
+            },
+            {
+              "text": "Clients : les concepteurs ; à examiner : complexité des assemblages, rendement et test.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S15",
+          "chapter": "04",
+          "chapterTitle": "Les fournisseurs",
+          "title": "Les métiers à ne pas confondre",
+          "sentences": [
+            {
+              "text": "Les métiers à ne pas confondre.",
+              "beat": 0
+            },
+            {
+              "text": "EDA signifie Electronic Design Automation : les logiciels de conception et de vérification électroniques.",
+              "beat": 0
+            },
+            {
+              "text": "IP signifie Intellectual Property : ici, notamment des blocs de conception réutilisables dans une puce.",
+              "beat": 0
+            },
+            {
+              "text": "Une foundry, ou fonderie, fabrique des puces pour des clients.",
+              "beat": 1
+            },
+            {
+              "text": "Une fab est l'usine physique.",
+              "beat": 1
+            },
+            {
+              "text": "Les entreprises dites fabless conçoivent des puces sans exploiter leur propre fabrication de wafers pour ces produits.",
+              "beat": 2
+            },
+            {
+              "text": "Repère pratique.",
+              "beat": 3
+            },
+            {
+              "text": "NVIDIA conçoit notamment des accélérateurs ; TSMC fournit des services de fabrication et de packaging ; ASML fournit des équipements de lithographie.",
+              "beat": 3
+            },
+            {
+              "text": "Leurs revenus ne dépendent pas des mêmes unités ni du même calendrier.",
+              "beat": 4
+            }
+          ]
+        },
+        {
+          "id": "S16",
+          "chapter": "04",
+          "chapterTitle": "Les fournisseurs",
+          "title": "Des substrats à l'exploitation cloud (1/2)",
+          "sentences": [
+            {
+              "text": "Descendons maintenant des substrats à l'exploitation cloud.",
+              "beat": 0
+            },
+            {
+              "text": "Les accélérateurs : NVIDIA, AMD, et les équipes internes de grands clouds.",
+              "beat": 1
+            },
+            {
+              "text": "Clients : exploitants et intégrateurs ; à examiner : performance utile et logiciels.",
+              "beat": 1
+            },
+            {
+              "text": "Les substrats de boîtier : Ibiden, Shinko, Unimicron.",
+              "beat": 2
+            },
+            {
+              "text": "Client : le packaging ; à examiner : connexions fines, dimensions et déformation.",
+              "beat": 2
+            },
+            {
+              "text": "Les matériaux de substrat : Ajinomoto.",
+              "beat": 3
+            },
+            {
+              "text": "Clients : les fabricants de substrats ; à examiner : propriétés et qualification.",
+              "beat": 3
+            },
+            {
+              "text": "Cartes et systèmes : Quanta, Wiwynn, Foxconn, Dell, HPE.",
+              "beat": 4
+            },
+            {
+              "text": "Clients : les exploitants ; à examiner : industrialisation, intégration et fiabilité.",
+              "beat": 4
+            },
+            {
+              "text": "Réseaux : Broadcom, NVIDIA, Arista, Marvell.",
+              "beat": 5
+            },
+            {
+              "text": "Clients : fabricants de systèmes et exploitants ; à examiner : débit, latence et consommation.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S17",
+          "chapter": "04",
+          "chapterTitle": "Les fournisseurs",
+          "title": "Des substrats à l'exploitation cloud (2/2)",
+          "sentences": [
+            {
+              "text": "Suite de la chaîne aval.",
+              "beat": 0
+            },
+            {
+              "text": "Optique : Coherent, Lumentum, Fabrinet.",
+              "beat": 1
+            },
+            {
+              "text": "Clients : fabricants de modules et de systèmes ; à examiner : composants, assemblage et test.",
+              "beat": 1
+            },
+            {
+              "text": "Conversion électrique : Infineon, onsemi, Monolithic Power Systems.",
+              "beat": 2
+            },
+            {
+              "text": "Clients : alimentations et cartes ; à examiner : pertes, chaleur et densité.",
+              "beat": 2
+            },
+            {
+              "text": "Électricité et refroidissement : Schneider Electric, Eaton, Vertiv.",
+              "beat": 3
+            },
+            {
+              "text": "Clients : constructeurs et exploitants ; à examiner : délais, puissance et intégration.",
+              "beat": 3
+            },
+            {
+              "text": "Cloud et hébergement : AWS, Microsoft Azure, Google Cloud, CoreWeave, Equinix.",
+              "beat": 4
+            },
+            {
+              "text": "Clients : entreprises et développeurs ; à examiner : utilisation, financement et raccordement.",
+              "beat": 4
+            }
+          ]
+        },
+        {
+          "id": "S18",
+          "chapter": "04",
+          "chapterTitle": "Les fournisseurs",
+          "title": "Un fournisseur indirect : Ajinomoto",
+          "sentences": [
+            {
+              "text": "Un fournisseur indirect à comprendre.",
+              "beat": 0
+            },
+            {
+              "text": "Ajinomoto fournit notamment l'ABF, Ajinomoto Build-up Film : un film isolant utilisé dans certains substrats multicouches de semi-conducteurs performants.",
+              "beat": 0
+            },
+            {
+              "text": "Son rôle se situe en amont du package.",
+              "beat": 0
+            },
+            {
+              "text": "Il fournit les fabricants de substrats.",
+              "beat": 0
+            },
+            {
+              "text": "Source 2.",
+              "beat": 0
+            },
+            {
+              "text": "Ce cas montre pourquoi l'analyse doit descendre au deuxième et au troisième rang de fournisseurs.",
+              "beat": 1
+            },
+            {
+              "text": "Une fonction critique peut se cacher dans un groupe connu pour une tout autre activité.",
+              "beat": 1
+            },
+            {
+              "text": "Exposition technique et exposition financière.",
+              "beat": 2
+            },
+            {
+              "text": "Une entreprise peut posséder une activité technologique intéressante qui ne représente qu'une petite part de ses revenus.",
+              "beat": 2
+            },
+            {
+              "text": "Il faut estimer sa contribution réelle aux bénéfices du groupe et la capacité de cette contribution à croître.",
+              "beat": 2
+            },
+            {
+              "text": "Point analyste.",
+              "beat": 3
+            },
+            {
+              "text": "La prochaine question n'est pas seulement : est-ce indispensable ?",
+              "beat": 3
+            },
+            {
+              "text": "Mais : combien cela pèse-t-il, combien d'unités sont vendues, et avec quelle marge ?",
+              "beat": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E04",
+      "num": "04",
+      "title": "Calcul, mémoire, électricité et chaleur",
+      "slug": "calcul-memoire-electricite-et-chaleur",
+      "scenes": [
+        {
+          "id": "S19",
+          "chapter": "05",
+          "chapterTitle": "Calcul, mémoire, communication",
+          "title": "La puissance de calcul et la mémoire",
+          "sentences": [
+            {
+              "text": "Calcul, mémoire et communication.",
+              "beat": 0
+            },
+            {
+              "text": "D'abord la puissance de calcul.",
+              "beat": 0
+            },
+            {
+              "text": "FLOPS signifie Floating-Point Operations Per Second : opérations en virgule flottante par seconde.",
+              "beat": 0
+            },
+            {
+              "text": "C'est une mesure de capacité de calcul.",
+              "beat": 0
+            },
+            {
+              "text": "Comparer deux chiffres exige de vérifier la précision des nombres, le type d'opération et les conditions de mesure.",
+              "beat": 0
+            },
+            {
+              "text": "Les trois dimensions de la mémoire.",
+              "beat": 1
+            },
+            {
+              "text": "La capacité : combien de données tiennent en mémoire ?",
+              "beat": 1
+            },
+            {
+              "text": "L'erreur à éviter : confondre volume disponible et vitesse.",
+              "beat": 1
+            },
+            {
+              "text": "La bande passante : combien de données sont transférées par seconde ?",
+              "beat": 2
+            },
+            {
+              "text": "L'erreur : croire qu'une grande capacité assure un débit élevé.",
+              "beat": 2
+            },
+            {
+              "text": "La latence : quel délai avant d'obtenir la donnée ?",
+              "beat": 3
+            },
+            {
+              "text": "L'erreur : confondre délai individuel et débit total.",
+              "beat": 3
+            }
+          ]
+        },
+        {
+          "id": "S20",
+          "chapter": "05",
+          "chapterTitle": "Calcul, mémoire, communication",
+          "title": "HBM et coopération entre machines",
+          "sentences": [
+            {
+              "text": "HBM signifie High Bandwidth Memory : mémoire à très haute bande passante.",
+              "beat": 0
+            },
+            {
+              "text": "Des dies mémoire empilés et de nombreuses connexions permettent un débit élevé.",
+              "beat": 0
+            },
+            {
+              "text": "Dans des assemblages avancés, elle est placée près du processeur pour l'alimenter en données.",
+              "beat": 0
+            },
+            {
+              "text": "Fait publié.",
+              "beat": 1
+            },
+            {
+              "text": "Le 16 mars 2026, Micron a annoncé des livraisons en volume de HBM4 de 36 gigaoctets, avec douze dies mémoire empilés et une bande passante supérieure à 2,8 téraoctets par seconde par empilement, selon ses spécifications.",
+              "beat": 1
+            },
+            {
+              "text": "La version de 48 gigaoctets à seize dies était alors au stade des échantillons.",
+              "beat": 1
+            },
+            {
+              "text": "Échantillonnage et production en volume sont deux étapes différentes.",
+              "beat": 1
+            },
+            {
+              "text": "Source 3.",
+              "beat": 1
+            },
+            {
+              "text": "La coopération entre machines.",
+              "beat": 2
+            },
+            {
+              "text": "Le réseau transporte les informations entre équipements.",
+              "beat": 2
+            },
+            {
+              "text": "Un switch, ou commutateur, oriente les données.",
+              "beat": 2
+            },
+            {
+              "text": "Une liaison optique convertit des signaux électriques en lumière, puis réalise la conversion inverse à l'arrivée.",
+              "beat": 2
+            },
+            {
+              "text": "Plus de calcul rend les échanges plus importants si le travail réclame davantage de communication.",
+              "beat": 3
+            },
+            {
+              "text": "Le lien dépend du modèle, de la répartition des tâches et du logiciel.",
+              "beat": 3
+            },
+            {
+              "text": "Ce n'est pas une proportion automatique.",
+              "beat": 3
+            }
+          ]
+        },
+        {
+          "id": "S21",
+          "chapter": "05",
+          "chapterTitle": "Calcul, mémoire, communication",
+          "title": "Pourquoi doubler le calcul peut peu changer le résultat",
+          "sentences": [
+            {
+              "text": "Pourquoi doubler le calcul peut peu changer le résultat.",
+              "beat": 0
+            },
+            {
+              "text": "L'intensité arithmétique est le nombre d'opérations effectuées par octet transféré depuis un niveau de mémoire donné.",
+              "beat": 0
+            },
+            {
+              "text": "Une approximation utile, appelée modèle roofline, donne le plafond suivant : le calcul soutenable est inférieur ou égal au minimum entre le calcul maximal et le débit mémoire multiplié par l'intensité arithmétique.",
+              "beat": 1
+            },
+            {
+              "text": "Exemple fictif.",
+              "beat": 2
+            },
+            {
+              "text": "Un processeur peut effectuer 1 000 milliards d'opérations par seconde.",
+              "beat": 2
+            },
+            {
+              "text": "La mémoire fournit 100 milliards d'octets par seconde.",
+              "beat": 2
+            },
+            {
+              "text": "Si le travail réalise 2 opérations par octet transféré, le plafond mémoire est de 200 milliards d'opérations par seconde.",
+              "beat": 2
+            },
+            {
+              "text": "Doubler uniquement le calcul ne change pas ce plafond.",
+              "beat": 3
+            },
+            {
+              "text": "Les leviers sont alors un meilleur débit mémoire, plus de réutilisation des données proches du processeur, ou un logiciel réduisant les transferts.",
+              "beat": 4
+            },
+            {
+              "text": "Le réseau et la coordination peuvent imposer d'autres limites.",
+              "beat": 4
+            }
+          ]
+        },
+        {
+          "id": "S22",
+          "chapter": "06",
+          "chapterTitle": "L'électricité et la chaleur",
+          "title": "Deux relations physiques",
+          "sentences": [
+            {
+              "text": "L'électricité et la chaleur.",
+              "beat": 0
+            },
+            {
+              "text": "Les composants n'utilisent pas directement la tension du réseau électrique.",
+              "beat": 0
+            },
+            {
+              "text": "L'électricité est transportée, transformée et distribuée jusqu'aux puces.",
+              "beat": 0
+            },
+            {
+              "text": "Chaque conversion comporte des pertes.",
+              "beat": 0
+            },
+            {
+              "text": "L'énergie consommée par les équipements finit presque entièrement en chaleur à évacuer.",
+              "beat": 0
+            },
+            {
+              "text": "Deux relations physiques à connaître.",
+              "beat": 1
+            },
+            {
+              "text": "Première : P égale U fois I.",
+              "beat": 1
+            },
+            {
+              "text": "P est la puissance en watts, U la tension en volts et I l'intensité en ampères.",
+              "beat": 1
+            },
+            {
+              "text": "À puissance identique, augmenter la tension réduit l'intensité nécessaire.",
+              "beat": 1
+            },
+            {
+              "text": "Deuxième : les pertes résistives égalent R fois I au carré.",
+              "beat": 2
+            },
+            {
+              "text": "R est la résistance du conducteur.",
+              "beat": 2
+            },
+            {
+              "text": "Si l'intensité est divisée par deux, les pertes résistives sont divisées par quatre à résistance constante.",
+              "beat": 2
+            },
+            {
+              "text": "Cela aide à comprendre l'intérêt de tensions de distribution plus élevées dans certaines parties du système.",
+              "beat": 2
+            },
+            {
+              "text": "Il faut ensuite convertir cette électricité pour les composants, en respectant les contraintes d'isolation, de protection et d'intégration.",
+              "beat": 3
+            },
+            {
+              "text": "Une tension plus élevée n'est donc pas un gain gratuit à tous les niveaux.",
+              "beat": 3
+            }
+          ]
+        },
+        {
+          "id": "S23",
+          "chapter": "06",
+          "chapterTitle": "L'électricité et la chaleur",
+          "title": "Suivre l'électricité jusqu'à la puce",
+          "sentences": [
+            {
+              "text": "Suivre l'électricité jusqu'à la puce : réseau électrique, poste de transformation, distribution et protection du site, alimentation secourue selon l'architecture, alimentations des équipements, puis régulation près des puces.",
+              "beat": 0
+            },
+            {
+              "text": "Le détail varie selon les installations ; nous le reconstruirons dans le module consacré à l'énergie.",
+              "beat": 0
+            },
+            {
+              "text": "La puissance et la densité thermique.",
+              "beat": 1
+            },
+            {
+              "text": "La difficulté du refroidissement dépend aussi de la densité de chaleur.",
+              "beat": 1
+            },
+            {
+              "text": "Évacuer une puissance sur une petite surface peut être plus difficile que sur une grande surface.",
+              "beat": 1
+            },
+            {
+              "text": "Des racks plus denses concentrent la puissance électrique et les besoins de refroidissement.",
+              "beat": 1
+            },
+            {
+              "text": "Le refroidissement liquide au contact des composants utilise des cold plates, ou plaques froides.",
+              "beat": 2
+            },
+            {
+              "text": "La chaleur passe de la puce vers le liquide, puis vers des échangeurs.",
+              "beat": 2
+            },
+            {
+              "text": "Le liquide transporte la chaleur ; il ne la fait pas disparaître.",
+              "beat": 2
+            },
+            {
+              "text": "Les installations peuvent combiner liquide et air.",
+              "beat": 2
+            },
+            {
+              "text": "Source 4, Vertiv.",
+              "beat": 2
+            }
+          ]
+        },
+        {
+          "id": "S24",
+          "chapter": "06",
+          "chapterTitle": "L'électricité et la chaleur",
+          "title": "La chaîne causale",
+          "sentences": [
+            {
+              "text": "La chaîne causale.",
+              "beat": 0
+            },
+            {
+              "text": "Davantage de puissance par rack…",
+              "beat": 0
+            },
+            {
+              "text": "… donc des intensités et de la chaleur à gérer…",
+              "beat": 1
+            },
+            {
+              "text": "… donc une évolution de la distribution électrique et du refroidissement…",
+              "beat": 2
+            },
+            {
+              "text": "… donc des composants et une intégration supplémentaires…",
+              "beat": 3
+            },
+            {
+              "text": "… donc un changement du contenu fournisseur par rack.",
+              "beat": 4
+            },
+            {
+              "text": "Point analyste.",
+              "beat": 5
+            },
+            {
+              "text": "Il faut vérifier séparément la puissance par rack, le nombre de racks et la puissance totale du site.",
+              "beat": 5
+            },
+            {
+              "text": "Des racks plus puissants n'impliquent pas nécessairement plus de puissance totale si leur nombre diminue.",
+              "beat": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E05",
+      "num": "05",
+      "title": "Flux, contraintes et technologies",
+      "slug": "flux-contraintes-et-technologies",
+      "scenes": [
+        {
+          "id": "S25",
+          "chapter": "07",
+          "chapterTitle": "Flux et contraintes",
+          "title": "Les trois flux",
+          "sentences": [
+            {
+              "text": "Les flux et les contraintes actuelles.",
+              "beat": 0
+            },
+            {
+              "text": "Trois flux traversent la chaîne.",
+              "beat": 0
+            },
+            {
+              "text": "Les objets physiques : matériaux, puces, systèmes, installation.",
+              "beat": 0
+            },
+            {
+              "text": "La question : qu'est-ce qui peut effectivement être livré ?",
+              "beat": 0
+            },
+            {
+              "text": "Les données : stockage, mémoire, processeurs, réseau.",
+              "beat": 1
+            },
+            {
+              "text": "La question : qu'est-ce qui limite le travail utile ?",
+              "beat": 1
+            },
+            {
+              "text": "L'argent : clients, services IA, infrastructures, fournisseurs.",
+              "beat": 2
+            },
+            {
+              "text": "La question : qui facture quoi, quand et avec quelle marge ?",
+              "beat": 2
+            },
+            {
+              "text": "Un équipementier peut vendre ses machines longtemps avant que les puces fabriquées servent des utilisateurs.",
+              "beat": 3
+            },
+            {
+              "text": "Un cloud peut payer ses serveurs longtemps avant d'avoir assez de clients.",
+              "beat": 3
+            },
+            {
+              "text": "Les bénéfices n'arrivent pas au même moment dans chaque couche.",
+              "beat": 3
+            },
+            {
+              "text": "Attention au double comptage.",
+              "beat": 4
+            },
+            {
+              "text": "Le prix d'un serveur inclut la valeur de plusieurs composants.",
+              "beat": 4
+            },
+            {
+              "text": "Additionner le marché des serveurs et celui de leurs composants ne mesure pas une dépense finale indépendante.",
+              "beat": 4
+            }
+          ]
+        },
+        {
+          "id": "S26",
+          "chapter": "07",
+          "chapterTitle": "Flux et contraintes",
+          "title": "Trois repères industriels vérifiés",
+          "sentences": [
+            {
+              "text": "Trois repères industriels vérifiés.",
+              "beat": 0
+            },
+            {
+              "text": "Fait publié : le 11 août 2026, TSMC a approuvé des investissements couvrant notamment fabrication avancée, packaging et installations industrielles.",
+              "beat": 0
+            },
+            {
+              "text": "Une autorisation d'investissement n'est pas une capacité immédiatement productive.",
+              "beat": 0
+            },
+            {
+              "text": "Source 5.",
+              "beat": 0
+            },
+            {
+              "text": "Fait publié : l'Agence internationale de l'énergie décrit en 2026 des contraintes de raccordement et le recours de certains développeurs américains à la production électrique sur site.",
+              "beat": 1
+            },
+            {
+              "text": "Source 6.",
+              "beat": 1
+            },
+            {
+              "text": "Fait publié : Broadcom a annoncé en mars 2026 des livraisons en volume du commutateur Tomahawk 6 de 102,4 térabits par seconde.",
+              "beat": 2
+            },
+            {
+              "text": "Ce chiffre est le débit agrégé du commutateur, pas celui d'une connexion individuelle.",
+              "beat": 2
+            },
+            {
+              "text": "Source 7.",
+              "beat": 2
+            }
+          ]
+        },
+        {
+          "id": "S27",
+          "chapter": "07",
+          "chapterTitle": "Flux et contraintes",
+          "title": "Matrice initiale des bottlenecks",
+          "sentences": [
+            {
+              "text": "Matrice initiale des bottlenecks.",
+              "beat": 0
+            },
+            {
+              "text": "Lecture analytique : ces contraintes peuvent coexister.",
+              "beat": 0
+            },
+            {
+              "text": "Les périodes sont des horizons d'investigation, pas un classement universel des pénuries ni des prévisions certaines.",
+              "beat": 0
+            },
+            {
+              "text": "2026 à 2027 : fabrication et packaging.",
+              "beat": 1
+            },
+            {
+              "text": "À vérifier : capacité installée, qualifiée, et rendement.",
+              "beat": 1
+            },
+            {
+              "text": "Bénéficiaires possibles : fonderies et équipementiers ; limite suivante : mémoire ou test.",
+              "beat": 1
+            },
+            {
+              "text": "2026 à 2028 : mémoire.",
+              "beat": 2
+            },
+            {
+              "text": "À vérifier : débit, capacité et volumes réellement livrés.",
+              "beat": 2
+            },
+            {
+              "text": "Bénéficiaires : mémoire et interconnexions ; ensuite, puissance ou chaleur.",
+              "beat": 2
+            },
+            {
+              "text": "2026 à 2029 : électricité.",
+              "beat": 3
+            },
+            {
+              "text": "À vérifier : dates de raccordement et de mise sous tension.",
+              "beat": 3
+            },
+            {
+              "text": "Bénéficiaires : équipements et ingénierie ; ensuite, coût et exploitation.",
+              "beat": 3
+            },
+            {
+              "text": "2027 à 2031 : communication.",
+              "beat": 4
+            },
+            {
+              "text": "À vérifier : adoption effective des architectures.",
+              "beat": 4
+            },
+            {
+              "text": "Bénéficiaires : réseau et optique ; ensuite, test et maintenance.",
+              "beat": 4
+            },
+            {
+              "text": "Toute période : la demande solvable.",
+              "beat": 5
+            },
+            {
+              "text": "À vérifier : contrats, utilisation et prix réalisés.",
+              "beat": 5
+            },
+            {
+              "text": "Bénéficiaires : les exploitants efficaces ; limite suivante : la rentabilité du client final.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S28",
+          "chapter": "08",
+          "chapterTitle": "Les technologies qui déplacent les contraintes",
+          "title": "Six évolutions à suivre",
+          "sentences": [
+            {
+              "text": "Les technologies qui déplacent les contraintes.",
+              "beat": 0
+            },
+            {
+              "text": "Les évolutions suivantes sont des pistes d'analyse pour les cinq prochaines années.",
+              "beat": 0
+            },
+            {
+              "text": "Leurs calendriers et leur adoption dépendront des performances, des coûts et de la fiabilité des solutions.",
+              "beat": 0
+            },
+            {
+              "text": "Mémoire plus dense et plus rapide.",
+              "beat": 1
+            },
+            {
+              "text": "Problème visé : capacité insuffisante et attente des données.",
+              "beat": 1
+            },
+            {
+              "text": "Compromis : empilement et test ; coût, rendement et chaleur.",
+              "beat": 1
+            },
+            {
+              "text": "Chiplets.",
+              "beat": 2
+            },
+            {
+              "text": "Problème visé : limites de taille ou de coût d'une puce unique.",
+              "beat": 2
+            },
+            {
+              "text": "Compromis : plusieurs dies coopèrent, avec des interconnexions et un assemblage plus complexes.",
+              "beat": 2
+            },
+            {
+              "text": "Optique rapprochée des puces.",
+              "beat": 3
+            },
+            {
+              "text": "Problème visé : contraintes de certaines liaisons électriques rapides.",
+              "beat": 3
+            },
+            {
+              "text": "Compromis : moteurs optiques et lasers ; maintenance, fiabilité et test.",
+              "beat": 3
+            },
+            {
+              "text": "Tension de distribution plus élevée.",
+              "beat": 4
+            },
+            {
+              "text": "Problème visé : intensités et pertes dans certaines parties du système.",
+              "beat": 4
+            },
+            {
+              "text": "Compromis : conversion et protection ; isolation et intégration.",
+              "beat": 4
+            },
+            {
+              "text": "Refroidissement liquide.",
+              "beat": 5
+            },
+            {
+              "text": "Problème visé : concentration de la chaleur.",
+              "beat": 5
+            },
+            {
+              "text": "Compromis : plaques froides et échangeurs ; coût et exploitation.",
+              "beat": 5
+            },
+            {
+              "text": "Optimisation des modèles et logiciels.",
+              "beat": 6
+            },
+            {
+              "text": "Problème visé : trop de calculs ou de transferts par résultat.",
+              "beat": 6
+            },
+            {
+              "text": "Compromis : meilleure efficacité, contre qualité, flexibilité et complexité.",
+              "beat": 6
+            }
+          ]
+        },
+        {
+          "id": "S29",
+          "chapter": "08",
+          "chapterTitle": "Les technologies qui déplacent les contraintes",
+          "title": "Le cas de la photonique",
+          "sentences": [
+            {
+              "text": "Le cas de la photonique.",
+              "beat": 0
+            },
+            {
+              "text": "CPO signifie Co-Packaged Optics : des fonctions optiques sont intégrées au voisinage d'une puce dans un même assemblage.",
+              "beat": 0
+            },
+            {
+              "text": "Le but est notamment de réduire certaines liaisons électriques rapides et leurs contraintes.",
+              "beat": 0
+            },
+            {
+              "text": "Broadcom présente déjà des produits fondés sur cette approche.",
+              "beat": 0
+            },
+            {
+              "text": "Leur existence ne prouve pas une adoption universelle.",
+              "beat": 0
+            },
+            {
+              "text": "Source 8.",
+              "beat": 0
+            },
+            {
+              "text": "Pour ta conviction photonique, la chaîne à reconstruire est la suivante : davantage de communication nécessaire, donc distances et débits requis, donc choix cuivre ou optique, donc architecture des modules, donc composants nécessaires, donc fournisseurs qualifiés, donc revenus.",
+              "beat": 1
+            },
+            {
+              "text": "Le passage à une nouvelle architecture peut agrandir le marché optique total tout en supprimant une fonction chez un fournisseur particulier.",
+              "beat": 2
+            },
+            {
+              "text": "Trois signaux à surveiller.",
+              "beat": 3
+            },
+            {
+              "text": "Qualification : le produit est-il simplement démontré, testé par un client, ou validé pour un déploiement ?",
+              "beat": 3
+            },
+            {
+              "text": "Industrialisation : quelle capacité fonctionne effectivement, avec quel rendement ?",
+              "beat": 4
+            },
+            {
+              "text": "Valeur : quel composant gagne ou perd du contenu par système, et à quel prix ?",
+              "beat": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E06",
+      "num": "06",
+      "title": "Modèle économique, tokens et marge",
+      "slug": "modele-economique-tokens-et-marge",
+      "scenes": [
+        {
+          "id": "S30",
+          "chapter": "09",
+          "chapterTitle": "Premier modèle économique",
+          "title": "Du site au nombre de racks",
+          "sentences": [
+            {
+              "text": "Premier modèle économique.",
+              "beat": 0
+            },
+            {
+              "text": "Toutes les données de cet exemple sont fictives et pédagogiques.",
+              "beat": 0
+            },
+            {
+              "text": "Elles ne décrivent ni un produit commercial ni une installation réelle.",
+              "beat": 0
+            },
+            {
+              "text": "Du site au nombre de racks.",
+              "beat": 1
+            },
+            {
+              "text": "Considérons un site avec 12 mégawatts de puissance totale, un PUE de 1,20 et des racks consommant chacun 100 kilowatts au point de fonctionnement retenu.",
+              "beat": 1
+            },
+            {
+              "text": "PUE signifie Power Usage Effectiveness : le rapport entre l'énergie totale consommée par le site et l'énergie des équipements informatiques.",
+              "beat": 2
+            },
+            {
+              "text": "Pour cet exemple, nous supposons ce rapport applicable aux puissances au point étudié.",
+              "beat": 2
+            },
+            {
+              "text": "Puissance informatique égale 12 mégawatts divisés par 1,20, soit 10 mégawatts.",
+              "beat": 3
+            },
+            {
+              "text": "Les 2 mégawatts restants représentent les autres consommations et pertes du site dans ce modèle.",
+              "beat": 3
+            },
+            {
+              "text": "Nombre de racks égale 10 000 kilowatts divisés par 100 kilowatts, soit 100 racks.",
+              "beat": 4
+            },
+            {
+              "text": "C'est un maximum théorique si toute la puissance informatique est affectée à ces racks.",
+              "beat": 5
+            },
+            {
+              "text": "Une étude réelle doit réserver les consommations des autres équipements et les marges nécessaires.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S31",
+          "chapter": "09",
+          "chapterTitle": "Premier modèle économique",
+          "title": "Des racks au contenu fournisseur",
+          "sentences": [
+            {
+              "text": "Des racks aux accélérateurs.",
+              "beat": 0
+            },
+            {
+              "text": "Supposons 64 accélérateurs par rack.",
+              "beat": 0
+            },
+            {
+              "text": "La puissance de 100 kilowatts par rack est supposée inclure les autres composants présents dans ces racks. 100 racks fois 64 accélérateurs égale 6 400 accélérateurs.",
+              "beat": 0
+            },
+            {
+              "text": "Des accélérateurs au contenu fournisseur.",
+              "beat": 1
+            },
+            {
+              "text": "Supposons un composant présent huit fois par accélérateur, vendu 200 euros. 6 400 fois 8 fois 200 euros égale 10 240 000 euros.",
+              "beat": 1
+            },
+            {
+              "text": "Cela représente la valeur totale de ce composant dans l'installation fictive.",
+              "beat": 1
+            },
+            {
+              "text": "Si un fournisseur obtient 25 % des volumes : 10 240 000 euros fois 25 % égale 2 560 000 euros.",
+              "beat": 2
+            },
+            {
+              "text": "C'est un chiffre d'affaires potentiel de livraison.",
+              "beat": 2
+            },
+            {
+              "text": "Ce n'est ni un revenu annuel automatiquement récurrent, ni un bénéfice.",
+              "beat": 2
+            },
+            {
+              "text": "La formule à réutiliser : chiffre d'affaires égale systèmes livrés, fois composants par système, fois prix moyen, fois part obtenue.",
+              "beat": 3
+            },
+            {
+              "text": "ASP signifie Average Selling Price, ou prix moyen de vente.",
+              "beat": 4
+            },
+            {
+              "text": "BOM signifie Bill of Materials, ou nomenclature des composants : la liste et les quantités nécessaires à la construction du système.",
+              "beat": 4
+            }
+          ]
+        },
+        {
+          "id": "S32",
+          "chapter": "10",
+          "chapterTitle": "Du matériel aux tokens et à la marge",
+          "title": "Le coût par token",
+          "sentences": [
+            {
+              "text": "Du matériel aux tokens et à la marge.",
+              "beat": 0
+            },
+            {
+              "text": "Une première approximation du coût par token : coût par token égale coûts attribuables au service, divisés par tokens produits.",
+              "beat": 0
+            },
+            {
+              "text": "Le numérateur et le dénominateur portent sur la même période.",
+              "beat": 1
+            },
+            {
+              "text": "Les coûts peuvent comprendre l'amortissement ou la location du matériel, l'énergie, le réseau, l'hébergement, la maintenance et l'exploitation.",
+              "beat": 1
+            },
+            {
+              "text": "Pour comparer deux systèmes, fixe un modèle, une qualité de réponse et des exigences de délai comparables.",
+              "beat": 2
+            },
+            {
+              "text": "Les tokens d'entrée et de sortie ne mobilisent pas nécessairement les ressources de la même manière.",
+              "beat": 2
+            },
+            {
+              "text": "Le résultat dépend du prix d'achat, de l'utilisation réelle, du logiciel, du travail demandé et de la durée de compétitivité du matériel.",
+              "beat": 3
+            },
+            {
+              "text": "Une amélioration technique peut réduire le coût unitaire, augmenter la demande et accélérer l'obsolescence d'anciens équipements.",
+              "beat": 3
+            }
+          ]
+        },
+        {
+          "id": "S33",
+          "chapter": "10",
+          "chapterTitle": "Du matériel aux tokens et à la marge",
+          "title": "Qui peut protéger ses profits",
+          "sentences": [
+            {
+              "text": "Qui peut protéger ses profits.",
+              "beat": 0
+            },
+            {
+              "text": "Le moat est un avantage concurrentiel durable.",
+              "beat": 0
+            },
+            {
+              "text": "Il protège l'entreprise contre la concurrence et l'érosion des profits.",
+              "beat": 0
+            },
+            {
+              "text": "Six protections possibles, chacune avec son risque.",
+              "beat": 0
+            },
+            {
+              "text": "Une technologie difficile à reproduire : précision, savoir-faire, brevets.",
+              "beat": 1
+            },
+            {
+              "text": "Risque : une alternative technique.",
+              "beat": 1
+            },
+            {
+              "text": "Un fournisseur qualifié : coût et délai pour changer de fournisseur.",
+              "beat": 2
+            },
+            {
+              "text": "Risque : la qualification d'un concurrent.",
+              "beat": 2
+            },
+            {
+              "text": "Une plateforme et des logiciels : compatibilité et outils adoptés par les clients.",
+              "beat": 3
+            },
+            {
+              "text": "Risque : migration vers une autre plateforme.",
+              "beat": 3
+            },
+            {
+              "text": "Une capacité rare : difficulté d'ajouter rapidement de l'offre.",
+              "beat": 4
+            },
+            {
+              "text": "Risque : surcapacité ultérieure.",
+              "beat": 4
+            },
+            {
+              "text": "Une intégration fiable : maîtrise de la construction du système.",
+              "beat": 5
+            },
+            {
+              "text": "Risque : concurrence sur les prix.",
+              "beat": 5
+            },
+            {
+              "text": "Une électricité accessible : ressource locale difficile à obtenir.",
+              "beat": 6
+            },
+            {
+              "text": "Risque : coût excessif ou faible utilisation.",
+              "beat": 6
+            }
+          ]
+        },
+        {
+          "id": "S34",
+          "chapter": "10",
+          "chapterTitle": "Du matériel aux tokens et à la marge",
+          "title": "Les passages à vérifier dans une thèse",
+          "sentences": [
+            {
+              "text": "Les passages à vérifier dans une thèse : besoin technique, produit adopté, volumes livrés, prix réalisé, marge, trésorerie, valeur pour l'actionnaire.",
+              "beat": 0
+            },
+            {
+              "text": "Une thèse peut échouer à chacun de ces passages.",
+              "beat": 1
+            },
+            {
+              "text": "Un composant plus présent dans chaque rack peut subir une baisse de prix qui limite la progression des revenus.",
+              "beat": 2
+            },
+            {
+              "text": "Une hausse des revenus peut demander tant d'investissement qu'elle produit peu de trésorerie.",
+              "beat": 3
+            },
+            {
+              "text": "Capex signifie Capital Expenditure : dépenses d'investissement.",
+              "beat": 4
+            },
+            {
+              "text": "TAM signifie Total Addressable Market : marché théoriquement accessible selon un périmètre défini.",
+              "beat": 4
+            },
+            {
+              "text": "Le TAM ne correspond pas à des ventes garanties.",
+              "beat": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E07",
+      "num": "07",
+      "title": "Scénarios, entreprises et glossaire",
+      "slug": "scenarios-entreprises-et-glossaire",
+      "scenes": [
+        {
+          "id": "S35",
+          "chapter": "11",
+          "chapterTitle": "Scénarios et entreprises",
+          "title": "Scénarios favorables et défavorables",
+          "sentences": [
+            {
+              "text": "Scénarios et entreprises à retenir.",
+              "beat": 0
+            },
+            {
+              "text": "Ces scénarios sont des hypothèses d'analyse, pas des recommandations d'achat.",
+              "beat": 0
+            },
+            {
+              "text": "Mémoire avancée.",
+              "beat": 1
+            },
+            {
+              "text": "Favorable : contenu par accélérateur en hausse et offre qualifiée limitée.",
+              "beat": 1
+            },
+            {
+              "text": "Défavorable : nouvelles capacités et baisse des prix.",
+              "beat": 1
+            },
+            {
+              "text": "Packaging.",
+              "beat": 2
+            },
+            {
+              "text": "Favorable : assemblages complexes et valeur ajoutée croissante.",
+              "beat": 2
+            },
+            {
+              "text": "Défavorable : défauts et coûts absorbant cette valeur.",
+              "beat": 2
+            },
+            {
+              "text": "Photonique.",
+              "beat": 3
+            },
+            {
+              "text": "Favorable : plus de liaisons et de débit.",
+              "beat": 3
+            },
+            {
+              "text": "Défavorable : adoption différée ou déplacement de valeur entre composants.",
+              "beat": 3
+            },
+            {
+              "text": "Électricité et froid.",
+              "beat": 4
+            },
+            {
+              "text": "Favorable : puissance installée et densité croissantes.",
+              "beat": 4
+            },
+            {
+              "text": "Défavorable : retards, annulations et concurrence sur les prix.",
+              "beat": 4
+            },
+            {
+              "text": "Cloud IA.",
+              "beat": 5
+            },
+            {
+              "text": "Favorable : bonne utilisation et demande solvable durable.",
+              "beat": 5
+            },
+            {
+              "text": "Défavorable : prix de location en baisse et matériel sous-utilisé.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S36",
+          "chapter": "11",
+          "chapterTitle": "Scénarios et entreprises",
+          "title": "Ce que le marché pourrait mal comprendre",
+          "sentences": [
+            {
+              "text": "Ce que le marché pourrait mal comprendre.",
+              "beat": 0
+            },
+            {
+              "text": "Hypothèse 1 : confondre commandes et consommation finale.",
+              "beat": 0
+            },
+            {
+              "text": "Les équipements commandés serviront-ils une demande suffisante pour rentabiliser les capacités ?",
+              "beat": 0
+            },
+            {
+              "text": "Hypothèse 2 : sous-estimer le déplacement de valeur dans la photonique.",
+              "beat": 1
+            },
+            {
+              "text": "Quels composants gagnent du contenu, et lesquels deviennent moins nécessaires ?",
+              "beat": 1
+            },
+            {
+              "text": "Hypothèse 3 : confondre puissance annoncée et capacité productive.",
+              "beat": 2
+            },
+            {
+              "text": "Le site est-il raccordé, équipé, testé et réellement utilisé ?",
+              "beat": 2
+            },
+            {
+              "text": "À chaque analyse, demande aussi si la croissance attendue est déjà intégrée dans le cours de Bourse.",
+              "beat": 3
+            }
+          ]
+        },
+        {
+          "id": "S37",
+          "chapter": "11",
+          "chapterTitle": "Scénarios et entreprises",
+          "title": "Dix repères pour ranger les entreprises dans ta carte",
+          "sentences": [
+            {
+              "text": "Dix repères pour ranger les entreprises dans ta carte.",
+              "beat": 0
+            },
+            {
+              "text": "NVIDIA, NVDA : accélérateurs et plateforme de calcul.",
+              "beat": 0
+            },
+            {
+              "text": "TSMC, TSM aux États-Unis : fabrication sous contrat et packaging.",
+              "beat": 0
+            },
+            {
+              "text": "ASML : lithographie.",
+              "beat": 1
+            },
+            {
+              "text": "SK hynix, code 000660 en Corée : mémoire.",
+              "beat": 1
+            },
+            {
+              "text": "Micron, MU : mémoire.",
+              "beat": 2
+            },
+            {
+              "text": "Broadcom, AVGO : puces réseau et silicium personnalisé.",
+              "beat": 2
+            },
+            {
+              "text": "Cadence, CDNS : logiciels de conception électronique.",
+              "beat": 3
+            },
+            {
+              "text": "Ajinomoto, 2802 au Japon : notamment matériaux isolants pour substrats.",
+              "beat": 3
+            },
+            {
+              "text": "Coherent, COHR : composants et technologies photoniques.",
+              "beat": 4
+            },
+            {
+              "text": "Vertiv, VRT : alimentation et refroidissement.",
+              "beat": 4
+            }
+          ]
+        },
+        {
+          "id": "S38",
+          "chapter": "12",
+          "chapterTitle": "Unités et glossaire",
+          "title": "Les unités de départ",
+          "sentences": [
+            {
+              "text": "Les unités de départ.",
+              "beat": 0
+            },
+            {
+              "text": "Un octet égale 8 bits : cela évite la confusion entre débits réseau et mémoire.",
+              "beat": 0
+            },
+            {
+              "text": "Un gigaoctet égale 10 puissance 9 octets en convention décimale, pour mesurer une capacité ; un gibioctet utilise une convention binaire différente.",
+              "beat": 0
+            },
+            {
+              "text": "Un téraoctet par seconde égale 10 puissance 12 octets par seconde, pour mesurer un débit.",
+              "beat": 1
+            },
+            {
+              "text": "Un kilowatt égale 1 000 watts, un mégawatt égale 1 000 kilowatts : pour passer du composant au site.",
+              "beat": 1
+            },
+            {
+              "text": "Un gigawatt égale 1 000 mégawatts, pour comparer de grandes infrastructures.",
+              "beat": 2
+            },
+            {
+              "text": "Un mégawatt pendant une heure égale un mégawattheure : c'est la distinction entre puissance et énergie.",
+              "beat": 2
+            },
+            {
+              "text": "Un mégawatt constant pendant un an égale 8 760 mégawattheures, consommation annuelle hors année bissextile.",
+              "beat": 3
+            },
+            {
+              "text": "Et le PUE égale énergie totale divisée par énergie informatique, pour relier le site à ses équipements.",
+              "beat": 3
+            }
+          ]
+        },
+        {
+          "id": "S39",
+          "chapter": "12",
+          "chapterTitle": "Unités et glossaire",
+          "title": "Les concepts essentiels",
+          "sentences": [
+            {
+              "text": "Les concepts essentiels, en révision rapide.",
+              "beat": 0
+            },
+            {
+              "text": "Token : unité traitée ou produite par le modèle ; mesure une partie de l'activité IA.",
+              "beat": 0
+            },
+            {
+              "text": "Inférence : utilisation d'un modèle entraîné pour produire le service.",
+              "beat": 0
+            },
+            {
+              "text": "Wafer et die : disque de fabrication et puce nue qui en est issue.",
+              "beat": 1
+            },
+            {
+              "text": "Packaging : assemblage et connexion des puces dans un système utilisable.",
+              "beat": 1
+            },
+            {
+              "text": "HBM : mémoire à très haute bande passante proche de l'accélérateur.",
+              "beat": 2
+            },
+            {
+              "text": "Bande passante et latence : quantité transférable par seconde, et délai d'un transfert.",
+              "beat": 2
+            },
+            {
+              "text": "Yield, ou rendement : part des unités répondant aux critères requis.",
+              "beat": 3
+            },
+            {
+              "text": "Bottleneck : contrainte qui limite le résultat global.",
+              "beat": 3
+            },
+            {
+              "text": "BOM et ASP : nomenclature des composants et prix moyen de vente.",
+              "beat": 4
+            },
+            {
+              "text": "Capex et TAM : dépenses d'investissement et marché total théoriquement accessible.",
+              "beat": 4
+            },
+            {
+              "text": "Moat : avantage concurrentiel qui aide à protéger les profits.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S40",
+          "chapter": "12",
+          "chapterTitle": "Unités et glossaire",
+          "title": "Résumé investisseur",
+          "sentences": [
+            {
+              "text": "Résumé investisseur.",
+              "beat": 0
+            },
+            {
+              "text": "Pars du travail que le système doit accomplir.",
+              "beat": 0
+            },
+            {
+              "text": "Ce travail exige calcul, mémoire et échanges.",
+              "beat": 0
+            },
+            {
+              "text": "Les composants doivent être fabriqués, assemblés, installés, alimentés et refroidis.",
+              "beat": 0
+            },
+            {
+              "text": "À chaque couche, quatre questions : quelle fonction, quelle contrainte, quel fournisseur qualifié, et quelle traduction en bénéfices ?",
+              "beat": 1
+            },
+            {
+              "text": "La rareté industrielle peut créer du pouvoir de négociation.",
+              "beat": 2
+            },
+            {
+              "text": "De nouvelles capacités, une architecture différente ou une demande insuffisante peuvent le faire disparaître.",
+              "beat": 2
+            },
+            {
+              "text": "Avant de chercher le gagnant, identifie la contrainte et compte ce qui permet de la résoudre.",
+              "beat": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E08",
+      "num": "08",
+      "title": "Sources et cahier de validation",
+      "slug": "sources-et-cahier-de-validation",
+      "scenes": [
+        {
+          "id": "S41",
+          "chapter": "13",
+          "chapterTitle": "Sources et méthode",
+          "title": "Sources et méthode de lecture",
+          "sentences": [
+            {
+              "text": "Sources et méthode de lecture.",
+              "beat": 0
+            },
+            {
+              "text": "Les références documentent les procédés et les repères industriels cités.",
+              "beat": 0
+            },
+            {
+              "text": "Les caractéristiques annoncées par les fabricants restent des caractéristiques constructeur ; elles ne constituent pas une garantie de performance sur toutes les applications.",
+              "beat": 0
+            },
+            {
+              "text": "Source 1, ASML, Six crucial steps in semiconductor manufacturing : procédés de dépôt, lithographie et gravure.",
+              "beat": 1
+            },
+            {
+              "text": "Source 2, Ajinomoto, Our Technologies : rôle du film ABF et fourniture aux fabricants de substrats.",
+              "beat": 1
+            },
+            {
+              "text": "Source 3, Micron, HBM4 en production de volume pour NVIDIA Vera Rubin, communiqué du 16 mars 2026.",
+              "beat": 2
+            },
+            {
+              "text": "Source 4, Vertiv, solutions de puissance et de refroidissement pour l'IA : plaques froides et refroidissement liquide.",
+              "beat": 2
+            },
+            {
+              "text": "Source 5, TSMC via la SEC, résolutions du conseil du 11 août 2026 : autorisations d'investissement.",
+              "beat": 3
+            },
+            {
+              "text": "Source 6, Agence internationale de l'énergie, Key Questions on Energy and AI, synthèse 2026.",
+              "beat": 3
+            },
+            {
+              "text": "Source 7, Broadcom, premier commutateur 102,4 térabits par seconde en volume de production, annonce du 12 mars 2026.",
+              "beat": 4
+            },
+            {
+              "text": "Source 8, Broadcom, Tomahawk 6 Davisson avec Co-Packaged Optics.",
+              "beat": 4
+            },
+            {
+              "text": "Faits, estimations et hypothèses.",
+              "beat": 5
+            },
+            {
+              "text": "Fait publié : information attribuée à une source identifiée.",
+              "beat": 5
+            },
+            {
+              "text": "Exemple pédagogique : nombres fictifs servant à apprendre un calcul.",
+              "beat": 5
+            },
+            {
+              "text": "Hypothèse : relation ou scénario à tester avec des données.",
+              "beat": 5
+            },
+            {
+              "text": "Les cours et corrections devront conserver ces distinctions.",
+              "beat": 5
+            },
+            {
+              "text": "La validation du module mesure la compréhension et le raisonnement, pas la capacité à réciter des annonces industrielles.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S42",
+          "chapter": "14",
+          "chapterTitle": "Le test",
+          "title": "Partie A — Compréhension (25 points)",
+          "sentences": [
+            {
+              "text": "Le test commence.",
+              "beat": 0
+            },
+            {
+              "text": "Partie A, test de compréhension, 25 points, 5 points par question.",
+              "beat": 0
+            },
+            {
+              "text": "Première tentative sans regarder le cours.",
+              "beat": 0
+            },
+            {
+              "text": "Si tu bloques, écris ton raisonnement et ce qui te manque.",
+              "beat": 0
+            },
+            {
+              "text": "Aucun corrigé n'est inclus.",
+              "beat": 0
+            },
+            {
+              "text": "A1.",
+              "beat": 1
+            },
+            {
+              "text": "Quelle différence fais-tu entre NVIDIA, TSMC et ASML dans la fabrication d'un système IA ?",
+              "beat": 1
+            },
+            {
+              "text": "A2.",
+              "beat": 2
+            },
+            {
+              "text": "Explique la différence entre capacité mémoire et bande passante mémoire.",
+              "beat": 2
+            },
+            {
+              "text": "A3.",
+              "beat": 3
+            },
+            {
+              "text": "Distingue un die, un substrat de boîtier et un PCB.",
+              "beat": 3
+            },
+            {
+              "text": "A4.",
+              "beat": 4
+            },
+            {
+              "text": "Quelle différence y a-t-il entre entraînement et inférence ?",
+              "beat": 4
+            },
+            {
+              "text": "A5.",
+              "beat": 5
+            },
+            {
+              "text": "Un développeur annonce un data center de 200 mégawatts.",
+              "beat": 5
+            },
+            {
+              "text": "Pourquoi cela ne suffit-il pas à connaître sa production de tokens ou ses revenus ?",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S43",
+          "chapter": "14",
+          "chapterTitle": "Le test",
+          "title": "Partie B — Raisonnement (30 points)",
+          "sentences": [
+            {
+              "text": "Partie B, test de raisonnement, 30 points, 10 points par question.",
+              "beat": 0
+            },
+            {
+              "text": "Déroule les relations de cause à effet.",
+              "beat": 0
+            },
+            {
+              "text": "Une conclusion juste sans explication ne suffit pas à montrer la maîtrise.",
+              "beat": 0
+            },
+            {
+              "text": "B1.",
+              "beat": 1
+            },
+            {
+              "text": "Un accélérateur double sa puissance de calcul mais conserve la même bande passante mémoire.",
+              "beat": 1
+            },
+            {
+              "text": "Dans quel cas le gain réel peut-il être faible ?",
+              "beat": 1
+            },
+            {
+              "text": "Donne deux façons d'améliorer la situation.",
+              "beat": 1
+            },
+            {
+              "text": "B2.",
+              "beat": 2
+            },
+            {
+              "text": "Un fabricant peut livrer davantage d'accélérateurs, mais son client attend son raccordement électrique.",
+              "beat": 2
+            },
+            {
+              "text": "Explique le déplacement du bottleneck et deux conséquences économiques possibles.",
+              "beat": 2
+            },
+            {
+              "text": "B3.",
+              "beat": 3
+            },
+            {
+              "text": "Pourquoi une forte croissance de la photonique pourrait-elle ne pas profiter à une entreprise qui vend déjà des composants optiques ?",
+              "beat": 3
+            }
+          ]
+        },
+        {
+          "id": "S44",
+          "chapter": "14",
+          "chapterTitle": "Le test",
+          "title": "Partie C — Cas pratiques analyste (30 points)",
+          "sentences": [
+            {
+              "text": "Partie C, cas pratiques analyste, 30 points, 15 points par cas.",
+              "beat": 0
+            },
+            {
+              "text": "C1, du site aux racks.",
+              "beat": 1
+            },
+            {
+              "text": "Hypothèses : puissance totale de 24 mégawatts ; PUE de 1,20 ; consommation de 125 kilowatts par rack.",
+              "beat": 1
+            },
+            {
+              "text": "Toute la puissance informatique est affectée aux racks.",
+              "beat": 1
+            },
+            {
+              "text": "Le rapport énergétique du PUE est supposé applicable au point de fonctionnement étudié.",
+              "beat": 1
+            },
+            {
+              "text": "Un : calcule la puissance informatique disponible.",
+              "beat": 1
+            },
+            {
+              "text": "Deux : calcule le nombre théorique de racks.",
+              "beat": 1
+            },
+            {
+              "text": "Trois : donne deux raisons pour lesquelles le nombre réellement exploitable pourrait être inférieur.",
+              "beat": 1
+            },
+            {
+              "text": "C2, du composant aux revenus.",
+              "beat": 2
+            },
+            {
+              "text": "Hypothèses fictives : 2 000 racks livrés ; 32 modules optiques par rack ; prix moyen de 500 euros par module ; un fournisseur remporte 40 % des volumes.",
+              "beat": 2
+            },
+            {
+              "text": "Un : calcule le nombre total de modules.",
+              "beat": 2
+            },
+            {
+              "text": "Deux : calcule la valeur totale des modules.",
+              "beat": 2
+            },
+            {
+              "text": "Trois : calcule le chiffre d'affaires du fournisseur.",
+              "beat": 2
+            },
+            {
+              "text": "Quatre : explique pourquoi ce chiffre n'est pas son bénéfice et n'est pas automatiquement récurrent chaque année.",
+              "beat": 2
+            }
+          ]
+        },
+        {
+          "id": "S45",
+          "chapter": "14",
+          "chapterTitle": "Le test",
+          "title": "Partie D — Test de Feynman et barème",
+          "sentences": [
+            {
+              "text": "Partie D, test de Feynman, 15 points.",
+              "beat": 0
+            },
+            {
+              "text": "Explique pourquoi acheter davantage de GPU ne suffit pas toujours à produire davantage de tokens.",
+              "beat": 0
+            },
+            {
+              "text": "Adapte ton explication aux trois interlocuteurs suivants.",
+              "beat": 0
+            },
+            {
+              "text": "D1, 5 points : à un client sans connaissances techniques, en trois phrases.",
+              "beat": 1
+            },
+            {
+              "text": "D2, 5 points : à un analyste financier, en reliant utilisation du matériel et rentabilité.",
+              "beat": 2
+            },
+            {
+              "text": "D3, 5 points : à un interlocuteur technique, en utilisant calcul, bande passante mémoire et communication.",
+              "beat": 3
+            },
+            {
+              "text": "Le barème : compréhension 25, raisonnement 30, application analyste 30, Feynman 15, total 100.",
+              "beat": 4
+            },
+            {
+              "text": "Moins de 60 : insuffisant.",
+              "beat": 5
+            },
+            {
+              "text": "De 60 à 79 : compréhension partielle.",
+              "beat": 5
+            },
+            {
+              "text": "De 80 à 89 : module validé.",
+              "beat": 5
+            },
+            {
+              "text": "De 90 à 100 : maîtrise solide.",
+              "beat": 5
+            },
+            {
+              "text": "Après tes réponses : correction question par question, rappels sur les erreurs et note.",
+              "beat": 5
+            },
+            {
+              "text": "En dessous de 80, rattrapage ciblé puis 3 à 5 nouvelles questions.",
+              "beat": 5
+            },
+            {
+              "text": "Le module 1 commence après validation.",
+              "beat": 5
+            }
+          ]
+        },
+        {
+          "id": "S46",
+          "chapter": "15",
+          "chapterTitle": "Fin",
+          "title": "Fin du module 0",
+          "sentences": [
+            {
+              "text": "Fin du module 0.",
+              "beat": 0
+            },
+            {
+              "text": "Tu as maintenant la carte entière : du sable au token.",
+              "beat": 0
+            },
+            {
+              "text": "Cinq fonctions, toujours : calculer, mémoriser, communiquer, alimenter, refroidir.",
+              "beat": 1
+            },
+            {
+              "text": "Et une question réflexe : qu'est-ce qui fait attendre le reste du système ?",
+              "beat": 1
+            },
+            {
+              "text": "Réponds au test avec tes mots et tes calculs, puis envoie tes réponses pour la correction.",
+              "beat": 2
+            },
+            {
+              "text": "Le module 1 commence après validation.",
+              "beat": 2
+            }
           ]
         }
       ]
