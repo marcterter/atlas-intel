@@ -1,7 +1,10 @@
 import React from "react";
 import { COLORS, FONT } from "../theme";
 
-export const ChapterTag: React.FC<{ num: string; title: string }> = ({ num, title }) => (
+export const ChapterTag: React.FC<{ num: string; title: string }> = ({
+  num,
+  title,
+}) => (
   <div
     style={{
       position: "absolute",

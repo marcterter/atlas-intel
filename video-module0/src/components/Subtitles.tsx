@@ -15,7 +15,8 @@ const chunk = (text: string): string[] => {
   let current = "";
   for (const word of words) {
     const candidate = current ? `${current} ${word}` : word;
-    const breakHere = current.length > MAX_CHARS * 0.55 && /[,;:]$/.test(current);
+    const breakHere =
+      current.length > MAX_CHARS * 0.55 && /[,;:]$/.test(current);
     if ((candidate.length > MAX_CHARS || breakHere) && current) {
       parts.push(current);
       current = word;
@@ -63,8 +64,12 @@ export const Subtitles: React.FC<{
   const inAt = offset + cue.from * FPS;
   const outAt = offset + cue.to * FPS;
   const opacity = Math.min(
-    interpolate(frame, [inAt, inAt + FADE], [0, 1], { extrapolateRight: "clamp" }),
-    interpolate(frame, [outAt - FADE, outAt], [1, 0], { extrapolateLeft: "clamp" }),
+    interpolate(frame, [inAt, inAt + FADE], [0, 1], {
+      extrapolateRight: "clamp",
+    }),
+    interpolate(frame, [outAt - FADE, outAt], [1, 0], {
+      extrapolateLeft: "clamp",
+    }),
   );
 
   return (

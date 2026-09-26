@@ -10,7 +10,11 @@ export type Cues = {
   beat: (beat: number, delayS?: number) => number;
   end: number;
 };
-export const CueContext = createContext<Cues>({ s: () => 0, beat: () => 0, end: 0 });
+export const CueContext = createContext<Cues>({
+  s: () => 0,
+  beat: () => 0,
+  end: 0,
+});
 export const useCues = () => useContext(CueContext);
 
 const ease = Easing.inOut(Easing.cubic);
@@ -60,16 +64,40 @@ export const Arrow: React.FC<{
   duration?: number;
   stroke?: string;
   width?: number;
-}> = ({ x1, y1, x2, y2, start, duration = 0.8, stroke = COLORS.inkSoft, width = 2 }) => {
+}> = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  start,
+  duration = 0.8,
+  stroke = COLORS.inkSoft,
+  width = 2,
+}) => {
   const angle = Math.atan2(y2 - y1, x2 - x1);
   const size = 12;
   const head = [angle - 0.45, angle + 0.45]
-    .map((a) => `M ${x2 - size * Math.cos(a)} ${y2 - size * Math.sin(a)} L ${x2} ${y2}`)
+    .map(
+      (a) =>
+        `M ${x2 - size * Math.cos(a)} ${y2 - size * Math.sin(a)} L ${x2} ${y2}`,
+    )
     .join(" ");
   return (
     <g>
-      <DrawPath d={`M ${x1} ${y1} L ${x2} ${y2}`} start={start} duration={duration} stroke={stroke} width={width} />
-      <DrawPath d={head} start={start + duration * FPS * 0.85} duration={0.25} stroke={stroke} width={width} />
+      <DrawPath
+        d={`M ${x1} ${y1} L ${x2} ${y2}`}
+        start={start}
+        duration={duration}
+        stroke={stroke}
+        width={width}
+      />
+      <DrawPath
+        d={head}
+        start={start + duration * FPS * 0.85}
+        duration={0.25}
+        stroke={stroke}
+        width={width}
+      />
     </g>
   );
 };
@@ -85,7 +113,13 @@ export const FadeIn: React.FC<{
   const frame = useCurrentFrame();
   const p = progress(frame, start, duration);
   return (
-    <div style={{ ...style, opacity: p, transform: `translateY(${(1 - p) * rise}px)` }}>
+    <div
+      style={{
+        ...style,
+        opacity: p,
+        transform: `translateY(${(1 - p) * rise}px)`,
+      }}
+    >
       {children}
     </div>
   );
@@ -107,15 +141,17 @@ export const Counter: React.FC<{
     maximumFractionDigits: decimals,
     useGrouping: to >= 10000,
   });
-  return <span style={{ fontVariantNumeric: "tabular-nums", ...style }}>{text}</span>;
+  return (
+    <span style={{ fontVariantNumeric: "tabular-nums", ...style }}>{text}</span>
+  );
 };
 
 // Groupe visible entre deux instants, avec fondu d'entrée et de sortie.
-export const Stage: React.FC<{ from: number; to?: number; children: React.ReactNode }> = ({
-  from,
-  to,
-  children,
-}) => {
+export const Stage: React.FC<{
+  from: number;
+  to?: number;
+  children: React.ReactNode;
+}> = ({ from, to, children }) => {
   const frame = useCurrentFrame();
   const fadeIn = interpolate(frame, [from - 4, from + 10], [0, 1], {
     extrapolateLeft: "clamp",
@@ -124,7 +160,10 @@ export const Stage: React.FC<{ from: number; to?: number; children: React.ReactN
   const fadeOut =
     to === undefined
       ? 1
-      : interpolate(frame, [to - 12, to], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+      : interpolate(frame, [to - 12, to], [1, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        });
   const opacity = Math.min(fadeIn, fadeOut);
   if (opacity <= 0) return null;
   return <AbsoluteFill style={{ opacity }}>{children}</AbsoluteFill>;

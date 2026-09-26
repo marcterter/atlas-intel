@@ -1,7 +1,12 @@
 import { fade } from "@remotion/transitions/fade";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  AbsoluteFill,
+  interpolate,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
 import { Background } from "./components/Background";
 import { SceneView } from "./components/SceneView";
 import { EpisodeDef, SceneDef, sceneFrames } from "./data";

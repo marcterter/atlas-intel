@@ -49,14 +49,23 @@ export const Background: React.FC = () => {
             cy={s.y}
             r={s.r}
             fill="#ffffff"
-            opacity={s.base * (0.65 + 0.35 * Math.sin(frame * s.speed + s.phase))}
+            opacity={
+              s.base * (0.65 + 0.35 * Math.sin(frame * s.speed + s.phase))
+            }
           />
         ))}
         {dust.map((d, i) => {
           const x = (((d.x + d.vx * frame) % WIDTH) + WIDTH) % WIDTH;
           const y = (((d.y + d.vy * frame) % HEIGHT) + HEIGHT) % HEIGHT;
           return (
-            <circle key={i} cx={x} cy={y} r={d.r} fill={COLORS.accent} opacity={d.alpha} />
+            <circle
+              key={i}
+              cx={x}
+              cy={y}
+              r={d.r}
+              fill={COLORS.accent}
+              opacity={d.alpha}
+            />
           );
         })}
       </svg>

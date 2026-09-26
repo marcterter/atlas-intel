@@ -12,10 +12,15 @@ export const SceneView: React.FC<{ scene: SceneDef }> = ({ scene }) => {
   const offset = Math.round(HEAD_S * FPS);
   const Visual = visuals[scene.id] ?? Fallback;
 
-  const startOf = (i: number, delayS: number) => offset + (timing.sentences[i].start + delayS) * FPS;
+  const startOf = (i: number, delayS: number) =>
+    offset + (timing.sentences[i].start + delayS) * FPS;
   const cues: Cues = {
     s: (i, delayS = 0) => startOf(i, delayS),
-    beat: (b, delayS = 0) => startOf(scene.sentences.findIndex((x) => x.beat === b), delayS),
+    beat: (b, delayS = 0) =>
+      startOf(
+        scene.sentences.findIndex((x) => x.beat === b),
+        delayS,
+      ),
     end: offset + timing.duration * FPS,
   };
 
@@ -27,7 +32,10 @@ export const SceneView: React.FC<{ scene: SceneDef }> = ({ scene }) => {
       <CueContext.Provider value={cues}>
         <Visual scene={scene} />
       </CueContext.Provider>
-      <ChapterTag num={scene.chapter} title={scene.chapterTitle.replace(/'/g, "’")} />
+      <ChapterTag
+        num={scene.chapter}
+        title={scene.chapterTitle.replace(/'/g, "’")}
+      />
       <Subtitles sentences={scene.sentences} timing={timing} offset={offset} />
     </AbsoluteFill>
   );
