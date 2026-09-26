@@ -1,4 +1,5 @@
-// Rend chaque épisode dans output/, par exemple output/module0-01-la-carte-du-systeme.mp4.
+// Rend chaque épisode dans output/, par exemple output/module0-01-ouverture-et-carte-du-systeme.mp4.
+// Usage : node tools/render-all.mjs [E03]
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
