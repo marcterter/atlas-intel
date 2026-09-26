@@ -278,8 +278,8 @@ const CViz: React.FC<{ start: number }> = ({ start }) => (
 // VDD² : -10 % de tension → -19 % de puissance.
 const VddViz: React.FC<{ start: number; sq: number }> = ({ start, sq }) => {
   const frame = useCurrentFrame();
-  const x0 = 1200;
-  const W = 500;
+  const x0 = 1150;
+  const W = 460;
   const a = progress(frame, start + 10, 1);
   const b = progress(frame, sq, 1);
   return (
