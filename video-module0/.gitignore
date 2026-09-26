@@ -12,3 +12,4 @@ tools/models/
 __pycache__/
 public/audio/*.wav
 output/preview/
+output/*.log
