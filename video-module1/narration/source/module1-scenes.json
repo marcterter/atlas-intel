@@ -1,0 +1,671 @@
+[
+  {
+    "chapter": "Ouverture",
+    "title": "Module 1",
+    "visual": "Titre du module. Zoom du système (module 0) vers la puce puis le transistor. Chaîne transistor → circuits → opérations logiques → performances et coûts. Fil directeur en trois temps.",
+    "beats": [
+      "Formation infrastructure IA, module 1. Physique des semi-conducteurs et transistors : du courant électrique aux calculs de l'IA.",
+      "Un cours et un cahier de validation, daté du 18 septembre 2026. Le module 0 décrivait le système complet. Nous entrons maintenant à l'intérieur de la puce.",
+      "Le transistor contrôle un courant ; des circuits de transistors transforment des tensions en opérations logiques. Leur vitesse et leur consommation déterminent ensuite une partie des performances et des coûts de l'infrastructure IA.",
+      "Le fil directeur de ce module : contrôler les charges, construire des circuits fiables, et effectuer davantage de travail utile dans un budget de puissance limité."
+    ]
+  },
+  {
+    "chapter": "Ouverture",
+    "title": "Ce que tu vas comprendre",
+    "visual": "Grille des huit compétences, chacune avec un pictogramme, qui s'allume au fil de l'énumération.",
+    "beats": [
+      "Voici les huit compétences à acquérir. Première : expliquer atome, électron, courant, tension et bande d'énergie.",
+      "Deuxième : distinguer conducteur, isolant et semi-conducteur.",
+      "Troisième : comprendre le dopage, les électrons, les trous et la jonction PN.",
+      "Quatrième : reconstruire le fonctionnement d'un MOSFET et d'un inverseur CMOS.",
+      "Cinquième : relier fréquence, capacité électrique, tension et consommation.",
+      "Sixième : distinguer puissance dynamique, courants de fuite et énergie par opération.",
+      "Septième : expliquer les différences entre loi de Moore et scaling de Dennard.",
+      "Huitième : traduire ces contraintes en questions industrielles et économiques."
+    ]
+  },
+  {
+    "chapter": "Ouverture",
+    "title": "Rappel du module 0 et méthode",
+    "visual": "Trois questions de rappel numérotées, une à la fois. Puis la méthode (mécanismes avant équations, exemples fictifs) et le barème 25 / 30 / 30 / 15 qui se remplit jusqu'au seuil de 80.",
+    "beats": [
+      "Avant de lire, trois questions de rappel du module 0.",
+      "Un : pourquoi plus de GPU ne donne-t-il pas toujours plus de tokens ?",
+      "Deux : quelle différence entre capacité et bande passante mémoire ?",
+      "Trois : pourquoi un composant indispensable ne garantit-il pas un investissement rentable ?",
+      "Réponds à l'oral ou sur une feuille. Ce rappel ne valide pas automatiquement le module 0, et n'entre pas dans la note du module 1.",
+      "Comment progresser : lis les pages de mécanisme avant les équations. Les exemples chiffrés sont fictifs ; ils servent à apprendre des relations de cause à effet.",
+      "Le test final est sans corrigé : compréhension 25 points, raisonnement 30, application 30, et explication 15. Validation à 80 sur 100."
+    ]
+  },
+  {
+    "chapter": "Des charges aux bandes d'énergie",
+    "title": "Atome, électron, courant et tension",
+    "visual": "Atome (noyau +, électrons −). Réseau d'atomes liés avec quelques électrons mobiles. Section traversée par des charges avec compteur de charge par seconde (courant). Deux niveaux d'énergie (tension). Analogie hydraulique : débit / différence de pression, puis sa limite : les électrons circulent en boucle, l'énergie sort en chaleur.",
+    "beats": [
+      "Des charges électriques aux bandes d'énergie. Un atome comprend un noyau positif, et des électrons de charge négative.",
+      "Dans un solide, les atomes sont liés ; certains électrons peuvent contribuer au transport du courant.",
+      "Le courant mesure une quantité de charge traversant une section par seconde.",
+      "La tension est une différence de potentiel, c'est-à-dire une énergie par unité de charge.",
+      "L'image de l'eau aide : le courant ressemble à un débit, et la tension à une différence de pression.",
+      "Mais cette image a une limite importante : les électrons ne sont pas consommés dans la puce. Le circuit reçoit de l'énergie, et la dissipe surtout sous forme de chaleur."
+    ]
+  },
+  {
+    "chapter": "Des charges aux bandes d'énergie",
+    "title": "Les bandes d'énergie",
+    "visual": "Axe vertical « énergie ». Bande de valence (en bas, remplie), bande de conduction (en haut), bande interdite entre les deux. Puis trois colonnes côte à côte : métal (bandes qui se touchent), semi-conducteur (petit écart, quelques électrons passent), isolant (grand écart). Mention « schéma qualitatif, non à l'échelle ».",
+    "beats": [
+      "Pourquoi tous les matériaux ne conduisent-ils pas pareil ? Les électrons d'un solide n'ont pas accès à n'importe quelle énergie. Les états autorisés sont regroupés en bandes.",
+      "La bande de valence regroupe notamment les états associés aux liaisons.",
+      "La bande de conduction permet le transport par des électrons mobiles.",
+      "Entre les deux, une bande interdite ne contient pas d'états électroniques autorisés, dans le cristal idéal.",
+      "Comparons trois matériaux, sur un schéma qualitatif, non à l'échelle. Le métal possède des états accessibles tout près des états occupés.",
+      "Le semi-conducteur présente une séparation énergétique franchissable par une fraction des électrons.",
+      "L'isolant présente généralement une séparation plus grande."
+    ]
+  },
+  {
+    "chapter": "Des charges aux bandes d'énergie",
+    "title": "Ce que signifie semi-conducteur",
+    "visual": "Une jauge de conduction qu'on fait varier fortement avec quatre boutons : dopage, champ électrique, température, lumière. Un électron qui monte dans la bande de conduction laisse un trou (cercle vide) dans la bande de valence ; le trou se déplace comme une charge positive. Encadré « Repère physique » : 1,1 eV compteur, eV = énergie, pas une tension, source 1.",
+    "beats": [
+      "Ce que signifie semi-conducteur. L'intérêt n'est pas de conduire à moitié.",
+      "C'est de pouvoir modifier fortement la conduction : par le dopage, par un champ électrique, par la température, ou par la lumière.",
+      "Le silicium en est un exemple, mais d'autres matériaux sont utiles pour d'autres fonctions.",
+      "Un électron promu dans la bande de conduction laisse un trou dans la bande de valence. Le trou est une absence d'électron qui se comporte, pour le transport, comme un porteur positif. Ce n'est pas un proton qui se déplace dans le cristal.",
+      "Repère physique : la bande interdite du silicium vaut environ 1,1 eV à température ambiante. L'électronvolt est une unité d'énergie ; ce n'est pas une tension. Source 1 : le cours du MIT."
+    ]
+  },
+  {
+    "chapter": "Silicium, dopage et jonction PN",
+    "title": "Le dopage",
+    "visual": "Réseau cristallin de silicium (chaque atome à 4 liaisons). Un atome de phosphore remplace un silicium : un électron en trop devient mobile (type n). Un atome de bore : une liaison manquante, un trou mobile (type p). Tableau type / exemple / porteurs majoritaires. Puis un bloc n globalement neutre : électrons mobiles (−) compensés par dopants ionisés fixes (+).",
+    "beats": [
+      "Le silicium, le dopage et la jonction PN. Le silicium possède quatre électrons de valence, et forme un réseau de liaisons avec ses voisins.",
+      "Le dopage consiste à incorporer une quantité contrôlée d'autres atomes, pour modifier les porteurs disponibles. Il ne s'agit pas d'ajouter un courant depuis l'extérieur.",
+      "Dopage de type n : par exemple le phosphore, un dopant donneur. Les porteurs majoritaires sont des électrons mobiles.",
+      "Dopage de type p : par exemple le bore, un dopant accepteur. Les porteurs majoritaires sont des trous mobiles.",
+      "Attention : le matériau dopé reste globalement neutre, loin des zones de charge d'espace. Le n de type n ne signifie pas que tout le morceau de silicium porte une charge nette négative : les charges mobiles sont compensées par les dopants ionisés. Source 1."
+    ]
+  },
+  {
+    "chapter": "Silicium, dopage et jonction PN",
+    "title": "Dérive et diffusion",
+    "visual": "Deux panneaux. Dérive : un champ électrique (flèche) entraîne les porteurs. Diffusion : une zone dense se répartit vers une zone vide. Puis mobilité : deux porteurs sous le même champ, l'un plus rapide ; mention « régime approximativement linéaire ».",
+    "beats": [
+      "Pourquoi les porteurs se déplacent-ils ? Deux mécanismes coexistent.",
+      "La dérive est le déplacement sous l'effet d'un champ électrique.",
+      "La diffusion résulte d'une différence de concentration : les porteurs tendent à se répartir.",
+      "La mobilité exprime la facilité avec laquelle les porteurs se déplacent sous un champ, dans le régime où la relation reste approximativement linéaire."
+    ]
+  },
+  {
+    "chapter": "Silicium, dopage et jonction PN",
+    "title": "La jonction PN",
+    "visual": "Bloc p à gauche (trous), bloc n à droite (électrons). Diffusion à travers la jonction, recombinaisons, puis zone appauvrie avec ions fixes (− côté p, + côté n) et champ interne. Équilibre : flèches dérive et diffusion qui se compensent, courant net 0. Polarisation directe : barrière qui baisse, courant qui monte. Polarisation inverse : zone qui s'élargit, petit courant, claquage à forte tension. Diode vs MOS. Lien industriel : implantation ionique et traitements thermiques (module fabrication).",
+    "beats": [
+      "La jonction entre une région p et une région n. Au voisinage de la jonction, des électrons diffusent du côté n vers le côté p, et des trous dans l'autre sens.",
+      "Une partie se recombine. Il reste des dopants ionisés fixes, ce qui crée une zone appauvrie en porteurs mobiles, et un champ électrique interne.",
+      "Ce champ s'oppose à la diffusion. À l'équilibre, les contributions de dérive et de diffusion se compensent : il n'y a pas de courant net. La barrière interne n'est pas une batterie utilisable gratuitement. Source 2.",
+      "En polarisation directe, la tension appliquée réduit la barrière : le courant peut fortement augmenter.",
+      "En polarisation inverse, la barrière et la zone appauvrie augmentent en général. Un petit courant subsiste ; à forte tension, un claquage peut apparaître.",
+      "Une diode exploite notamment ce comportement asymétrique. Le transistor MOS, que nous étudions ensuite, contrôle un canal avec une grille isolée : il ne se résume pas à une diode que l'on ouvre ou ferme.",
+      "Le lien industriel : la position et la concentration des dopants influencent le comportement électrique. Leur maîtrise impose des procédés précis et des contrôles. Nous retrouverons l'implantation ionique et les traitements thermiques dans le module de fabrication."
+    ]
+  },
+  {
+    "chapter": "Le transistor MOSFET",
+    "title": "Anatomie d'un MOSFET",
+    "visual": "Décomposition du sigle MOSFET (Metal / Oxide / Semiconductor / Field Effect Transistor) avec traduction. Puis coupe du transistor qui se construit élément par élément : grille, isolant de grille, source et drain, corps ; chaque élément avec sa fonction.",
+    "beats": [
+      "Le transistor MOSFET, un interrupteur commandé. MOSFET signifie Metal Oxide Semiconductor Field Effect Transistor : transistor à effet de champ, à structure métal, isolant, semi-conducteur.",
+      "Le nom historique conserve le mot oxide, même lorsque l'empilement de grille utilise des matériaux avancés.",
+      "La grille, ou gate, commande électriquement la formation et la conduction du canal.",
+      "L'isolant de grille sépare électriquement la grille du semi-conducteur, tout en transmettant l'effet du champ.",
+      "La source et le drain sont les régions par lesquelles les porteurs entrent dans le canal, et en sortent.",
+      "Le corps, ou body, est la région semi-conductrice qui influence aussi le comportement."
+    ]
+  },
+  {
+    "chapter": "Le transistor MOSFET",
+    "title": "Un exemple NMOS",
+    "visual": "Coupe NMOS planaire : source n+, drain n+, corps p, isolant, grille. Grille à 0 : pas de canal. Grille positive : électrons attirés en surface, couche d'inversion qui forme le canal. Tension drain-source : électrons qui circulent de la source au drain (courant conventionnel en sens inverse). Aucun électron ne vient de la grille (flèche barrée). Mentions : coupe pédagogique non à l'échelle ; géométries modernes 3D.",
+    "beats": [
+      "Prenons un exemple NMOS simplifié : un transistor planaire à enrichissement, avec une source et un drain de type n, dans un corps de type p.",
+      "Sans commande suffisante sur la grille, il n'existe pas de canal riche en électrons reliant les deux régions.",
+      "Une tension positive entre grille et source attire les électrons vers la surface. Une couche d'inversion peut alors constituer un canal conducteur. Source 3.",
+      "Une différence de potentiel entre drain et source permet alors un courant.",
+      "La grille commande ce courant par le champ électrique : les électrons qui traversent le canal ne viennent pas de la grille.",
+      "Précisions sur ce schéma : c'est une coupe pédagogique, non à l'échelle. Le drain est supposé positif par rapport à la source, et le courant conventionnel est opposé au déplacement des électrons. Les transistors modernes peuvent avoir une géométrie tridimensionnelle."
+    ]
+  },
+  {
+    "chapter": "Le transistor MOSFET",
+    "title": "Trois tensions à distinguer",
+    "visual": "Le transistor avec ses bornes ; VGS, VDS, Vth et VDD s'affichent un à un entre les bonnes bornes. Courbe courant / VGS : pas d'interrupteur parfait, courant sous le seuil visible. Puis la grille qu'on charge et décharge (énergie) et une petite fuite : « grille isolée ≠ transistor gratuit en énergie ».",
+    "beats": [
+      "Trois tensions à distinguer.",
+      "VGS désigne la tension grille-source.",
+      "VDS, la tension drain-source.",
+      "Vth, la tension de seuil. Le seuil est un repère de formation du canal, pas un interrupteur mathématique parfait : un courant sous le seuil existe.",
+      "VDD, que nous utiliserons plus loin, désigne l'alimentation du circuit.",
+      "Idéalement, l'isolant bloque le courant continu de grille. Mais charger et décharger la grille demande de l'énergie, et les dispositifs réels possèdent des courants de fuite. Grille isolée ne signifie donc pas transistor gratuit en énergie."
+    ]
+  },
+  {
+    "chapter": "Du transistor au circuit CMOS",
+    "title": "Le compromis vitesse et fuite",
+    "visual": "Deux états d'un transistor : activé (gros courant Ion) et bloqué (filet Ioff). Ion élevé : une connexion suivante se charge vite. Ioff faible : peu de pertes à l'arrêt. Curseur de seuil : on l'abaisse, Ion monte mais Ioff monte aussi. Triangle vitesse / puissance / surface ; transistor plus large = plus de courant mais plus de capacité.",
+    "beats": [
+      "Du transistor réel au circuit CMOS. Un transistor utile doit bien conduire quand il est activé, et peu conduire quand il est bloqué.",
+      "On parle de courant passant, Ion, et de courant bloqué, Ioff.",
+      "Une valeur élevée de Ion aide à charger rapidement les connexions suivantes ; une faible valeur de Ioff réduit les pertes à l'arrêt.",
+      "À dimensions et technologie comparables, abaisser le seuil peut faciliter la conduction, mais augmente généralement la fuite sous le seuil.",
+      "Le concepteur arbitre donc entre vitesse, puissance et surface. Un transistor plus large peut fournir davantage de courant, tout en ajoutant de la capacité électrique."
+    ]
+  },
+  {
+    "chapter": "Du transistor au circuit CMOS",
+    "title": "L'inverseur CMOS",
+    "visual": "Schéma fonctionnel de l'inverseur (rectangles, pas de symboles normalisés) : VDD en haut, PMOS, sortie, NMOS, masse en bas ; l'entrée reliée aux deux grilles. Entrée basse : PMOS passant (vert/accent), NMOS bloqué, sortie haute. Entrée haute : l'inverse. Tableau entrée / PMOS / NMOS / sortie. Puis courant traversant bref pendant la transition et fuites. Enfin une échelle de tension continue avec les plages « 0 » et « 1 ».",
+    "beats": [
+      "NMOS et PMOS. Le NMOS utilise un canal de type n ; le PMOS utilise un canal de type p, avec des conditions de commande inversées.",
+      "CMOS signifie Complementary Metal Oxide Semiconductor : on combine les deux types. L'inverseur est le circuit le plus simple pour le comprendre.",
+      "L'entrée est reliée aux deux grilles. La sortie est tirée soit vers l'alimentation, soit vers la masse.",
+      "Entrée basse, proche de 0 volt : le PMOS est passant, le NMOS est bloqué. La sortie est haute, proche de VDD.",
+      "Entrée haute, proche de VDD : le PMOS est bloqué, le NMOS est passant. La sortie est basse, proche de 0 volt.",
+      "Dans le modèle idéal stabilisé, il n'y a pas de chemin conducteur continu entre alimentation et masse. En réalité, des fuites persistent, et les transitions peuvent créer brièvement un courant traversant. Source 4.",
+      "À retenir : le 0 et le 1 sont des plages de tensions reconnues par un circuit. La physique reste continue ; la logique impose une interprétation discrète robuste."
+    ]
+  },
+  {
+    "chapter": "Des interrupteurs aux calculs",
+    "title": "De la porte logique au processeur",
+    "visual": "Porte logique : entrées → sortie. Quatre portes NON, ET, OU, NAND. Table de vérité NAND qui se remplit ligne par ligne. NAND → toutes les fonctions. Assemblage : portes → additionneur → multiplicateur → circuits de commande. Une opération multi-bits = une foule de transistors et de connexions ; « un transistor ≠ une opération IA ».",
+    "beats": [
+      "Comment les interrupteurs deviennent des calculs. Une porte logique combine des entrées binaires pour produire une sortie.",
+      "Des assemblages de transistors forment des fonctions comme NON, ET, OU et NAND.",
+      "La fonction NAND produit 0 seulement si ses deux entrées valent 1. Entrées 0 et 0 : sortie 1. 0 et 1 : sortie 1. 1 et 0 : sortie 1. 1 et 1 : sortie 0.",
+      "On peut construire les autres fonctions à partir de NAND.",
+      "En combinant ces fonctions, on construit des additionneurs, des multiplicateurs et des circuits de commande.",
+      "Une opération sur des nombres de plusieurs bits mobilise beaucoup de transistors et de connexions. Un transistor ne réalise pas à lui seul une opération IA complète."
+    ]
+  },
+  {
+    "chapter": "Des interrupteurs aux calculs",
+    "title": "Calculer et mémoriser",
+    "visual": "Circuit combinatoire : entrées → sortie immédiate. Circuit séquentiel : boucle d'état, registre (rangée de bits) qui garde une valeur d'une étape à l'autre. Cellule SRAM : deux inverseurs en boucle qui se maintiennent, état conservé tant que l'alimentation est là (on coupe : l'état disparaît).",
+    "beats": [
+      "Calculer et mémoriser sont deux usages distincts.",
+      "Des circuits combinatoires produisent une sortie à partir des entrées présentes.",
+      "Des circuits séquentiels conservent aussi un état. Un registre stocke des bits pour les prochaines étapes.",
+      "Certaines cellules de mémoire statique reposent sur des inverseurs qui se maintiennent mutuellement dans un état, tant qu'ils sont alimentés."
+    ]
+  },
+  {
+    "chapter": "Des interrupteurs aux calculs",
+    "title": "Fréquence et délai",
+    "visual": "Signal d'horloge carré. 1 GHz → compteur 1 000 000 000 cycles/s, période 1 ns ; formule T = 1 ÷ f. Signaux qui se stabilisent entre deux fronts, avec marges. Plusieurs chemins logiques, le plus long surligné en ambre (chemin critique) ; facteurs fabrication / tension / température. Ajout d'étages : chemin plus court, mais plus de coordination et de latence.",
+    "beats": [
+      "Fréquence et délai. L'horloge organise les étapes d'un circuit synchrone.",
+      "Une fréquence de 1 GHz correspond à un milliard de cycles par seconde, soit une période de 1 nanoseconde. La période T égale 1 divisé par la fréquence f.",
+      "Les signaux doivent avoir le temps de se stabiliser entre deux étapes, avec des marges pour la mémorisation et les incertitudes d'horloge.",
+      "Le chemin critique est le parcours logique qui impose le délai le plus contraignant. La fréquence maximale dépend de ce délai, mais aussi des variations de fabrication, de tension et de température.",
+      "Ajouter des étages de calcul peut raccourcir un chemin, tout en augmentant la coordination et la latence."
+    ]
+  },
+  {
+    "chapter": "Des interrupteurs aux calculs",
+    "title": "La capacité électrique",
+    "visual": "Grille + connexions dessinées comme un condensateur qu'on remplit de charges ; tension qui monte. Q = C × V. Délai ≈ C × ΔV ÷ I. Exemple fictif avec compteurs : 2 fF, 0,7 V, 100 µA → ≈ 14 ps. Mention modèle simplifié. Enfin fréquence ≠ débit : deux processeurs à même fréquence, l'un fait plus de travail par cycle (parallélisme, données).",
+    "beats": [
+      "La capacité électrique introduit une attente. Une grille et ses connexions se comportent en partie comme un condensateur : il faut déplacer une charge pour modifier leur tension.",
+      "La capacité C mesure la quantité de charge nécessaire par volt. La charge Q égale C fois V.",
+      "Pour un courant approximativement constant, le délai vaut environ C fois delta V, divisé par I.",
+      "Exemple fictif : 2 femtofarads, 0,7 volt de variation et 100 microampères donnent environ 14 picosecondes.",
+      "Ce modèle simplifié explique l'effet de C et de I ; il ne prédit pas le délai complet d'un circuit réel.",
+      "Enfin, fréquence et débit de calcul ne sont pas synonymes : l'architecture, le parallélisme et l'alimentation en données déterminent le travail effectué à chaque cycle."
+    ]
+  },
+  {
+    "chapter": "Pourquoi commuter consomme",
+    "title": "Une charge déplacée à chaque changement",
+    "visual": "Connexion (condensateur) reliée à VDD puis à la masse. Charge : l'alimentation fournit C·VDD², moitié stockée, moitié dissipée en chaleur. Décharge : la moitié stockée est dissipée. Deux barres : énergie fournie par cycle = C·VDD² vs énergie stockée = ½ C·VDD² ; « erreur de facteur 2 » en ambre.",
+    "beats": [
+      "Pourquoi commuter consomme de l'énergie. Pour faire passer une connexion de 0 à VDD, l'alimentation fournit de l'énergie à la capacité électrique.",
+      "Une partie est stockée, une partie est dissipée. Lors de la décharge, l'énergie stockée est à son tour dissipée, dans un circuit CMOS conventionnel.",
+      "Pour un cycle complet de charge puis décharge, l'énergie fournie est C fois VDD au carré.",
+      "L'énergie stockée à l'état chargé vaut seulement un demi C VDD au carré. Confondre ces deux quantités conduit à une erreur d'un facteur deux."
+    ]
+  },
+  {
+    "chapter": "Pourquoi commuter consomme",
+    "title": "La relation essentielle",
+    "visual": "Grande équation P ≈ α × C × VDD² × f. Chaque terme s'allume à son tour avec sa signification, son unité et son effet (levier). VDD² mis en valeur (effet au carré). Puis somme sur les nœuds / capacité effective (ne pas compter α deux fois). Sources 5 et 6.",
+    "beats": [
+      "La relation essentielle : la puissance dynamique vaut environ alpha, fois C, fois VDD au carré, fois f.",
+      "Alpha est le nombre moyen de charges de 0 vers 1 par cycle, pour la capacité considérée. Moins d'activité inutile réduit la puissance.",
+      "C est la capacité électrique commutée, en farads. Moins de charge à déplacer réduit la puissance.",
+      "VDD est la tension d'alimentation, en volts. Son effet est au carré : c'est un levier particulièrement fort.",
+      "f est la fréquence de l'horloge, en hertz. Plus de cycles par seconde augmente la puissance.",
+      "Dans un circuit complet, on additionne les contributions des nœuds. On peut aussi utiliser une capacité effective qui intègre déjà l'activité ; il ne faut alors pas appliquer alpha une seconde fois. Sources 5 et 6 : la note technique de Texas Instruments distingue puissance statique et dynamique, et le cours du MIT traite les compromis de vitesse et de dissipation."
+    ]
+  },
+  {
+    "chapter": "Pourquoi commuter consomme",
+    "title": "Exemple résolu",
+    "visual": "Exemple fictif. Trois curseurs : C −15 %, VDD −10 %, f +20 %, α inchangé. Équation 0,85 × 0,90² × 1,20 = 0,8262 construite terme par terme avec compteurs. Barre de puissance qui passe de 100 % à 82,62 % (−17,38 %). Mises en garde : fuites non incluses, application limitée par la mémoire.",
+    "beats": [
+      "Un exemple résolu de comparaison. Hypothèses fictives : la capacité baisse de 15 %, la tension de 10 %, la fréquence augmente de 20 %, et l'activité ne change pas.",
+      "Le rapport entre nouvelle et ancienne puissance vaut 0,85, fois 0,90 au carré, fois 1,20. Soit 0,8262.",
+      "La puissance dynamique baisse donc de 17,38 %.",
+      "Ce résultat ne donne pas directement la puissance totale de la puce, qui comprend notamment les fuites. Ni le gain de débit d'une application limitée par la mémoire."
+    ]
+  },
+  {
+    "chapter": "Pourquoi commuter consomme",
+    "title": "Énergie et puissance",
+    "visual": "Graphe puissance / temps : l'énergie est l'aire. Circuit A : puissance élevée, tâche courte ; circuit B : puissance basse, tâche longue ; A peut avoir une aire plus petite. « Même travail, même qualité ». Point analyste : quatre niveaux (transistor, bloc, puce, système) et trois conditions (fréquence fixe, puissance fixe, surface fixe).",
+    "beats": [
+      "Énergie et puissance. La puissance est un rythme de consommation ; l'énergie est la consommation cumulée.",
+      "Un circuit plus puissant peut consommer moins d'énergie pour une tâche, s'il la termine suffisamment plus vite. Compare toujours le même travail et la même qualité de résultat.",
+      "Point analyste. Demande si une annonce concerne un transistor, un bloc, une puce ou un système.",
+      "Et si elle promet un gain à fréquence fixe, à puissance fixe, ou à surface fixe."
+    ]
+  },
+  {
+    "chapter": "Fuites et limites de la tension",
+    "title": "Consommer sans calculer",
+    "visual": "Barre de puissance totale décomposée : commutation capacitive, courant traversant, fuites. Transistor bloqué avec trois chemins de fuite (sous le seuil, à travers l'isolant, aux jonctions). Équation P fuite ≈ VDD × I fuite. Facteurs d'influence en étiquettes. Horloge ralentie : la partie commutation baisse, la partie fuite reste.",
+    "beats": [
+      "Les fuites et les limites de la baisse de tension. La puce consomme aussi sans calcul utile.",
+      "La puissance totale comprend la commutation capacitive, les courants transitoires traversants, et les fuites.",
+      "Les fuites existent sous le seuil, à travers certains isolants, et au niveau des jonctions. Leur puissance vaut approximativement VDD fois le courant de fuite total.",
+      "Les fuites dépendent de la technologie, des dimensions, du seuil, de la tension et de la température. Leur part dans la puissance totale n'est pas universelle.",
+      "Réduire la fréquence sans couper l'alimentation n'élimine pas nécessairement cette composante."
+    ]
+  },
+  {
+    "chapter": "Fuites et limites de la tension",
+    "title": "Pourquoi ne pas baisser la tension indéfiniment",
+    "visual": "Curseur VDD qu'on baisse : énergie de commutation ↓, mais vitesse de charge ↓, délais et dispersion ↑ près du seuil ; abaisser Vth → fuite ↑. Graphe log(courant) / tension de grille sous le seuil : pente idéale ≥ 60 mV par décade à 300 K ; marches ×10 pour 60 mV. Mises en garde (pas un seuil de 60 mV, pas une loi universelle). Source 7.",
+    "beats": [
+      "Pourquoi ne pas baisser la tension indéfiniment ? Une tension plus faible diminue l'énergie de commutation, mais réduit aussi la capacité à charger rapidement les nœuds.",
+      "À proximité du seuil, les délais et leur sensibilité aux variations deviennent plus difficiles à maîtriser.",
+      "Abaisser le seuil pour retrouver de la vitesse tend à augmenter le courant sous le seuil.",
+      "Pour un MOSFET conventionnel thermionique idéal, la pente sous le seuil ne descend pas sous environ 60 mV par décade de courant, à 300 kelvins.",
+      "Cela signifie qu'une réduction du courant par dix nécessite environ 60 mV de variation de grille, dans cette limite idéale. Les dispositifs réels peuvent être moins favorables.",
+      "Ce n'est ni un seuil minimal de 60 mV, ni une loi universelle de tout dispositif électronique. Source 7."
+    ]
+  },
+  {
+    "chapter": "Fuites et limites de la tension",
+    "title": "Trois leviers",
+    "visual": "Puce en blocs. Clock gating : l'horloge d'un bloc s'arrête (plus de commutation, fuite résiduelle). Power gating : l'alimentation d'un bloc est coupée (fuite supprimée ; icône réveil + sauvegarde d'état). DVFS : deux curseurs tension/fréquence liés, avec les arbitrages.",
+    "beats": [
+      "Trois leviers, logiciels et matériels.",
+      "Le clock gating arrête l'horloge des blocs inutilisés. Il réduit la commutation, mais les fuites peuvent rester.",
+      "Le power gating coupe l'alimentation de blocs. Il réduit aussi les fuites, mais le réveil et la conservation de l'état sont à gérer.",
+      "Le DVFS, Dynamic Voltage and Frequency Scaling, ajuste tension et fréquence. C'est un arbitrage entre vitesse, puissance, délais et stabilité."
+    ]
+  },
+  {
+    "chapter": "Fuites et limites de la tension",
+    "title": "Du calcul à l'infrastructure",
+    "visual": "Exemple fictif. Deux rectangles puissance × temps : 100 W × 10 s = 1 000 J ; 70 W × 12 s = 840 J (compteurs). Économie −16 %, mais +2 s. Balance délai acceptable / énergie. Refroidissement : il maintient la température mais consomme lui-même de l'énergie.",
+    "beats": [
+      "Un exemple qui relie calcul et infrastructure. Hypothèses fictives : un bloc passe de 100 watts pendant 10 secondes, à 70 watts pendant 12 secondes.",
+      "Le premier mode consomme 1 000 joules ; le second, 840 joules.",
+      "Le second économise 16 % d'énergie, mais il est plus lent. Le choix dépend du délai acceptable et des autres consommations du système.",
+      "Le refroidissement peut aider à maintenir une température compatible avec le fonctionnement et les performances. Mais il ne supprime pas le coût électrique fondamental des calculs ; il consomme lui-même de l'énergie."
+    ]
+  },
+  {
+    "chapter": "Moore et Dennard",
+    "title": "Deux idées, deux questions",
+    "visual": "Deux colonnes : Loi de Moore / Scaling de Dennard, chacune avec sa question et « ce qu'elle ne garantit pas » (ambre). Frise de la loi de Moore : cadence initiale ~1 an révisée vers ~2 ans ; source ASML. Noms de nœuds : règle graduée barrée « pas une règle universelle ».",
+    "beats": [
+      "La loi de Moore et le scaling de Dennard : deux idées qui répondent à deux questions.",
+      "La loi de Moore répond à : combien de composants peut-on intégrer économiquement ? Elle ne garantit ni un doublement automatique des performances, ni un calendrier physique obligatoire.",
+      "Le scaling de Dennard répond à : comment dimensions, tensions et puissance évoluent-elles dans un modèle de miniaturisation ? Il ne garantit ni une baisse éternelle de la tension, ni une densité de puissance constante en pratique.",
+      "La loi de Moore est une observation et une trajectoire industrielle. Sa formulation a évolué : la cadence initiale d'environ un an a ensuite été révisée vers deux ans. ASML retrace cette histoire.",
+      "Et les noms modernes de nœuds ne sont pas une règle graduée universelle permettant de comparer directement tous les fabricants. Source 8."
+    ]
+  },
+  {
+    "chapter": "Moore et Dennard",
+    "title": "Le modèle de Dennard",
+    "visual": "Un transistor qui rétrécit (×0,7 en longueur) : surface ×0,49, deux fois plus de transistors dans le même carré (×2,04). Tableau pédagogique qui se remplit ligne par ligne avec compteurs : tension et capacité ×0,7, délai ×0,7, fréquence ×1,43, puissance par transistor ×0,49, puissance par surface ≈ inchangée (0,49 × 2,04 ≈ 1). Mention « modèle idéal 1974, pas une prévision », source 9.",
+    "beats": [
+      "L'intuition du modèle de Dennard. Dans le modèle idéal à champ électrique constant, on réduit simultanément les dimensions et les tensions.",
+      "Le transistor occupe moins de surface, nécessite moins de charge et commute plus vite. On peut alors en placer davantage, sans augmenter la puissance par unité de surface.",
+      "L'article fondateur de Dennard et de ses coauteurs date de 1974. Le tableau suivant illustre ce modèle idéal ; ce n'est pas une prévision pour les procédés modernes. Source 9.",
+      "Si la dimension linéaire est multipliée par 0,7, la surface d'un transistor est multipliée par 0,49.",
+      "La densité géométrique idéale est multipliée par environ 2,04.",
+      "La tension et la capacité par transistor sont multipliées chacune par 0,7. Le délai intrinsèque idéal aussi, par 0,7.",
+      "La fréquence idéale est multipliée par environ 1,43.",
+      "La puissance dynamique par transistor, à cette fréquence, est multipliée par 0,49.",
+      "Et donc, la puissance par unité de surface reste approximativement inchangée."
+    ]
+  },
+  {
+    "chapter": "Moore et Dennard",
+    "title": "La fin du raisonnement automatique",
+    "visual": "Deux courbes dans le temps : dimensions qui continuent de baisser, tension et seuil qui plafonnent ; trois causes en ambre (fuites, marges, canal court). La promesse « plus rapide et aussi facile à refroidir » qui se fissure. Réponses : parallélisme, spécialisation, gestion de puissance, mémoires et interconnexions. « Les transistors continuent de s'améliorer ».",
+    "beats": [
+      "Pourquoi ce raisonnement a-t-il cessé de tout résoudre ? La tension et le seuil n'ont pas pu continuer à diminuer au même rythme que les dimensions.",
+      "Notamment à cause des fuites, des marges de fonctionnement, et des effets de canal court.",
+      "L'avantage d'une miniaturisation automatiquement plus rapide, et aussi facile à refroidir, s'est donc dégradé. Source 7.",
+      "Ce changement a renforcé l'intérêt du parallélisme, de la spécialisation, de la gestion de puissance, et du travail sur les mémoires et les interconnexions.",
+      "Il ne signifie pas que toute amélioration des transistors a cessé."
+    ]
+  },
+  {
+    "chapter": "Les limites physiques",
+    "title": "Canal court et effet tunnel",
+    "visual": "Coupe d'un transistor dont le canal raccourcit : l'influence du drain (champ) empiète sur la barrière contrôlée par la grille. Ion fort et Ioff faible deviennent difficiles ensemble. Isolant qui s'amincit : électrons qui traversent par effet tunnel (barrière classique infranchissable vs onde qui passe). Mention : seulement à très petite échelle.",
+    "beats": [
+      "Les limites physiques déplacent l'innovation. Pourquoi un petit transistor devient-il difficile à contrôler ?",
+      "Quand le canal devient très court, le drain influence davantage la barrière qui devrait être contrôlée par la grille.",
+      "Ces effets, dits de canal court, rendent plus difficile l'obtention simultanée d'un fort courant passant et d'un faible courant bloqué.",
+      "Réduire l'isolant pose aussi des problèmes de fuite par effet tunnel.",
+      "L'effet tunnel est un phénomène quantique : un électron peut traverser une barrière qui serait infranchissable dans un modèle classique.",
+      "Il compte lorsque les dimensions sont très faibles ; il ne signifie pas que les électrons se déplacent librement à travers n'importe quel isolant."
+    ]
+  },
+  {
+    "chapter": "Les limites physiques",
+    "title": "Changer la géométrie et les matériaux",
+    "visual": "Quatre évolutions dessinées : planaire → FinFET (grille sur trois faces d'un aileron) → GAA (grille qui entoure des nappes de canal) ; isolant high-k (épaisseur physique plus grande, même couplage) ; chiplets (un grand die remplacé par plusieurs petits dies reliés). Pour chacune : intuition + compromis en ambre. Mention finale : prometteur ≠ produit économiquement à grande échelle.",
+    "beats": [
+      "Changer la géométrie et les matériaux. Quatre évolutions à connaître.",
+      "Le FinFET : une grille contrôle un canal en forme d'aileron, sur plusieurs faces. Compromis : une fabrication tridimensionnelle et des dimensions très contraintes.",
+      "Le GAA, Gate All Around : la grille entoure le canal. On recherche un meilleur contrôle électrostatique, avec des procédés plus complexes.",
+      "L'isolant high-k : un matériau de forte permittivité, qui assure un fort couplage électrique sans isolant physiquement aussi mince. À étudier : la qualité des interfaces, les défauts et l'intégration.",
+      "Les chiplets : plusieurs dies coopèrent au lieu d'un très grand die unique. Compromis : du packaging et des échanges supplémentaires.",
+      "Ces descriptions expliquent les mécanismes. Les calendriers, rendements et parts de marché de chaque génération seront étudiés dans les modules dédiés : une architecture prometteuse ne prouve pas qu'elle est déjà produite économiquement à grande échelle."
+    ]
+  },
+  {
+    "chapter": "Les limites physiques",
+    "title": "Les connexions deviennent une partie du problème",
+    "visual": "Fil de puce avec résistance et capacité ; fil plus fin → résistance ↑. Grand circuit : transistors rapprochés mais long trajet de données (délai + énergie). Chaîne causale à quatre maillons avec flèches « dépend de l'architecture ». Transistors ×10 : la barre de puissance dépasse le budget ; puis mémoire, réseau, coût comme limites suivantes ; retour au bottleneck.",
+    "beats": [
+      "Les connexions deviennent une partie du problème. Les fils de la puce possèdent une résistance et une capacité. Des conducteurs plus fins peuvent augmenter la résistance.",
+      "Rapprocher des transistors ne raccourcit pas toutes les communications, à l'échelle d'un grand circuit. Le délai et l'énergie de déplacement des données peuvent limiter le système.",
+      "La chaîne : plus de transistors disponibles, donc davantage de fonctions possibles, donc davantage de communications et de mémoire nécessaires, donc une pression sur les interconnexions, le packaging et l'énergie. Chaque flèche dépend de l'architecture retenue.",
+      "La question de la multiplication par dix : multiplier le nombre de transistors par dix, sans revoir tension, activité et architecture, peut dépasser le budget de puissance.",
+      "Même si ce problème est résolu, le débit mémoire, le réseau ou le coût de fabrication peut devenir la prochaine limite. Reviens toujours au bottleneck du travail réel."
+    ]
+  },
+  {
+    "chapter": "Premiers calculs d'analyste",
+    "title": "Cas résolu : la puissance totale",
+    "visual": "Étiquette « Exemple fictif ». Barre 300 W (commutation) + 60 W (fuites, fixes) = 360 W. La partie dynamique rétrécit de 20 % → 240 W ; total 300 W. Équations pas à pas avec compteurs. −16,7 % au total vs −20 % sur la composante (comparaison visuelle).",
+    "beats": [
+      "Les premiers calculs d'analyste. Tous les chiffres de cette partie sont fictifs : ils servent à reconstruire un raisonnement, pas à valoriser une entreprise réelle.",
+      "Premier cas : une puce consomme 300 watts en commutation, et 60 watts en fuites et autres consommations, supposées fixes.",
+      "Une amélioration réduit la composante dynamique de 20 %, sans modifier les 60 watts.",
+      "Puissance initiale : 300 plus 60, égale 360 watts.",
+      "Puissance nouvelle : 300 fois 0,80, plus 60, égale 300 watts.",
+      "La baisse totale est de 60 sur 360, soit 16,7 %. Un gain de 20 % sur une composante ne devient pas un gain de 20 % sur le système entier."
+    ]
+  },
+  {
+    "chapter": "Premiers calculs d'analyste",
+    "title": "Cas résolu : le coût du die bon",
+    "visual": "Deux wafers côte à côte. A : 20 000 €, 100 dies dont 80 % bons ; B : 26 000 €, 130 dies dont 75 % bons (dies bons en accent, mauvais barrés). Équations avec compteurs : 250 € vs ≈ 267 €. Liste de ce qui n'est pas inclus (packaging, test, conception, frais fixes, marge). Note sur la moyenne des dies fractionnaires.",
+    "beats": [
+      "Deuxième cas : le coût de fabrication. Une génération A utilise un wafer de 20 000 euros, donnant 100 dies bruts, avec 80 % de rendement.",
+      "Une génération B utilise un wafer de 26 000 euros, donnant 130 dies bruts, avec 75 % de rendement.",
+      "Coût wafer par die bon pour A : 20 000, divisé par 100 fois 0,80, soit 250 euros.",
+      "Pour B : 26 000, divisé par 130 fois 0,75, soit environ 267 euros.",
+      "B produit davantage de dies par wafer, mais leur coût reste plus élevé. Ce résultat ne comprend ni le packaging, ni le test, ni la conception, ni les frais fixes du concepteur, ni sa marge.",
+      "Un nombre fractionnaire de dies bons représente ici une moyenne sur de nombreux wafers."
+    ]
+  },
+  {
+    "chapter": "Premiers calculs d'analyste",
+    "title": "Pourquoi le client peut préférer B",
+    "visual": "Balance : coût du die (A gagne) contre coût total d'exploitation (B peut gagner via consommation ↓, débit utile ↑, mémoire ↑). « Même service, mêmes contraintes ». Triangle PPA (Power, Performance, Area) ; trois pourcentages annoncés dans des conditions différentes qu'on ne peut pas additionner (signe + barré).",
+    "beats": [
+      "Pourquoi le client peut-il néanmoins préférer B ? Si B réduit suffisamment la consommation, augmente le débit utile, ou permet davantage de mémoire, son coût total d'exploitation peut être meilleur.",
+      "Il faut comparer des systèmes accomplissant le même service, avec les mêmes contraintes de qualité et de délai.",
+      "PPA signifie Power Performance Area : puissance, performance et surface. C'est un langage d'arbitrage.",
+      "Un fabricant peut privilégier l'un des trois ; on ne doit pas additionner des pourcentages annoncés dans des conditions différentes."
+    ]
+  },
+  {
+    "chapter": "Premiers calculs d'analyste",
+    "title": "Du transistor au contenu fournisseur",
+    "visual": "Procédé qui s'allonge (plus d'étapes, de mesures, d'équipements). Mais revenu fournisseur = plusieurs facteurs (machines achetées, prix, productivité, services, part de marché) ; « plus complexe ≠ croissance » en ambre. Équation Revenus ≈ unités × prix moyen + services. Feuille de route : module 2 (matière → wafer), module fabrication, module fonderies.",
+    "beats": [
+      "Passer du transistor au contenu fournisseur. Des procédés plus exigeants peuvent demander davantage d'étapes, de mesures ou d'équipements.",
+      "Mais le revenu d'un fournisseur dépend aussi du nombre de machines achetées, du prix, de la productivité, des services et de sa part de marché. Plus complexe ne suffit pas à calculer une croissance.",
+      "Les revenus d'équipements valent approximativement : unités vendues, fois prix moyen, plus services.",
+      "Le prochain module montrera comment la matière devient un wafer. Le module de fabrication reliera les besoins physiques aux outils utilisés, et celui sur les fonderies approfondira les rendements et les coûts."
+    ]
+  },
+  {
+    "chapter": "La chaîne industrielle",
+    "title": "Besoins physiques et métiers (1/2)",
+    "visual": "Avertissement de lecture (illustration des métiers, pas un classement de parts de marché). Puis une carte : chaque besoin physique avec son pictogramme, les acteurs en pastilles, le client et l'indicateur utile. Lignes : support cristallin (wafers), motifs fins (lithographie), films et gravure, dopage et traitements.",
+    "beats": [
+      "La chaîne industrielle autour du transistor. Ces entreprises illustrent les métiers : cette carte ne classe pas les parts de marché, et ne suppose pas une qualification identique sur tous les procédés.",
+      "Un support cristallin contrôlé : ce sont les wafers, avec Shin-Etsu, SUMCO et GlobalWafers. Clients : les fabricants de puces ; indicateurs : la qualité et les volumes qualifiés.",
+      "Des motifs fins et alignés : c'est la lithographie, avec ASML, et d'autres segments chez Nikon et Canon. Clients : les fonderies et les fabricants de mémoire ; indicateurs : la productivité et la précision.",
+      "Des films et une gravure maîtrisés : Applied Materials, Lam Research, Tokyo Electron. Clients : les fabricants ; indicateurs : les étapes de procédé et les équipements requis.",
+      "Le dopage et les traitements : des équipements spécialisés, notamment chez Applied Materials et Axcelis. Clients : les fabricants ; indicateurs : les applications réellement adressées, et les qualifications."
+    ]
+  },
+  {
+    "chapter": "La chaîne industrielle",
+    "title": "Besoins physiques et métiers (2/2)",
+    "visual": "Suite de la même carte : détection des défauts (inspection et métrologie), fabrication intégrée (fonderies), conception et vérification (EDA), architecture du calcul.",
+    "beats": [
+      "La détection des défauts : inspection et métrologie, avec KLA et ASML. Clients : les fabricants ; indicateurs : la sensibilité, le débit de mesure et le rendement.",
+      "La fabrication intégrée : TSMC, Samsung Foundry, Intel Foundry. Clients : les concepteurs ; indicateurs : le rendement, la capacité et le coût des dies bons.",
+      "La conception et la vérification : Cadence, Synopsys, Siemens EDA. Clients : les concepteurs ; indicateurs : la complexité, les outils et la validation.",
+      "L'architecture du calcul : NVIDIA, AMD et des concepteurs spécialisés. Clients : les intégrateurs et les exploitants ; indicateurs : le débit utile et l'efficacité."
+    ]
+  },
+  {
+    "chapter": "La chaîne industrielle",
+    "title": "Le client achète une fonction et une fiabilité",
+    "visual": "Un outil isolé performant vs le même outil inséré dans une chaîne d'étapes (procédé complet, qualité reproductible). Mur « coûts d'échec et de requalification » = barrière à l'entrée. Un challenger doit cocher cinq cases (reproductibilité, productivité, intégration, maintenance, coût global). Un acteur installé dont l'étape disparaît avec une nouvelle architecture.",
+    "beats": [
+      "Le client achète une fonction et une fiabilité. La performance nominale d'un outil ne suffit pas : il faut qu'il fonctionne dans le procédé complet, avec les autres étapes, et avec une qualité reproductible.",
+      "Les coûts d'échec et de requalification peuvent créer des barrières à l'entrée.",
+      "Un challenger doit donc prouver plus qu'une bonne démonstration : reproductibilité, productivité, intégration, maintenance et coût global.",
+      "À l'inverse, un acteur installé peut perdre de la valeur si une nouvelle architecture réduit le besoin de son étape."
+    ]
+  },
+  {
+    "chapter": "La chaîne industrielle",
+    "title": "Une matrice simple de suivi",
+    "visual": "Matrice à trois colonnes (bottleneck → réponse possible → limite suivante en ambre) qui se remplit ligne par ligne, avec une flèche qui montre que chaque réponse déplace la contrainte.",
+    "beats": [
+      "Une matrice simple de suivi, en trois colonnes : le bottleneck, la réponse possible, et la limite suivante à surveiller.",
+      "Fuite et contrôle de grille : réponse par la géométrie et les matériaux ; limite suivante : le rendement et la difficulté de fabrication.",
+      "Puissance de commutation : réponse par une tension, une capacité et une activité réduites ; limite suivante : le délai, la stabilité et le débit réel.",
+      "Coût du die bon : réponse par une densité et un rendement améliorés ; limite suivante : le prix du wafer et le packaging.",
+      "Déplacement de données : réponse par la mémoire proche et l'architecture ; limite suivante : l'interconnexion et la chaleur."
+    ]
+  },
+  {
+    "chapter": "Ce que le marché peut mal interpréter",
+    "title": "Trois hypothèses à tester",
+    "visual": "Trois hypothèses, une à la fois, chacune avec un schéma et sa liste « À vérifier ». H1 : puce dont seule la logique rétrécit (mémoire, connexions, analogique moins). H2 : énergie par opération ↓ mais volume ↑ → consommation totale ? H3 : structure plus performante mais rendement, qualification, délais, investissement. Mention « pistes d'analyse, pas des erreurs établies ».",
+    "beats": [
+      "Ce que le marché peut mal interpréter : trois hypothèses à tester. Ce sont des pistes d'analyse, pas des erreurs du consensus établies.",
+      "Hypothèse 1 : le marché surestime un gain de densité. Une densité théorique plus élevée n'implique pas que toute la puce rétrécit dans la même proportion : la mémoire, les connexions et les zones analogiques peuvent évoluer différemment. À vérifier : la surface réelle, la répartition des blocs et le coût du die bon.",
+      "Hypothèse 2 : le marché confond efficacité et baisse de dépense totale. Réduire l'énergie par opération peut rendre les usages moins chers, et accroître leur volume. La consommation totale dépend à la fois de l'efficacité et de la demande. À vérifier : le travail utile par watt, et la quantité de travail demandée.",
+      "Hypothèse 3 : le marché sous-estime les coûts d'une transition. Une structure plus performante peut être plus difficile à produire. À vérifier : le rendement, la qualification, les délais, l'investissement et le coût du produit livré."
+    ]
+  },
+  {
+    "chapter": "Ce que le marché peut mal interpréter",
+    "title": "Scénarios favorables et défavorables",
+    "visual": "Comparaison en trois colonnes (thème / favorable en accent / défavorable en ambre) remplie ligne par ligne.",
+    "beats": [
+      "Scénarios favorables et défavorables, thème par thème.",
+      "Nouvelle génération de transistors. Favorable : des gains utiles et un rendement satisfaisant. Défavorable : un gain absorbé par le coût, la fuite ou les défauts.",
+      "Équipements plus sophistiqués. Favorable : des étapes additionnelles et une valeur élevée. Défavorable : une productivité qui réduit les besoins, ou un procédé remplacé.",
+      "Spécialisation du calcul. Favorable : moins d'énergie par tâche pertinente. Défavorable : une faible flexibilité, ou des coûts de développement non amortis.",
+      "Miniaturisation. Favorable : plus de fonctions à coût acceptable. Défavorable : le surcoût du wafer et les contraintes du système."
+    ]
+  },
+  {
+    "chapter": "Ce que le marché peut mal interpréter",
+    "title": "Les questions à poser à une annonce technique",
+    "visual": "Une « annonce » stylisée au centre ; cinq questions qui s'y accrochent une à une comme une grille de lecture. Puis Point analyste : l'unité finale du service vendu (coût par tâche, par token, par heure de calcul utile) et la chaîne transistor → … → service.",
+    "beats": [
+      "Les questions à poser à une annonce technique.",
+      "Le gain porte-t-il sur la puissance, l'énergie, la vitesse, la densité ou le coût ?",
+      "Quelles grandeurs sont maintenues constantes pendant la comparaison ?",
+      "Mesure-t-on un transistor, un circuit test, une puce livrée ou une application ?",
+      "Le gain inclut-il les fuites, les mémoires, les interconnexions et le refroidissement ?",
+      "Le produit est-il démontré, qualifié, ou produit en volume avec un rendement rentable ?",
+      "Point analyste. La bonne unité finale est celle du service vendu : coût par tâche, par token ou par heure de calcul utile, avec des contraintes de qualité explicites. Le transistor est un point de départ pour reconstruire ce résultat."
+    ]
+  },
+  {
+    "chapter": "Repères et glossaire",
+    "title": "Les repères",
+    "visual": "Équivalences en grand, une par une, avec compteurs et petits schémas : 1 GHz = 10⁹ cycles/s (période 1 ns) ; 1 nm = 10⁻⁹ m ; 1 fF = 10⁻¹⁵ F ; 1 ps = 10⁻¹² s ; 1 W = 1 J/s ; bande interdite ≈ 1,1 eV ; tension −10 % → V² −19 % ; pente idéale ≈ 60 mV par décade à 300 K. Chaque fois le « sens » en dessous.",
+    "beats": [
+      "Les repères à connaître.",
+      "Un gigahertz égale 10 puissance 9 cycles par seconde : une période de 1 nanoseconde. Ce n'est pas un milliard d'opérations garanties.",
+      "Un nanomètre égale 10 puissance moins 9 mètre. C'est une unité de longueur ; un nom de nœud n'est pas une dimension universelle.",
+      "Un femtofarad égale 10 puissance moins 15 farad : un ordre d'unité utile pour de petites capacités de circuit.",
+      "Une picoseconde égale 10 puissance moins 12 seconde : une unité utile pour certains délais élémentaires.",
+      "Un watt égale un joule par seconde : puissance et énergie sont différentes.",
+      "La bande interdite du silicium vaut environ 1,1 eV, à température ambiante.",
+      "Une tension réduite de 10 % réduit la composante V au carré de 19 %, les autres facteurs restant fixes.",
+      "Pente idéale : environ 60 mV par décade à 300 kelvins. C'est la limite thermionique conventionnelle sous le seuil, pas un seuil de tension."
+    ]
+  },
+  {
+    "chapter": "Repères et glossaire",
+    "title": "Le vocabulaire à savoir expliquer (1/2)",
+    "visual": "Glossaire en fiches : terme + définition courte + petit schéma rappel (dopage, trou, jonction PN, MOSFET, CMOS, VDD et Vth).",
+    "beats": [
+      "Le vocabulaire à savoir expliquer.",
+      "Dopage : l'incorporation contrôlée d'atomes modifiant les porteurs disponibles.",
+      "Trou : une absence d'électron se comportant comme un porteur positif.",
+      "Jonction PN : l'interface entre des régions de type p et de type n.",
+      "MOSFET : un transistor commandant un canal par le champ d'une grille isolée.",
+      "CMOS : l'association complémentaire de transistors de type n et de type p.",
+      "VDD et Vth : la tension d'alimentation, et la tension de seuil du transistor."
+    ]
+  },
+  {
+    "chapter": "Repères et glossaire",
+    "title": "Le vocabulaire à savoir expliquer (2/2)",
+    "visual": "Suite du glossaire en fiches (capacité C, fuite, PPA, FinFET et GAA, Moore et Dennard).",
+    "beats": [
+      "Capacité C : la charge nécessaire par volt ; elle coûte du temps et de l'énergie à commuter.",
+      "Fuite, ou leakage : un courant indésirable subsistant, notamment dans l'état bloqué.",
+      "PPA : Power Performance Area, c'est-à-dire puissance, performance et surface.",
+      "FinFET et GAA : des géométries améliorant le contrôle de la grille autour du canal.",
+      "Moore et Dennard : une trajectoire d'intégration, et un modèle physique de miniaturisation."
+    ]
+  },
+  {
+    "chapter": "Repères et glossaire",
+    "title": "Résumé investisseur",
+    "visual": "Chaîne en couches qui se construit : commande électrique → contrôle d'un courant → logique CMOS (charges déplacées) → budget électrique (V, C, α, f, fuites) → rendement et coût → progrès exploitable. Puis « + de transistors ≠ + de travail utile ≠ − de coût » et la démarche : gain au niveau système → part de valeur conservée par chaque entreprise.",
+    "beats": [
+      "Résumé investisseur. Le transistor convertit une commande électrique en contrôle d'un courant.",
+      "Les circuits CMOS réalisent la logique en déplaçant des charges.",
+      "La tension, la capacité, l'activité, la fréquence et les fuites déterminent une partie du budget électrique.",
+      "Le rendement et le coût de fabrication déterminent si le progrès est exploitable économiquement.",
+      "Davantage de transistors ne garantit ni davantage de travail utile, ni un coût inférieur. Cherche le gain au niveau du système, puis la part de valeur que chaque entreprise peut effectivement conserver."
+    ]
+  },
+  {
+    "chapter": "Sources",
+    "title": "Sources et approfondissements",
+    "visual": "Encadré de méthode (ressources universitaires, principes vs performances 2026, schémas originaux). Puis les 9 sources en fiches numérotées (organisme, titre, apport). Enfin « Pour aller plus loin après le test » (MIT lecture 11) et la mise en garde sur les équations.",
+    "beats": [
+      "Sources et approfondissements. Les fondamentaux physiques sont vérifiés à partir de ressources universitaires et de documentation technique. Les ressources anciennes restent pertinentes pour les principes ; elles ne constituent pas une preuve des performances ou des calendriers industriels de 2026. Les schémas de ce cours sont pédagogiques et originaux.",
+      "Sept sources viennent du cours MIT 6.012. Lecture 1, introduction aux semi-conducteurs : porteurs, silicium, dopage et transport. Lecture 4, électrostatique des jonctions p-n : zone appauvrie et équilibre de la jonction.",
+      "Lecture 9, capacités MOS : champ de grille et inversion. Lecture 14, bases de l'inverseur : inverseur et niveaux logiques. Lecture 15, circuits CMOS : délais et consommation. Lecture 16, la feuille de route de la miniaturisation CMOS : fuite sous le seuil et miniaturisation.",
+      "Source 6 : Texas Instruments, note SCAA035B, sur la consommation CMOS et le calcul de CPD : la distinction entre consommation statique et dynamique.",
+      "Source 8 : ASML, sur la loi de Moore : son histoire et sa portée. Source 9 : l'article fondateur de Dennard et de ses coauteurs, en 1974, Design of Ion Implanted MOSFETs With Very Small Physical Dimensions, référencé par IBM Research.",
+      "Pour aller plus loin après le test : la lecture 11 du cours MIT 6.012 détaille les modèles de courant du MOSFET. Les modèles de canal long sont des outils d'intuition ; leur application aux transistors modernes demande des modèles plus complets. Aucun résultat de valorisation ou de part de marché n'est déduit automatiquement de ces équations."
+    ]
+  },
+  {
+    "chapter": "Le test",
+    "title": "Partie A — Compréhension (25 points)",
+    "visual": "En-tête de partie avec barre 100 points (A 25 / B 30 / C 30 / D 15), consigne, puis A1 à A5 une par une avec leurs points. Questions seulement, aucune réponse.",
+    "beats": [
+      "Le test. Partie A, compréhension : 25 points, 5 points par question. Réponds sans regarder le cours lors de ta première tentative. Une définition courte accompagnée d'un mécanisme vaut mieux qu'un mot technique isolé.",
+      "A1, 5 points : pourquoi un semi-conducteur est-il utile pour fabriquer un interrupteur électronique ? Distingue sa fonction de celle d'un métal et d'un isolant.",
+      "A2, 5 points : explique le dopage de type n et de type p. Pourquoi un matériau de type n n'est-il pas globalement chargé négativement ?",
+      "A3, 5 points : à quoi servent la grille, l'isolant, la source et le drain d'un MOSFET ? D'où viennent les électrons qui traversent le canal ?",
+      "A4, 5 points : dans un inverseur CMOS, que deviennent le NMOS, le PMOS et la sortie lorsque l'entrée est haute ?",
+      "A5, 5 points : quelle différence fais-tu entre loi de Moore et scaling de Dennard ? Donne une chose que chacune ne garantit pas."
+    ]
+  },
+  {
+    "chapter": "Le test",
+    "title": "Partie B — Raisonnement (30 points)",
+    "visual": "En-tête de partie B, puis B1 à B3 une par une avec un petit schéma évocateur (tension ↓ ; transistors ×2 ; nouvelle géométrie → équipementiers). Questions seulement.",
+    "beats": [
+      "Partie B, raisonnement : 30 points, 10 points par question.",
+      "B1, 10 points : la tension d'alimentation baisse. Pourquoi la puissance dynamique peut-elle diminuer fortement ? Pourquoi ne peut-on pas continuer indéfiniment à réduire cette tension tout en conservant la même fréquence ?",
+      "B2, 10 points : une puce contient deux fois plus de transistors. Déroule trois raisons pour lesquelles son débit utile peut ne pas doubler. Relie au moins une raison au module 0.",
+      "B3, 10 points : une nouvelle géométrie de transistor améliore le contrôle de la grille. Explique comment elle peut créer une opportunité pour les équipementiers, et pourquoi cette opportunité ne garantit pas une hausse de leurs bénéfices."
+    ]
+  },
+  {
+    "chapter": "Le test",
+    "title": "Partie C — Applications chiffrées",
+    "visual": "En-tête « Partie C, cas C1 et C2, 20 points, chiffres fictifs ». C1 : tuiles de données (200 W dynamique, 50 W fixes, C −10 %, VDD −10 %, f +10 %, α inchangé) puis les trois questions a, b, c. C2 : deux wafers A et B avec leurs données, puis les questions a, b, c. Aucune réponse.",
+    "beats": [
+      "Partie C, applications chiffrées : cas C1 et C2, 20 points. Tous les chiffres sont fictifs. Écris les formules, les unités et les limites de tes conclusions.",
+      "C1, 10 points : tension, fréquence et puissance totale. Un bloc consomme initialement 200 watts en dynamique, et 50 watts en fuites et autres postes. La nouvelle version réduit C de 10 %, réduit VDD de 10 %, et augmente f de 10 %. L'activité alpha est inchangée. Les 50 watts restent fixes par hypothèse.",
+      "Question a : calcule le rapport des puissances dynamiques. Question b : calcule la nouvelle puissance totale et sa variation en pourcentage. Question c : pourquoi ne peut-on pas en déduire directement le nombre de tokens par seconde ?",
+      "C2, 10 points : densité, rendement et coût du die bon. Procédé A : un wafer à 18 000 euros, 120 dies bruts, un rendement de 80 %. Procédé B : un wafer à 24 000 euros, 160 dies bruts, un rendement de 70 %. On exclut packaging, test et conception.",
+      "Question a : calcule le coût wafer par die bon pour A et pour B. Question b : quel rendement de B permettrait d'égaler le coût de A, tout le reste inchangé ? Question c : donne une raison pour laquelle un client pourrait choisir B malgré un coût par die supérieur."
+    ]
+  },
+  {
+    "chapter": "Le test",
+    "title": "Partie C — Lecture critique et auto-diagnostic",
+    "visual": "C3 : une fausse « annonce » stylisée « +30 % de transistors, +25 % d'efficacité », titre boursier qui monte, puis les trois questions a, b, c. Ensuite trois lignes d'auto-diagnostic à compléter (mécanisme maîtrisé, notion confondue, question industrielle).",
+    "beats": [
+      "C3, 10 points : une annonce commerciale de nouvelle puce. Une entreprise annonce 30 % de transistors supplémentaires, et 25 % d'efficacité en plus. Le titre progresse. Tu ne disposes d'aucune autre information.",
+      "Question a : quelles informations demandes-tu pour définir précisément l'efficacité annoncée ? Question b : quels éléments techniques et industriels vérifies-tu avant d'en déduire une baisse du coût par token ? Question c : quel fournisseur indirect pourrait bénéficier du changement, par quel mécanisme, et avec quelle réserve ?",
+      "Avant la correction, fais ton auto-diagnostic. Note le mécanisme que tu peux expliquer sans notes, la notion que tu confonds encore, et la question industrielle que tu voudrais approfondir."
+    ]
+  },
+  {
+    "chapter": "Le test",
+    "title": "Partie D — Feynman et barème",
+    "visual": "Consigne D (plus de transistors ≠ plus rapide, moins énergivore ou moins coûteux). Trois cartes interlocuteurs D1, D2, D3 (5 points chacune). Barème 25 / 30 / 30 / 15 = 100 avec compteur. Échelle des notes (<60, 60–79, 80–89, 90–100). Suite : correction, reprise si < 80 avec 3 à 5 questions, sinon module 2.",
+    "beats": [
+      "Partie D, test de Feynman : 15 points, 5 points par explication. Explique pourquoi une puce contenant davantage de transistors n'est pas automatiquement plus rapide, moins énergivore, ou moins coûteuse à exploiter.",
+      "D1, 5 points : à un client non technique, en trois phrases, avec une analogie et sa limite.",
+      "D2, 5 points : à un analyste financier, en reliant physique, coût de fabrication et coût du service.",
+      "D3, 5 points : à un interlocuteur technique, en utilisant tension, capacité, fréquence, fuites et limites du système.",
+      "Le barème : compréhension 25, raisonnement 30, application analyste 30, Feynman 15. Total : 100.",
+      "Moins de 60 : insuffisant. De 60 à 79 : compréhension partielle. De 80 à 89 : module validé. De 90 à 100 : maîtrise solide.",
+      "Envoie tes réponses pour une correction question par question. Si la note est inférieure à 80, nous reprendrons les lacunes, puis ferons 3 à 5 questions ciblées. La prochaine étape du cursus est le module 2 : du silicium au wafer."
+    ]
+  },
+  {
+    "chapter": "Fin",
+    "title": "Fin du module 1",
+    "visual": "Carte de fin : « Module 1 terminé ». Rappel visuel du parcours (charges → bandes → dopage → MOSFET → CMOS → logique → énergie → système). Fil directeur en trois temps. Prochaine étape : module 2, du silicium au wafer.",
+    "beats": [
+      "Fin du module 1. Tu es passé du courant électrique aux calculs de l'IA : des charges et des bandes d'énergie, au transistor, puis à la logique et à son coût en énergie.",
+      "Garde le fil directeur : contrôler les charges, construire des circuits fiables, et faire davantage de travail utile dans un budget de puissance limité.",
+      "Réponds au test avec tes mots et tes calculs, puis envoie tes réponses. Le module 2 t'emmènera du silicium au wafer."
+    ]
+  }
+]
