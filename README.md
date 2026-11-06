@@ -36,3 +36,25 @@ un fichier App.jsx mis à jour → tu remplaces le fichier sur GitHub
 L'app utilise l'API Claude pour les mises à jour LIVE.
 Elle est intégrée automatiquement dans claude.ai.
 Si tu veux l'héberger séparément, contacte Claude pour adapter le code.
+
+## Onglet DESK — le papier « One-Person Hedge Fund » appliqué
+
+La partie calculable du papier *How to Build a One-Person Hedge Fund With Grok Bot* (sections III à VI).
+Pas d'agents autonomes, aucun ordre envoyé à un broker : l'app calcule, c'est toi qui exécutes.
+
+| Sous-onglet | Ce qu'il fait | Papier |
+|---|---|---|
+| LABO | Charge 5 ans / 10 ans / max de cours journaliers (Yahoo via `/api/history`, ou import CSV), backteste le *Desk Signal* (ruban EMA 8/21/50/200, cassure 20 barres, volume ≥ 1,5×, RSI > 50, filtre ATR) et passe les 7 gates de la table III : n ≥ 30, R_net hors échantillon > 0, Sharpe déflaté ≥ 0,95, walk-forward ≥ 70 % de fenêtres positives, dernière année positive, plateau de paramètres ±20 %, test de bruit (+1 barre, slippage ×2). Verdict : promotion au rung 1 ou cimetière. Export du Pine Script v6. | III, IV |
+| SIZING | Taille fixe-fractionnaire (13)–(14), Kelly/4 plafonné (15)–(16), fiche d'ordre au format fixe, Risk Officer avec veto (f_max, heat ≤ 5 %, positions max, résultats pendant la détention, corrélation > 0,7, doublon, tickers interdits). | V |
+| JOURNAL | Trades paper/live, exécution vs plan, R, leçon obligatoire. Kill switch (table V) recalculé en continu. | II.F, V.F |
+| ÉCHELLE | Échelle paper → live en 5 échelons (table VI), test de cohérence z (19), dérive sous le 5e percentile Monte Carlo, revue du dimanche, cimetière des idées. | VI |
+| RISQUE | Heat du desk (18), corrélation sur 1 an des lignes du portefeuille, volatilité σ_p (17), regroupement en « paris » à ρ > 0,7. | V.D |
+| RÈGLES | Desk Rules modifiables, sauvegarde / restauration JSON. | II.C |
+
+**Données de marché.** Une fois déployée sur Vercel, la fonction `api/history.js` récupère l'historique Yahoo Finance côté serveur.
+C'est un point d'accès non officiel : il peut être limité ou changer. Dans ce cas, ou en local (`npm run dev`), utilise le bouton CSV
+(export Yahoo, TradingView « Export chart data », Stooq ou Excel FR). Pour les titres européens, utilise le suffixe Yahoo (ENR.DE, MC.PA).
+
+**Sauvegarde.** Journal, échelle et cimetière vivent dans le navigateur (localStorage). Exporte-les régulièrement depuis RÈGLES.
+
+**Tests.** `npm test` (exemples chiffrés du papier, mécanique du backtest, DSR, CSV, Risk Officer, kill switch, échelle, API).

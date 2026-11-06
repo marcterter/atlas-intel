@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import DeskTab from "./desk/DeskTab.jsx";
 
 // ─── PORTFOLIO DATA (from screenshots March 16, 16:40) ────────────────────────
 const PORTFOLIO_DATA = {
@@ -222,27 +223,28 @@ Return ONLY valid JSON array no markdown:
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'DM Mono','Courier New',monospace",color:C.text,overflowX:"hidden"}}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:ital,wght@0,700;1,500&display=swap" rel="stylesheet"/>
+      <style>{"@media (max-width:700px){.atlas-header{position:static!important}}"}</style>
 
       {/* NOTIFICATION */}
       {notif&&<div style={{position:"fixed",top:20,right:20,zIndex:9999,background:notif.type==="err"?"#dc2626":"#059669",color:"#fff",padding:"10px 18px",borderRadius:8,fontSize:12,fontFamily:"inherit",boxShadow:"0 8px 30px rgba(0,0,0,0.5)",animation:"fadeIn 0.2s"}}>{notif.msg}</div>}
 
       {/* HEADER */}
-      <div style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(24px)",borderBottom:`1px solid ${C.amberBorder}`,padding:"14px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
+      <div className="atlas-header" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(24px)",borderBottom:`1px solid ${C.amberBorder}`,padding:"14px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10,position:"sticky",top:0,zIndex:100}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
           <div style={{width:3,height:36,background:"linear-gradient(180deg,#f59e0b,#d97706)",borderRadius:2}}/>
           <div>
             <div style={{fontFamily:"'Playfair Display',serif",fontSize:19,color:C.amber,letterSpacing:3}}>ATLAS INTEL</div>
             <div style={{fontSize:9,color:C.muted,letterSpacing:3}}>STOCK RESEARCH PLATFORM · {macro.date}</div>
           </div>
           {/* Macro ticker */}
-          <div style={{marginLeft:24,display:"flex",gap:12}}>
+          <div style={{marginLeft:24,display:"flex",gap:12,flexWrap:"wrap"}}>
             <span style={{fontSize:10,background:"rgba(239,68,68,0.1)",color:"#ef4444",padding:"3px 8px",borderRadius:4,border:"1px solid rgba(239,68,68,0.2)"}}>⚠️ ORMUZ {macro.ormuz}</span>
             <span style={{fontSize:10,background:"rgba(245,158,11,0.1)",color:C.amber,padding:"3px 8px",borderRadius:4,border:`1px solid ${C.amberBorder}`}}>BRENT {macro.brent}$</span>
             <span style={{fontSize:10,background:"rgba(16,185,129,0.1)",color:"#10b981",padding:"3px 8px",borderRadius:4,border:"1px solid rgba(16,185,129,0.2)"}}>OFC LA ✅ EN COURS</span>
           </div>
         </div>
-        <div style={{display:"flex",gap:5}}>
-          {["watchlist","portfolio","suggestions","earnings"].map(t=>(
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          {["watchlist","portfolio","suggestions","earnings","desk"].map(t=>(
             <button key={t} onClick={()=>setTab(t)} style={{background:tab===t?C.amberBg:"transparent",border:`1px solid ${tab===t?C.amberBorder:C.border}`,color:tab===t?C.amber:C.muted,padding:"6px 14px",borderRadius:6,cursor:"pointer",fontSize:10,fontFamily:"inherit",letterSpacing:1,textTransform:"uppercase"}}>{t}</button>
           ))}
         </div>
@@ -643,6 +645,9 @@ Return ONLY valid JSON array no markdown:
           </div>
         </div>
       )}
+
+      {/* ══ DESK : gates statistiques, sizing, kill switch, échelle paper → live ══ */}
+      {tab==="desk"&&<DeskTab portfolio={portfolio} stocks={stocks}/>}
 
       {/* ══ STOCK DETAIL MODAL ══ */}
       {selected&&(
