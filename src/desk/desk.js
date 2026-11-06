@@ -6,11 +6,11 @@ import { parseFrenchDate, addBusinessDays, businessDaysBetween, daysBetween } fr
 
 /** Table VI — the paper-to-live promotion ladder. */
 export const RUNGS = [
-  { n: 1, name: "Paper", condition: "2 semaines, tous les trades journalisés", capital: "Simulé", sizeFactor: 1, mode: "paper" },
-  { n: 2, name: "Match", condition: "Paper cohérent avec le backtest : n ≥ 20 et z > −2 (19)", capital: "Simulé", sizeFactor: 1, mode: "paper" },
-  { n: 3, name: "Live tiny", condition: "≥ 5 exécutions propres, aucune violation", capital: "10 % du plan", sizeFactor: 0.1, mode: "live" },
-  { n: 4, name: "Approval gate", condition: "≥ 10 ordres, chacun approuvé par l'opérateur", capital: "Taille prévue", sizeFactor: 1, mode: "live" },
-  { n: 5, name: "Full rules", condition: "Des semaines de journal propre", capital: "Taille prévue", sizeFactor: 1, mode: "live" },
+  { n: 1, name: "Simulation", condition: "2 semaines, toutes les opérations journalisées", capital: "Simulé", sizeFactor: 1, mode: "paper" },
+  { n: 2, name: "Concordance", condition: "Simulation cohérente avec le backtest : n ≥ 20 et z > −2 (19)", capital: "Simulé", sizeFactor: 1, mode: "paper" },
+  { n: 3, name: "Réel réduit", condition: "≥ 5 exécutions propres, aucune violation", capital: "10 % du plan", sizeFactor: 0.1, mode: "live" },
+  { n: 4, name: "Validation manuelle", condition: "≥ 10 ordres, chacun approuvé par l'opérateur", capital: "Taille prévue", sizeFactor: 1, mode: "live" },
+  { n: 5, name: "Règles complètes", condition: "Des semaines de journal propre", capital: "Taille prévue", sizeFactor: 1, mode: "live" },
 ];
 
 /** Section II.C — the Desk Rules every decision is checked against. */
@@ -77,14 +77,14 @@ export function riskOfficer({ order, rules, journal, stocks = [], corr = null, t
   const risk = qty * Math.abs(entry - stop);
   const riskFrac = E > 0 ? risk / E : NaN;
   if (riskFrac > rules.fMax * (1 + 1e-6)) vetoes.push(`Risque ${(riskFrac * 100).toFixed(2)} % > f_max ${(rules.fMax * 100).toFixed(2)} % (16).`);
-  if (order.side === "short" && /pas de vente à découvert/i.test(rules.markets || "")) vetoes.push("Vente à découvert exclue par les Desk Rules.");
+  if (order.side === "short" && /pas de vente à découvert/i.test(rules.markets || "")) vetoes.push("Vente à découvert exclue par les règles du desk.");
   if (forbiddenList(rules).includes(tk)) vetoes.push(`${tk} figure dans la liste des instruments interdits.`);
 
   const open = openTrades(journal).filter((t) => t.id !== order.id);
   if (open.length + 1 > rules.maxOpen) vetoes.push(`${open.length} positions ouvertes : maximum ${rules.maxOpen}.`);
   const openRisk = sum(open.map((t) => tradeMetrics(t, rules).openRisk));
   const heatAfter = E > 0 ? (openRisk + risk) / E : NaN;
-  if (heatAfter > rules.heatMax * (1 + 1e-6)) vetoes.push(`Heat après l'ordre ${(heatAfter * 100).toFixed(2)} % > H_max ${(rules.heatMax * 100).toFixed(1)} % (18).`);
+  if (heatAfter > rules.heatMax * (1 + 1e-6)) vetoes.push(`Risque ouvert après l'ordre ${(heatAfter * 100).toFixed(2)} % > H_max ${(rules.heatMax * 100).toFixed(1)} % (18).`);
 
   if (target > 0) {
     if (dir * (target - entry) <= 0) warnings.push("Objectif du mauvais côté de l'entrée.");
@@ -160,24 +160,24 @@ export function advanceCheck(strategy, health, journal, rules, today) {
   switch (rung) {
     case 1:
       return days >= 14
-        ? { ok: true, confirm: "Confirmes-tu que chaque trade paper de ces 2 semaines est dans le journal ?" }
-        : { ok: false, why: `${days} j / 14 j en paper.` };
+        ? { ok: true, confirm: "Confirmes-tu que chaque opération simulée de ces 2 semaines est dans le journal ?" }
+        : { ok: false, why: `${days} j / 14 j en simulation.` };
     case 2: {
       const { n, z } = health.z;
-      if (n < 20) return { ok: false, why: `${n} / 20 trades paper clôturés.` };
-      if (!(z > -2)) return { ok: false, why: `z = ${isNum(z) ? z.toFixed(2) : "—"} ≤ −2 : le paper détruit l'edge du backtest. Retour au labo.`, fail: true };
+      if (n < 20) return { ok: false, why: `${n} / 20 opérations simulées clôturées.` };
+      if (!(z > -2)) return { ok: false, why: `z = ${isNum(z) ? z.toFixed(2) : "—"} ≤ −2 : la simulation détruit l'avantage du backtest. Retour au labo.`, fail: true };
       return { ok: true };
     }
     case 3: {
       const live = atRung.filter((t) => t.mode === "live" && t.status === "closed");
       const dirty = live.filter((t) => (tradeMetrics(t, rules).slippage ?? 0) > rules.maxSlippage || !t.approved);
-      if (live.length < 5) return { ok: false, why: `${live.length} / 5 trades live clôturés à ce rung.` };
+      if (live.length < 5) return { ok: false, why: `${live.length} / 5 opérations réelles clôturées à cet échelon.` };
       if (dirty.length) return { ok: false, why: `${dirty.length} exécution(s) hors tolérance ou non approuvée(s).` };
       return { ok: true };
     }
     case 4: {
       const done = atRung.filter((t) => t.status === "closed");
-      if (done.length < 10) return { ok: false, why: `${done.length} / 10 ordres clôturés à ce rung.` };
+      if (done.length < 10) return { ok: false, why: `${done.length} / 10 ordres clôturés à cet échelon.` };
       if (done.some((t) => !t.operatorApproved)) return { ok: false, why: "Au moins un ordre sans approbation de l'opérateur." };
       return { ok: true };
     }
@@ -210,9 +210,9 @@ export function killSwitch({ journal, rules, today, dataset, strategies = [] }) 
   const forb = forbiddenList(rules);
   const breaches = [
     open.length > rules.maxOpen && `${open.length} positions ouvertes > ${rules.maxOpen}`,
-    heat > rules.heatMax * (1 + 1e-6) && `heat ${(heat * 100).toFixed(2)} % > ${(rules.heatMax * 100).toFixed(1)} %`,
+    heat > rules.heatMax * (1 + 1e-6) && `risque ouvert ${(heat * 100).toFixed(2)} % > ${(rules.heatMax * 100).toFixed(1)} %`,
     ...open.filter((t) => m(t).risk / E > rules.fMax * (1 + 1e-6)).map((t) => `${t.ticker} risque ${((m(t).risk / E) * 100).toFixed(2)} %`),
-    ...open.filter((t) => t.mode === "live" && !t.approved).map((t) => `${t.ticker} live sans tampon APPROVED`),
+    ...open.filter((t) => t.mode === "live" && !t.approved).map((t) => `${t.ticker} réel sans tampon APPROUVÉ`),
     ...open.filter((t) => forb.includes(String(t.ticker).toUpperCase())).map((t) => `${t.ticker} interdit`),
   ].filter(Boolean);
 
@@ -221,16 +221,16 @@ export function killSwitch({ journal, rules, today, dataset, strategies = [] }) 
   return [
     { id: "daily", trigger: "Perte du jour", threshold: `≥ ${(rules.maxDailyLoss * 100).toFixed(1)} % du capital`, action: "Tout clôturer, pause du desk",
       value: `${(dayLoss * 100).toFixed(2)} %`, fired: dayLoss >= rules.maxDailyLoss },
-    { id: "streak", trigger: "Série de pertes", threshold: `${rules.streak} d'affilée`, action: "Pause du Trader",
+    { id: "streak", trigger: "Série de pertes", threshold: `${rules.streak} d'affilée`, action: "Plus aucun nouvel ordre",
       value: `${streak} perte(s) consécutive(s)`, fired: streak >= rules.streak },
     { id: "stale", trigger: "Données périmées", threshold: `Pas de MAJ depuis ${rules.staleBars} barres`, action: "Annuler tous les ordres",
       value: staleBy == null ? "aucune donnée chargée" : `dernière barre ${lastBar} (${staleBy} séance(s))${staleBy > rules.staleBars && !open.length ? " · sans position ouverte" : ""}`,
       fired: staleBy != null && staleBy > rules.staleBars && open.length > 0, na: staleBy == null },
-    { id: "slip", trigger: "Slippage", threshold: `Exécution > ${(rules.maxSlippage * 100).toFixed(1)} % du plan`, action: "Pause, revue",
-      value: slipped.length ? slipped.map((t) => `${t.ticker} ${((m(t).slippage) * 100).toFixed(2)} %`).join(", ") : "OK", fired: slipped.length > 0 },
-    { id: "breach", trigger: "Violation de règle", threshold: "Tout écart aux Desk Rules", action: "Geler le desk",
+    { id: "slip", trigger: "Glissement", threshold: `Exécution > ${(rules.maxSlippage * 100).toFixed(1)} % du plan`, action: "Pause, revue",
+      value: slipped.length ? slipped.map((t) => `${t.ticker} ${((m(t).slippage) * 100).toFixed(2)} %`).join(", ") : "RAS", fired: slipped.length > 0 },
+    { id: "breach", trigger: "Violation de règle", threshold: "Tout écart aux règles du desk", action: "Geler le desk",
       value: breaches.length ? breaches.join(" · ") : "aucune", fired: breaches.length > 0 },
-    { id: "drift", trigger: "Dérive de stratégie", threshold: "Sous le 5e pct Monte Carlo", action: "Rétrograder la stratégie",
+    { id: "drift", trigger: "Dérive de stratégie", threshold: "Sous le 5e centile Monte Carlo", action: "Rétrograder la stratégie",
       value: drifting.length ? drifting.map((s) => s.name).join(", ") : "aucune", fired: drifting.length > 0 },
   ];
 }

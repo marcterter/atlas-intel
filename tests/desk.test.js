@@ -74,7 +74,7 @@ test("Risk Officer: approves a clean card, vetoes risk, earnings, heat and dupli
   const open = (id, ticker) => ({ id, ticker, side: "long", planEntry: 50, stop: 48, qty: 50, status: "open", approved: true, mode: "paper", date: today });
   const journal = [open("1", "CCC"), open("2", "DDD"), open("3", "EEE"), open("4", "FFF")];
   const heat = riskOfficer({ order: { ticker: "BBB", side: "long", entry: 50, stop: 48, target: 54, qty: 50 }, rules: { ...rules, heatMax: 0.045 }, journal, stocks, today });
-  assert.ok(!heat.approved && /Heat/.test(heat.vetoes.join()));
+  assert.ok(!heat.approved && /Risque ouvert après/.test(heat.vetoes.join()));
   const dup = riskOfficer({ order: { ticker: "CCC", side: "long", entry: 50, stop: 48, target: 54, qty: 10 }, rules, journal, stocks, today });
   assert.ok(/déjà ouverte/.test(dup.vetoes.join()));
   const corr = { tickers: ["BBB", "CCC"], matrix: [[1, 0.85], [0.85, 1]] };

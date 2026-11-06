@@ -32,6 +32,7 @@ export const fmtNum = (x, d = 2) => (fin(x) ? group(x, d) : "—");
 export const fmtInt = (x) => (fin(x) ? group(Math.round(x), 0) : "—");
 export const tone = (x) => (fin(x) ? (x > 0 ? C.green : x < 0 ? C.red : C.sub) : C.muted);
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+export const modeLabel = (m) => (m === "live" ? "réel" : "simulé");
 
 export function Card({ title, right, accent = C.border, children, style }) {
   return (

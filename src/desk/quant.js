@@ -407,13 +407,13 @@ export function runLab(bars, base, opts = {}) {
   const latestTrades = full.bt.trades.filter((t) => t.exitIdx >= end - k).length;
 
   const gates = [
-    { id: "count", label: "Nombre de trades", threshold: "n ≥ 30", value: full.ts.n, pass: full.ts.n >= 30, purpose: "Sens statistique" },
+    { id: "count", label: "Nombre d'opérations", threshold: "n ≥ 30", value: full.ts.n, pass: full.ts.n >= 30, purpose: "Sens statistique" },
     { id: "oos", label: "Hors échantillon", threshold: "R_net > 0", value: wf.oosStats.Rnet, pass: wf.oosStats.n > 0 && wf.oosStats.Rnet > 0, purpose: "Profit après coûts" },
     { id: "dsr", label: "Sharpe déflaté", threshold: "DSR ≥ 0.95", value: dsr.dsr, pass: dsr.dsr >= 0.95, purpose: "Correction de la chance" },
     { id: "wf", label: "Walk-forward", threshold: "≥ 70 % fenêtres +", value: wf.positiveShare, pass: wf.activeWindows >= 3 && wf.positiveShare >= 0.7, purpose: "Stabilité" },
     { id: "year", label: "Dernière année", threshold: "Positive", value: latestYear, pass: latestYear > 0, purpose: "Régime actuel" },
     { id: "plateau", label: "Plateau de paramètres", threshold: "Voisins à 20 %", value: plateau.neighbours.length ? Math.min(...plateau.neighbours.map((x) => x.sharpe)) : NaN, pass: plateau.pass, purpose: "Pas de réglage chanceux" },
-    { id: "noise", label: "Test de bruit", threshold: "+1 barre, 2× slippage", value: noise.ts.Rnet, pass: noise.ts.n > 0 && noise.ts.Rnet > 0, purpose: "Friction réelle" },
+    { id: "noise", label: "Test de bruit", threshold: "+1 barre, glissement ×2", value: noise.ts.Rnet, pass: noise.ts.n > 0 && noise.ts.Rnet > 0, purpose: "Friction réelle" },
   ];
   const historyOK = span >= MIN_HISTORY_BARS;
   const c0 = ctx.c[start];

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { positionSize, kellyFraction, cappedFraction } from "./quant.js";
 import { todayISO } from "./data.js";
 import { riskOfficer, RUNGS } from "./desk.js";
-import { C, Card, KpiRow, Btn, Field, Num, Grid, Note, Pill, fmtPct, fmtNum, inputStyle, usePersistent, uid, copyText } from "./ui.jsx";
+import { C, Card, KpiRow, Btn, Field, Num, Grid, Note, Pill, fmtPct, fmtNum, inputStyle, usePersistent, uid, copyText, modeLabel } from "./ui.jsx";
 
 const INIT = { ticker: "", side: "long", entry: "", mode: "atr", stop: "", atr: "", k: 2, targetR: 2, useKelly: true, p: "", b: "",
   strategyId: "", fractional: false, liveMode: "paper", rationale: "" };
@@ -45,24 +45,24 @@ export default function Sizing({ rules, lab, journal, setJournal, strategies, st
   const ro = size && qty > 0 ? riskOfficer({ order, rules, journal, stocks, corr, today }) : null;
 
   const emptyCard = !(entry > 0) || !(D > 0) || !s.ticker ? "Renseigne ticker, entrée et stop."
-    : f === 0 ? "Taille nulle : f = 0, pas d'edge hors échantillon. Rien à trader."
+    : f === 0 ? "Taille nulle : f = 0, pas d'avantage hors échantillon. Rien à prendre."
       : "Taille inférieure à une action.";
   const card = [
-    `TICKER     ${order.ticker}`,
-    `SIDE       ${s.side === "short" ? "VENTE" : "ACHAT"} (${mode === "paper" ? "paper" : "live"})`,
-    `ENTRY      ${fmtNum(entry)}`,
-    `STOP       ${fmtNum(stop)}${s.mode === "atr" ? `  (${s.k} × ATR14 ${fmtNum(Number(s.atr))})` : ""}`,
-    `TARGET     ${fmtNum(target)}  (${s.targetR} R)`,
-    `SIZE       ${qty} (${fmtNum(notional, 0)} = ${fmtPct(notional / rules.equity, 1, false)} du capital)${factor < 1 ? "  · rung 3 : 10 % du plan" : ""}`,
-    `RISK       ${fmtNum(risk, 0)} = ${fmtPct(risk / rules.equity, 2, false)} du capital`,
-    `RATIONALE  ${s.rationale || "—"}`,
-    ro ? (ro.approved ? "RISK OFFICER  APPROVED" : `RISK OFFICER  VETO : ${ro.vetoes.join(" ")}`) : "",
+    `TITRE          ${order.ticker}`,
+    `SENS           ${s.side === "short" ? "VENTE" : "ACHAT"} (${modeLabel(mode)})`,
+    `ENTRÉE         ${fmtNum(entry)}`,
+    `STOP           ${fmtNum(stop)}${s.mode === "atr" ? `  (${s.k} × ATR14 ${fmtNum(Number(s.atr))})` : ""}`,
+    `OBJECTIF       ${fmtNum(target)}  (${s.targetR} R)`,
+    `TAILLE         ${qty} (${fmtNum(notional, 0)} = ${fmtPct(notional / rules.equity, 1, false)} du capital)${factor < 1 ? "  · échelon 3 : 10 % du plan" : ""}`,
+    `RISQUE         ${fmtNum(risk, 0)} = ${fmtPct(risk / rules.equity, 2, false)} du capital`,
+    `JUSTIFICATION  ${s.rationale || "—"}`,
+    ro ? (ro.approved ? "CONTRÔLE       APPROUVÉ" : `CONTRÔLE       VETO : ${ro.vetoes.join(" ")}`) : "",
   ].join("\n");
 
   const log = () => {
     if (!ro?.approved) return;
     const live = mode === "live";
-    if (live && !window.confirm(`Ordre LIVE ${order.ticker} : c'est toi qui le passes chez ton broker. Tu l'approuves ?`)) return;
+    if (live && !window.confirm(`Ordre RÉEL ${order.ticker} : c'est toi qui le passes chez ton courtier. Tu l'approuves ?`)) return;
     setJournal((j) => [...j, {
       id: uid(), date: today, ticker: order.ticker, side: s.side, mode, strategyId: strat?.id || null, rung: strat?.rung ?? null,
       planEntry: entry, stop: +stop.toFixed(4), target: Number.isFinite(target) ? +target.toFixed(4) : "", qty,
@@ -75,7 +75,7 @@ export default function Sizing({ rules, lab, journal, setJournal, strategies, st
     <div>
       <Card title="ORDRE À DIMENSIONNER" right={<Btn small onClick={fromLab} disabled={!lab} title={lab ? "" : "Lance d'abord un backtest dans LABO"}>⤓ DEPUIS LE LABO{lab ? ` (${lab.symbol})` : ""}</Btn>}>
         <Grid min={125}>
-          <Field label="TICKER"><input value={s.ticker} onChange={(e) => set("ticker")(e.target.value.toUpperCase())} style={inputStyle} placeholder="NVDA" /></Field>
+          <Field label="TITRE"><input value={s.ticker} onChange={(e) => set("ticker")(e.target.value.toUpperCase())} style={inputStyle} placeholder="NVDA" /></Field>
           <Field label="SENS">
             <select value={s.side} onChange={(e) => set("side")(e.target.value)} style={{ ...inputStyle, background: "#0d0f16" }}>
               <option value="long">Achat</option><option value="short">Vente</option>
@@ -97,26 +97,26 @@ export default function Sizing({ rules, lab, journal, setJournal, strategies, st
           <Field label="STRATÉGIE">
             <select value={s.strategyId} onChange={(e) => set("strategyId")(e.target.value)} style={{ ...inputStyle, background: "#0d0f16" }}>
               <option value="">Discrétionnaire</option>
-              {strategies.filter((x) => x.status === "active").map((x) => <option key={x.id} value={x.id}>{x.name} · rung {x.rung}</option>)}
+              {strategies.filter((x) => x.status === "active").map((x) => <option key={x.id} value={x.id}>{x.name} · échelon {x.rung}</option>)}
             </select>
           </Field>
           {!strat && (
             <Field label="MODE">
               <select value={s.liveMode} onChange={(e) => set("liveMode")(e.target.value)} style={{ ...inputStyle, background: "#0d0f16" }}>
-                <option value="paper">Paper</option><option value="live">Live</option>
+                <option value="paper">Simulé</option><option value="live">Réel</option>
               </select>
             </Field>
           )}
         </Grid>
-        <Field label="RATIONALE (une phrase : l'edge, pourquoi maintenant)" style={{ marginTop: 8 }}>
+        <Field label="JUSTIFICATION (une phrase : l'avantage, pourquoi maintenant)" style={{ marginTop: 8 }}>
           <input value={s.rationale} onChange={(e) => set("rationale")(e.target.value)} style={inputStyle} placeholder="Cassure 20 j sur volume 1,8×, ruban EMA aligné, RSI 61" />
         </Field>
       </Card>
 
       <Card title="KELLY FRACTIONNAIRE — PLAFOND, JAMAIS CIBLE (15)–(16)">
         <Grid min={125}>
-          <Field label="TAUX DE GAIN p (OOS)"><Num value={s.p} onChange={set("p")} placeholder="0.55" /></Field>
-          <Field label="PAYOFF b (OOS)"><Num value={s.b} onChange={set("b")} placeholder="1.5" /></Field>
+          <Field label="TAUX DE GAIN p (HORS ÉCH.)"><Num value={s.p} onChange={set("p")} placeholder="0.55" /></Field>
+          <Field label="GAIN/PERTE b (HORS ÉCH.)"><Num value={s.b} onChange={set("b")} placeholder="1.5" /></Field>
           <Field label="APPLIQUER">
             <select value={s.useKelly ? "1" : "0"} onChange={(e) => set("useKelly")(e.target.value === "1")} style={{ ...inputStyle, background: "#0d0f16" }}>
               <option value="1">Oui</option><option value="0">Non</option>
@@ -131,28 +131,28 @@ export default function Sizing({ rules, lab, journal, setJournal, strategies, st
         <Note>
           f* = p − (1 − p)/b = <b style={{ color: C.text }}>{kellyOK ? fmtPct(fStar, 2) : "—"}</b> · f*/4 = {kellyOK ? fmtPct(fStar / 4, 2) : "—"} ·
           f = min(f*/4, f_max = {fmtPct(fRules, 2, false)}) = <b style={{ color: C.amber }}>{fmtPct(f, 2, false)}</b>
-          {kellyOK && fStar <= 0 && <span style={{ color: C.red }}> → pas d'edge hors échantillon : ne pas trader.</span>}
-          {!kellyOK && " (sans p et b issus de trades hors échantillon, f = f_max des Desk Rules)"}
+          {kellyOK && fStar <= 0 && <span style={{ color: C.red }}> → pas d'avantage hors échantillon : ne pas prendre position.</span>}
+          {!kellyOK && " (sans p et b issus d'opérations hors échantillon, f = f_max des règles du desk)"}
         </Note>
       </Card>
 
       <KpiRow min={115} items={[
         { l: "DISTANCE AU STOP", v: D > 0 ? fmtNum(D) : "—", s: entry > 0 && D > 0 ? fmtPct(D / entry, 2, false) : "" },
-        { l: "QUANTITÉ q (13)", v: size ? (s.fractional ? fmtNum(qty, 3) : qty) : "—", c: C.amber, s: size ? `exact ${fmtNum(size.q, 3)}${factor < 1 ? " · ×10 % rung 3" : ""}` : "" },
+        { l: "QUANTITÉ q (13)", v: size ? (s.fractional ? fmtNum(qty, 3) : qty) : "—", c: C.amber, s: size ? `exacte ${fmtNum(size.q, 3)}${factor < 1 ? " · ×10 % échelon 3" : ""}` : "" },
         { l: "NOTIONNEL", v: size ? fmtNum(notional, 0) : "—", s: size ? `${fmtPct(notional / rules.equity, 1, false)} du capital` : "" },
         { l: "PERTE MAX AU STOP", v: size ? fmtNum(risk, 0) : "—", c: C.red, s: size ? fmtPct(risk / rules.equity, 2, false) : "" },
         { l: "OBJECTIF", v: fmtNum(target), c: C.green },
       ]} />
-      {size && qty === 0 && f > 0 && <Note color={C.orange}>Taille inférieure à une action : active les fractions ou laisse passer ce trade.</Note>}
+      {size && qty === 0 && f > 0 && <Note color={C.orange}>Taille inférieure à une action : active les fractions ou laisse passer cette opération.</Note>}
       {size && notional > rules.equity && <Note color={C.orange}>Le notionnel dépasse le capital : stop trop serré pour un compte sans levier.</Note>}
 
       {ro && (
-        <Card title="RISK OFFICER" accent={ro.approved ? "rgba(16,185,129,0.35)" : "rgba(239,68,68,0.35)"}
-          right={<Pill color={ro.approved ? C.green : C.red}>{ro.approved ? "APPROVED" : "VETO"}</Pill>}>
+        <Card title="CONTRÔLE DES RISQUES" accent={ro.approved ? "rgba(16,185,129,0.35)" : "rgba(239,68,68,0.35)"}
+          right={<Pill color={ro.approved ? C.green : C.red}>{ro.approved ? "APPROUVÉ" : "VETO"}</Pill>}>
           {ro.vetoes.map((v) => <Note key={v} color={C.red}>✗ {v}</Note>)}
           {ro.warnings.map((v) => <Note key={v} color={C.orange}>⚠ {v}</Note>)}
-          {ro.approved && !ro.warnings.length && <Note color={C.green}>Conforme aux Desk Rules.</Note>}
-          <Note>Heat après l'ordre : {fmtPct(ro.heatAfter, 2, false)} / {fmtPct(rules.heatMax, 1, false)} · détention prévue jusqu'au {ro.holdEnd}.</Note>
+          {ro.approved && !ro.warnings.length && <Note color={C.green}>Conforme aux règles du desk.</Note>}
+          <Note>Risque ouvert après l'ordre : {fmtPct(ro.heatAfter, 2, false)} / {fmtPct(rules.heatMax, 1, false)} · détention prévue jusqu'au {ro.holdEnd}.</Note>
         </Card>
       )}
 
@@ -162,9 +162,9 @@ export default function Sizing({ rules, lab, journal, setJournal, strategies, st
           <Btn small t="green" onClick={log} disabled={!ro?.approved}>→ JOURNAL</Btn>
         </div>}>
         <pre style={{ fontSize: 11, color: ro?.approved ? C.text : C.sub, background: "rgba(0,0,0,0.35)", padding: 12, borderRadius: 6, overflowX: "auto", margin: 0, fontFamily: "inherit", lineHeight: 1.6 }}>{ro ? card : emptyCard}</pre>
-        <Note>Sans tampon APPROVED, la fiche ne peut pas entrer au journal (II.E). Le silence vaut refus : rien n'est envoyé au broker depuis l'app.</Note>
+        <Note>Sans tampon APPROUVÉ, la fiche ne peut pas entrer au journal (II.E). Le silence vaut refus : rien n'est envoyé au courtier depuis l'app.</Note>
       </Card>
-      {rung && <Note>Stratégie au rung {rung.n} « {rung.name} » : capital {rung.capital.toLowerCase()}, mode {rung.mode}.</Note>}
+      {rung && <Note>Stratégie à l'échelon {rung.n} « {rung.name} » : capital {rung.capital.toLowerCase()}, mode {modeLabel(rung.mode)}.</Note>}
     </div>
   );
 }

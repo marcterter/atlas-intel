@@ -50,7 +50,7 @@ export default function DeskTab({ portfolio, stocks }) {
         <div>
           <div style={{ fontFamily: serif, fontSize: 22, color: C.amber }}>Desk</div>
           <div style={{ fontSize: 11, color: C.muted, marginTop: 4, maxWidth: 720, lineHeight: 1.6 }}>
-            Hypothèse → 7 gates statistiques → taille au risque → Risk Officer → journal → échelle paper-to-live.
+            Hypothèse → 7 tests statistiques → taille au risque → contrôle des risques → journal → échelle de la simulation au réel.
             Une stratégie n'est « rentable » que si elle reste positive après coûts hors échantillon, survit au Sharpe déflaté et tient en walk-forward.
           </div>
         </div>
@@ -58,21 +58,21 @@ export default function DeskTab({ portfolio, stocks }) {
 
       {fired.length > 0 && (
         <div onClick={() => setSub("journal")} style={{ cursor: "pointer", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.45)", borderRadius: 8, padding: "10px 16px", marginBottom: 12, fontSize: 11, color: C.red }}>
-          🛑 KILL SWITCH : {fired.map((k) => `${k.trigger} → ${k.action}`).join(" · ")}
+          🛑 COUPE-CIRCUIT : {fired.map((k) => `${k.trigger} → ${k.action}`).join(" · ")}
         </div>
       )}
 
       <KpiRow min={120} items={[
-        { l: "KILL SWITCH", v: fired.length ? `${fired.length} actif(s)` : "Armé", c: fired.length ? C.red : C.green },
-        { l: "HEAT (18)", v: fmtPct(heat, 2, false), s: `max ${fmtPct(rulesFull.heatMax, 1, false)}`, c: heat > rulesFull.heatMax ? C.red : C.amber },
+        { l: "COUPE-CIRCUIT", v: fired.length ? `${fired.length} actif(s)` : "Armé", c: fired.length ? C.red : C.green },
+        { l: "RISQUE OUVERT (18)", v: fmtPct(heat, 2, false), s: `max ${fmtPct(rulesFull.heatMax, 1, false)}`, c: heat > rulesFull.heatMax ? C.red : C.amber },
         { l: "POSITIONS DESK", v: `${open.length} / ${rulesFull.maxOpen}` },
-        { l: "SUR L'ÉCHELLE", v: active.length, s: active.length ? active.map((s) => `R${s.rung}`).join(" ") : "aucune" },
+        { l: "SUR L'ÉCHELLE", v: active.length, s: active.length ? active.map((s) => `É${s.rung}`).join(" ") : "aucune" },
         { l: "CIMETIÈRE", v: buried, s: `${runs.length} idée(s) testée(s)` },
         { l: "DERNIER LABO", v: lab ? `${lab.gates.filter((g) => g.pass).length}/7` : "—", s: lab ? lab.symbol : "", c: lab ? (lab.pass ? C.green : C.red) : C.muted },
       ]} />
 
       <SubTabs value={sub} onChange={setSub} tabs={[
-        ["labo", "Labo"], ["sizing", "Sizing"], ["journal", "Journal", fired.length > 0], ["echelle", "Échelle"], ["risque", "Risque"], ["regles", "Règles"],
+        ["labo", "Labo"], ["sizing", "Taille"], ["journal", "Journal", fired.length > 0], ["echelle", "Échelle"], ["risque", "Risque"], ["regles", "Règles"],
       ]} />
 
       {sub === "labo" && <Lab {...common} dataset={dataset} setDataset={setDataset} lab={lab} setLab={setLab} setStrategies={setStrategies} runs={runs} setRuns={setRuns} portfolio={portfolio} />}

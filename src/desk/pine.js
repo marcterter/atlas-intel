@@ -23,13 +23,13 @@ rsi   = ta.rsi(close, 14)
 buy   = up and close > ta.highest(high, brkLen)[1] and volOK and rsi > 50 and calm
 sell  = dn and close < ta.lowest(low, brkLen)[1] and volOK and rsi < 50 and calm
 
-plotshape(buy,  "BUY",  shape.labelup,   location.belowbar, color.new(color.green, 0), text="BUY",  textcolor=color.white)
-plotshape(sell, "SELL", shape.labeldown, location.abovebar, color.new(color.red, 0),   text="SELL", textcolor=color.white)
+plotshape(buy,  "ACHAT", shape.labelup,   location.belowbar, color.new(color.green, 0), text="ACHAT", textcolor=color.white)
+plotshape(sell, "VENTE", shape.labeldown, location.abovebar, color.new(color.red, 0),   text="VENTE", textcolor=color.white)
 plot(buy  ? close - stopK * atr : na, "Stop (achat)",     color.red,   style=plot.style_circles, linewidth=2)
 plot(buy  ? close + tgtR * stopK * atr : na, "Objectif (achat)", color.green, style=plot.style_circles, linewidth=2)
 plot(sell ? close + stopK * atr : na, "Stop (vente)",     color.red,   style=plot.style_circles, linewidth=2)
 plot(sell ? close - tgtR * stopK * atr : na, "Objectif (vente)", color.green, style=plot.style_circles, linewidth=2)
-alertcondition(buy,  "Desk BUY",  "Desk Signal BUY {{ticker}} @ {{close}}")
-alertcondition(sell, "Desk SELL", "Desk Signal SELL {{ticker}} @ {{close}}")
+alertcondition(buy,  "Desk ACHAT", "Desk Signal ACHAT {{ticker}} @ {{close}}")
+alertcondition(sell, "Desk VENTE", "Desk Signal VENTE {{ticker}} @ {{close}}")
 `;
 }

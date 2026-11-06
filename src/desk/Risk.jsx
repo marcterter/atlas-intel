@@ -2,7 +2,7 @@ import { useState } from "react";
 import { fetchHistory, todayISO } from "./data.js";
 import { alignedReturns, pearson, covarianceMatrix, portfolioVol, correlationClusters, sum, isNum } from "./quant.js";
 import { tradeMetrics, openTrades } from "./desk.js";
-import { C, serif, Card, KpiRow, Btn, Field, Table, Note, fmtPct, fmtNum, inputStyle, usePersistent } from "./ui.jsx";
+import { C, serif, Card, KpiRow, Btn, Field, Table, Note, fmtPct, fmtNum, inputStyle, usePersistent, modeLabel } from "./ui.jsx";
 
 const parseOverrides = (txt) => Object.fromEntries(String(txt).split(/[,;\n]+/).map((x) => x.split("=").map((y) => y.trim().toUpperCase())).filter((x) => x.length === 2 && x[0] && x[1]));
 
@@ -106,18 +106,18 @@ export default function Risk({ rules, journal, portfolio, corr, setCorr }) {
 
   return (
     <div>
-      <Card title="HEAT DU DESK (18) — RISQUE OUVERT DES TRADES DU JOURNAL">
+      <Card title="RISQUE OUVERT DU DESK (18) — POSITIONS DU JOURNAL">
         <div style={{ height: 8, background: "rgba(255,255,255,0.06)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
           <div style={{ height: 8, width: `${Math.min(100, (heat / rules.heatMax) * 100)}%`, background: heat > rules.heatMax ? C.red : C.amber }} />
         </div>
         <div style={{ fontSize: 11, color: heat > rules.heatMax ? C.red : C.sub }}>H = Σ f_i = {fmtPct(heat, 2, false)} sur un maximum H_max = {fmtPct(rules.heatMax, 1, false)} · {open.length} position(s)</div>
-        {risks.length > 0 && <Table small head={["TICKER", "MODE", "RISQUE OUVERT f_i"]} rows={risks.map(({ t, r }) => [t.ticker, t.mode, fmtPct(r, 2, false)])} />}
+        {risks.length > 0 && <Table small head={["TITRE", "MODE", "RISQUE OUVERT f_i"]} rows={risks.map(({ t, r }) => [t.ticker, modeLabel(t.mode), fmtPct(r, 2, false)])} />}
         <Note>Un stop remonté au prix d'entrée ramène le risque ouvert de la ligne à zéro. Ton portefeuille long terme n'a pas de stops : au sens de (18), tout son montant est « à risque ». Pour lui, la mesure utile est la volatilité et le nombre de paris réels ci-dessous.</Note>
       </Card>
 
       <Card title="CORRÉLATION DU PORTEFEUILLE — 1 AN DE COURS">
         <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
-          <Field label="SYMBOLES YAHOO SPÉCIFIQUES (ticker=symbole)" style={{ flex: "1 1 220px" }}>
+          <Field label="SYMBOLES YAHOO SPÉCIFIQUES (titre=symbole)" style={{ flex: "1 1 220px" }}>
             <input value={overrides} onChange={(e) => setOverrides(e.target.value)} style={inputStyle} placeholder="ENR=ENR.DE, MC=MC.PA" />
           </Field>
           <Btn onClick={analyse} disabled={!!busy}>{busy ? `⟳ ${busy}` : `ANALYSER ${portfolio.positions.length} LIGNES`}</Btn>
@@ -125,7 +125,7 @@ export default function Risk({ rules, journal, portfolio, corr, setCorr }) {
         {errors.length > 0 && (
           <Note color={C.orange}>{errors.length} titre(s) non chargé(s) : {errors.slice(0, 4).join(" · ")}{errors.length > 4 ? " …" : ""}</Note>
         )}
-        {!view && <Note>Pondérations = valeur des lignes du portefeuille. Le résultat sert aussi au Risk Officer, qui refuse un ordre corrélé à une position ouverte si leur risque cumulé dépasse f_max.</Note>}
+        {!view && <Note>Pondérations = valeur des lignes du portefeuille. Le résultat sert aussi au contrôle des risques, qui refuse un ordre corrélé à une position ouverte si leur risque cumulé dépasse f_max.</Note>}
       </Card>
       {view}
     </div>
