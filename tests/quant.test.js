@@ -133,6 +133,15 @@ test("Gap through the stop fills at the open; time exit after maxHold", () => {
   assert.equal(t2.reason, "temps"); assert.equal(t2.exitIdx - t2.entryIdx + 1, 5);
 });
 
+test("A gap through the target fills at the open even if the bar later trades through the stop", () => {
+  const ctx = ctxFrom([[100, 100, 100, 100], [100, 100, 100, 100], [100, 100.5, 99.5, 100], [106, 107, 97, 98], [98, 98, 98, 98]]);
+  const t = backtest(ctx, sigAt(5, 1), P, { start: 0, end: 5, costs: noCost }).trades[0];
+  assert.equal(t.reason, "objectif (gap)"); close(t.exit, 106); close(t.gross, 0.06);
+  const cs = ctxFrom([[100, 100, 100, 100], [100, 100, 100, 100], [100, 100.5, 99.5, 100], [94, 103, 93, 102], [102, 102, 102, 102]]);
+  const s = backtest(cs, sigAt(5, 1, "sell"), { ...P, direction: "both" }, { start: 0, end: 5, costs: noCost }).trades[0];
+  assert.equal(s.reason, "objectif (gap)"); close(s.exit, 94); close(s.gross, 0.06);
+});
+
 test("Short trades and the noise test's extra bar of delay", () => {
   const ctx = ctxFrom([[100, 100, 100, 100], [100, 100, 100, 100], [100, 100.5, 95.5, 96], [96, 96, 94, 95], [95, 95, 95, 95]]);
   const short = backtest(ctx, sigAt(5, 1, "sell"), { ...P, direction: "both" }, { start: 0, end: 5, costs: noCost }).trades[0];
@@ -182,6 +191,15 @@ test("runLab returns the 7 gates of Table III", () => {
   assert.ok(lab.full.n > 0, "the signal fires on a drifting random walk");
   for (const t of lab.full.trades) assert.ok(t.exitIdx >= t.entryIdx && t.entryIdx > t.signalIdx);
   assert.throws(() => runLab(syntheticBars(220, 2), DEFAULT_PARAMS), /trop court/);
+});
+
+test("Without volume data the 27 distinct variants count as N, not 81 duplicates", () => {
+  const noVol = syntheticBars(1600, 5).map((b) => ({ ...b, v: NaN }));
+  const lab = runLab(noVol, DEFAULT_PARAMS, {});
+  assert.equal(lab.hasVolume, false);
+  assert.equal(lab.grid.size, 27); assert.equal(lab.N, 27);
+  assert.ok(lab.plateau.neighbours.every((x) => x.key !== "volMult"));
+  assert.equal(centeredGrid(DEFAULT_PARAMS, false).length, 27);
 });
 
 test("Correlation, clusters and portfolio volatility (17)", () => {

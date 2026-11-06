@@ -4,7 +4,7 @@
 
 const COLS = {
   t: ["date", "time", "datetime", "timestamp", "day", "data", "jour"],
-  o: ["open", "ouverture", "otwarcie", "o"],
+  o: ["open", "ouverture", "ouv.", "ouv", "otwarcie", "o"],
   h: ["high", "haut", "plus haut", "najwyzszy", "h"],
   l: ["low", "bas", "plus bas", "najnizszy", "l"],
   c: ["close", "clôture", "cloture", "dernier", "last", "price", "zamkniecie", "c"],
@@ -15,52 +15,90 @@ const COLS = {
 const pad = (n) => String(n).padStart(2, "0");
 export const isoDate = (d) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 
-function parseNumber(raw, decimalComma) {
-  if (raw == null) return NaN;
-  let s = String(raw).trim().replace(/^"|"$/g, "").replace(/[\s  ]/g, "");
-  if (!s || s === "null" || s === "-") return NaN;
-  if (decimalComma && s.includes(",")) s = s.replace(/\./g, "").replace(",", "."); // 1.234,56 (FR)
-  else if ((s.match(/\./g) || []).length > 1) s = s.replace(/\./g, "");             // 1.234.567
-  else s = s.replace(/,/g, "");
-  return Number(s);
+/** Splits one CSV line, honouring double quotes ("1,234.50" stays one field). */
+export function splitCSVLine(line, delim) {
+  const out = [];
+  let cur = "", quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else quoted = false; }
+      else cur += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === delim) { out.push(cur.trim()); cur = ""; }
+    else cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+const clean = (raw) => String(raw ?? "").trim().replace(/^"|"$/g, "").replace(/[\s  ']/g, "");
+
+/** Votes for the decimal separator on price fields: "222,72" → comma, "1,234.50" → dot, "1,234" → undecided. */
+function detectDecimal(samples, fallback) {
+  let comma = 0, dot = 0;
+  for (const raw of samples) {
+    const s = clean(raw);
+    const lc = s.lastIndexOf(","), ld = s.lastIndexOf(".");
+    if (lc >= 0 && ld >= 0) { if (lc > ld) comma++; else dot++; }
+    else if (lc >= 0 && !/^\d{1,3}(,\d{3})+$/.test(s)) comma++;
+    else if (ld >= 0 && !/^\d{1,3}(\.\d{3})+$/.test(s)) dot++;
+  }
+  return comma > dot ? "," : dot > comma ? "." : fallback;
+}
+
+/** Number with a known decimal separator; the other separator is a thousands mark. Accepts K/M/B suffixes. */
+function parseNumber(raw, decimal) {
+  let s = clean(raw);
+  if (!s || /^(null|-|n\/a|nan)$/i.test(s)) return NaN;
+  let mult = 1;
+  const m = s.match(/^(.*\d)([kmb])$/i);
+  if (m) { s = m[1]; mult = { k: 1e3, m: 1e6, b: 1e9 }[m[2].toLowerCase()]; }
+  s = s.split(decimal === "," ? "." : ",").join("");
+  if (decimal === ",") s = s.replace(",", ".");
+  const x = Number(s);
+  return Number.isFinite(x) ? x * mult : NaN;
+}
+
+function validISO(y, mo, d) {
+  const Y = +y, M = +mo, D = +d;
+  if (!(M >= 1 && M <= 12 && D >= 1 && D <= 31)) return null;
+  const dt = new Date(Date.UTC(Y, M - 1, D));
+  return dt.getUTCMonth() === M - 1 ? `${Y}-${pad(M)}-${pad(D)}` : null;
 }
 
 function makeDateParser(samples) {
   // DD/MM/YYYY vs MM/DD/YYYY: decided from the data, French order when ambiguous.
   let dayFirst = true;
-  for (const s of samples) {
-    const m = String(s).match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
+  for (const raw of samples) {
+    const m = clean(raw).match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
     if (!m) continue;
     if (+m[1] > 12) { dayFirst = true; break; }
     if (+m[2] > 12) { dayFirst = false; break; }
   }
   return (raw) => {
-    const s = String(raw).trim().replace(/^"|"$/g, "");
+    const s = String(raw ?? "").trim().replace(/^"|"$/g, "").trim();
     let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    if (m) return validISO(m[1], m[2], m[3]);
     if (/^\d{9,13}$/.test(s)) { // unix seconds (TradingView export) or milliseconds
       const n = Number(s);
       return isoDate(new Date(s.length > 11 ? n : n * 1000));
     }
     m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
-    if (m) {
-      const [d, mo] = dayFirst ? [m[1], m[2]] : [m[2], m[1]];
-      return `${m[3]}-${pad(mo)}-${pad(d)}`;
-    }
+    if (m) return dayFirst ? validISO(m[3], m[2], m[1]) : validISO(m[3], m[1], m[2]);
     m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
-    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    if (m) return validISO(m[1], m[2], m[3]);
     return null;
   };
 }
 
-/** Parses Yahoo / TradingView / Stooq / Excel-FR CSV exports into daily bars (oldest first). */
+/** Parses Yahoo / TradingView / Stooq / Investing / Excel-FR CSV exports into daily bars (oldest first). */
 export function parseCSV(text) {
   const lines = String(text).replace(/^﻿/, "").split(/\r?\n/).filter((x) => x.trim());
   if (lines.length < 2) throw new Error("CSV vide ou sans données.");
   const head = lines[0];
-  const delim = [";", "\t", ","].sort((a, b) => head.split(b).length - head.split(a).length)[0];
-  const decimalComma = delim !== ",";
-  const names = head.split(delim).map((x) => x.trim().replace(/^"|"$/g, "").toLowerCase());
+  const delim = [";", "\t", ","].sort((a, b) => splitCSVLine(head, b).length - splitCSVLine(head, a).length)[0];
+  const names = splitCSVLine(head, delim).map((x) => x.replace(/^﻿/, "").trim().toLowerCase());
   const idx = {};
   for (const [key, aliases] of Object.entries(COLS)) {
     idx[key] = names.findIndex((n) => aliases.includes(n));
@@ -69,13 +107,15 @@ export function parseCSV(text) {
   const warnings = [];
   if (idx.h < 0 || idx.l < 0) warnings.push("Colonnes high/low absentes : ATR approximé avec les clôtures.");
   if (idx.v < 0) warnings.push("Volume absent : le filtre volume de l'équation (11) est désactivé.");
-  const rows = lines.slice(1).map((ln) => ln.split(delim));
+  const rows = lines.slice(1).map((ln) => splitCSVLine(ln, delim));
+  const priceCols = ["o", "h", "l", "c", "adj"].map((k) => idx[k]).filter((i) => i >= 0);
+  const decimal = detectDecimal(rows.slice(0, 300).flatMap((r) => priceCols.map((i) => r[i])), delim === ";" ? "," : ".");
   const parseDate = makeDateParser(rows.slice(0, 300).map((r) => r[idx.t]));
   const byDate = new Map();
   let skipped = 0;
   for (const r of rows) {
-    const t = parseDate(r[idx.t] ?? "");
-    const num = (k) => (idx[k] >= 0 ? parseNumber(r[idx[k]], decimalComma) : NaN);
+    const t = parseDate(r[idx.t]);
+    const num = (k) => (idx[k] >= 0 ? parseNumber(r[idx[k]], decimal) : NaN);
     let c = num("c");
     let o = idx.o >= 0 ? num("o") : c, h = idx.h >= 0 ? num("h") : Math.max(o, c), l = idx.l >= 0 ? num("l") : Math.min(o, c);
     const adj = num("adj"), v = num("v");
@@ -86,7 +126,7 @@ export function parseCSV(text) {
   if (skipped) warnings.push(`${skipped} ligne(s) ignorée(s) (date ou prix invalide).`);
   const bars = [...byDate.values()].sort((a, b) => (a.t < b.t ? -1 : 1));
   if (bars.length < 2) throw new Error("Aucune barre valide trouvée dans le CSV.");
-  return { bars, warnings, adjusted: idx.adj >= 0 };
+  return { bars, warnings, adjusted: idx.adj >= 0, decimal };
 }
 
 /** Yahoo Finance v8 chart JSON → bars (used by the /api/history serverless function). */
@@ -160,18 +200,26 @@ const MONTHS = {
   aout: 8, août: 8, septembre: 9, octobre: 10, novembre: 11, decembre: 12, décembre: 12,
 };
 /**
- * Parses the free-text earnings dates of the watchlist ("⚡ 18 mars 2026", "11-13 mai 2026",
- * "Avril 2026", "Inconnu"). Returns { date, precise } or null. A range keeps its first day.
+ * Parses the free-text earnings dates of the watchlist ("⚡ 18 mars 2026", "1er décembre 2026",
+ * "11-13 mai 2026", "Avril 2026", "Inconnu"). Returns { date, end, precise } or null:
+ * a range keeps both ends, a month without a day spans the whole month (precise = false).
  */
 export function parseFrenchDate(str) {
   if (!str) return null;
   const s = String(str).toLowerCase();
   const months = Object.keys(MONTHS).join("|");
-  let m = s.match(new RegExp(`(\\d{1,2})(?:\\s*-\\s*\\d{1,2})?\\s+(${months})\\s+(\\d{4})`));
-  if (m) return { date: `${m[3]}-${pad(MONTHS[m[2]])}-${pad(m[1])}`, precise: true };
+  let m = s.match(new RegExp(`(\\d{1,2})(?:er)?(?:\\s*(?:-|au|à)\\s*(\\d{1,2})(?:er)?)?\\s+(${months})\\s+(\\d{4})`));
+  if (m) {
+    const date = validISO(m[4], MONTHS[m[3]], m[1]);
+    const end = m[2] ? validISO(m[4], MONTHS[m[3]], m[2]) : date;
+    if (date) return { date, end: end && end >= date ? end : date, precise: true };
+  }
   m = s.match(new RegExp(`(${months})\\s+(\\d{4})`));
-  if (m) return { date: `${m[2]}-${pad(MONTHS[m[1]])}-01`, precise: false };
+  if (m) {
+    const mo = MONTHS[m[1]], last = new Date(Date.UTC(+m[2], mo, 0)).getUTCDate();
+    return { date: `${m[2]}-${pad(mo)}-01`, end: `${m[2]}-${pad(mo)}-${pad(last)}`, precise: false };
+  }
   m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return { date: m[0], precise: true };
+  if (m) { const d = validISO(m[1], m[2], m[3]); if (d) return { date: d, end: d, precise: true }; }
   return null;
 }

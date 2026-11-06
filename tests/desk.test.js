@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseCSV, parseYahooChart, parseFrenchDate, businessDaysBetween, addBusinessDays, daysBetween } from "../src/desk/data.js";
+import { parseCSV, splitCSVLine, parseYahooChart, parseFrenchDate, businessDaysBetween, addBusinessDays, daysBetween } from "../src/desk/data.js";
 import { defaultRules, riskOfficer, killSwitch, tradeMetrics, strategyHealth, advanceCheck } from "../src/desk/desk.js";
 
 test("CSV: Yahoo export with Adj Close adjustment", () => {
@@ -43,10 +43,11 @@ test("Yahoo chart JSON → adjusted daily bars", () => {
 });
 
 test("French free-text earnings dates from the watchlist", () => {
-  assert.deepEqual(parseFrenchDate("⚡ 18 mars 2026"), { date: "2026-03-18", precise: true });
-  assert.deepEqual(parseFrenchDate("11-13 mai 2026"), { date: "2026-05-11", precise: true });
-  assert.deepEqual(parseFrenchDate("Avril 2026"), { date: "2026-04-01", precise: false });
-  assert.deepEqual(parseFrenchDate("Juillet 2026"), { date: "2026-07-01", precise: false });
+  assert.deepEqual(parseFrenchDate("⚡ 18 mars 2026"), { date: "2026-03-18", end: "2026-03-18", precise: true });
+  assert.deepEqual(parseFrenchDate("11-13 mai 2026"), { date: "2026-05-11", end: "2026-05-13", precise: true });
+  assert.deepEqual(parseFrenchDate("1er décembre 2026"), { date: "2026-12-01", end: "2026-12-01", precise: true });
+  assert.deepEqual(parseFrenchDate("Avril 2026"), { date: "2026-04-01", end: "2026-04-30", precise: false });
+  assert.deepEqual(parseFrenchDate("Février 2028"), { date: "2028-02-01", end: "2028-02-29", precise: false });
   assert.equal(parseFrenchDate("Inconnu"), null);
   assert.equal(businessDaysBetween("2026-11-06", "2026-11-09"), 1); // Fri → Mon
   assert.equal(addBusinessDays("2026-11-06", 1), "2026-11-09");
@@ -117,4 +118,45 @@ test("Ladder: rung 2 needs 20 paper trades with z > −2", () => {
   assert.ok(!chk.ok && chk.fail);
   assert.ok(hb.drift, "20 straight −2 % trades sit below the Monte Carlo 5th percentile");
   assert.ok(!advanceCheck({ ...strat, rung: 1, rungSince: "2026-11-01" }, h, [], rules, today).ok);
+});
+
+// ─── Regressions from the independent audit ─────────────────────────────────
+test("CSV: quoted fields, Investing.com FR export, K/M volumes, decimal detection", () => {
+  assert.deepEqual(splitCSVLine('"2026-11-02","1,234.50",x', ","), ["2026-11-02", "1,234.50", "x"]);
+  const us = parseCSV('Date,Open,High,Low,Close,Volume\n"11/02/2026","1,234.50","1,240.00","1,225.00","1,230.00","1,000,000"\n"10/31/2026","1,200.00","1,236.00","1,199.00","1,234.00","900,000"\n');
+  assert.deepEqual(us.bars.map((b) => b.t), ["2026-10-31", "2026-11-02"]); // quoted MM/DD detected
+  assert.deepEqual([us.bars[1].o, us.bars[1].c, us.bars[1].v, us.bars[0].v], [1234.5, 1230, 1e6, 9e5]);
+  const inv = parseCSV('"Date","Dernier","Ouv."," Plus Haut","Plus Bas","Vol.","Variation %"\n"06/11/2026","222,72","221,80","224,10","220,05","1,23M","0,42%"\n"05/11/2026","221,80","219,00","222,00","218,50","850,00K","-0,10%"\n');
+  assert.equal(inv.decimal, ",");
+  assert.deepEqual([inv.bars[1].t, inv.bars[1].c, inv.bars[1].o, inv.bars[1].v, inv.bars[0].v], ["2026-11-06", 222.72, 221.8, 1230000, 850000]);
+  const tsv = parseCSV("Date\tOpen\tHigh\tLow\tClose\tVolume\n2026-11-02\t1,234.50\t1,240.00\t1,225.00\t1,230.25\t1,000,000\n2026-11-03\t1,230.00\t1,236.00\t1,220.00\t1,233.00\t900,000\n");
+  assert.deepEqual([tsv.bars[0].o, tsv.bars[0].c, tsv.bars[0].v], [1234.5, 1230.25, 1e6]);
+  const fr = parseCSV("Date;Open;High;Low;Close;Volume\n02/11/2026;10,5;11;10;10,8;850.000\n03/11/2026;10,8;11,2;10,6;11;1.250.000\n");
+  assert.deepEqual(fr.bars.map((b) => b.v), [850000, 1250000]);
+  const bad = parseCSV("Date,Open,High,Low,Close\n2026-13-02,1,2,1,1.5\n2026-11-02,1,2,1,1.5\n2026-11-03,1,2,1,1.5\n");
+  assert.equal(bad.bars.length, 2); assert.ok(bad.warnings.some((w) => /1 ligne/.test(w)));
+});
+
+test("Risk Officer: correlation respects direction and whole clusters", () => {
+  const r = { ...rules, maxOpen: 10 };
+  const corr = { tickers: ["AAA", "BBB", "CCC"], matrix: [[1, 0.9, 0.9], [0.9, 1, 0.9], [0.9, 0.9, 1]] };
+  const pos = (id, ticker, side, qty) => ({ id, ticker, side, planEntry: 50, stop: side === "short" ? 52 : 48, qty, status: "open", approved: true, mode: "paper", date: today });
+  const order = (ticker, side, qty) => ({ ticker, side, entry: 50, stop: side === "short" ? 52 : 48, target: side === "short" ? 46 : 54, qty });
+  const hedge = riskOfficer({ order: order("BBB", "short", 30), rules: r, journal: [pos("1", "AAA", "long", 50)], corr, today });
+  assert.ok(!hedge.vetoes.some((v) => /pari/.test(v)), "long A + short B with ρ > 0 is a hedge");
+  assert.ok(hedge.warnings.some((w) => /couvre/.test(w)));
+  const neg = { tickers: ["AAA", "BBB"], matrix: [[1, -0.9], [-0.9, 1]] };
+  const doubled = riskOfficer({ order: order("BBB", "short", 30), rules: r, journal: [pos("1", "AAA", "long", 50)], corr: neg, today });
+  assert.ok(doubled.vetoes.some((v) => /un seul pari/.test(v)), "long A + short B with ρ < 0 doubles the bet");
+  // Capital 10 000, stop distance 2: AAA 25 → 0.5 %, BBB 25 → 0.5 %, CCC 20 → 0.4 %; each pair ≤ 1 %, the bet is 1.4 %.
+  const cluster = riskOfficer({ order: order("CCC", "long", 20), rules: r, journal: [pos("1", "AAA", "long", 25), pos("2", "BBB", "long", 25)], corr, today });
+  assert.ok(cluster.vetoes.some((v) => /AAA, BBB/.test(v)), cluster.vetoes.join(" | "));
+});
+
+test("Risk Officer: an earnings range overlapping the hold is vetoed", () => {
+  const st = [{ ticker: "DDD", sector: "X", nextEarnings: "1-3 décembre 2026" }];
+  const ro = riskOfficer({ order: { ticker: "DDD", side: "long", entry: 50, stop: 48, target: 54, qty: 10, date: "2026-12-02" }, rules, journal: [], stocks: st, today: "2026-12-02" });
+  assert.ok(ro.vetoes.some((v) => /entre le 2026-12-01 et le 2026-12-03/.test(v)), ro.vetoes.join() + ro.warnings.join());
+  const later = riskOfficer({ order: { ticker: "DDD", side: "long", entry: 50, stop: 48, target: 54, qty: 10, date: "2026-12-04" }, rules, journal: [], stocks: st, today: "2026-12-04" });
+  assert.ok(later.approved && later.warnings.some((w) => /dépassée/.test(w)));
 });

@@ -96,28 +96,46 @@ export function riskOfficer({ order, rules, journal, stocks = [], corr = null, t
   const holdEnd = addBusinessDays(date, rules.maxHold);
   const stock = stocks.find((s) => s.ticker === tk);
   const ev = parseFrenchDate(stock?.nextEarnings);
+  const when = ev && (ev.date === ev.end ? `le ${ev.date}` : `entre le ${ev.date} et le ${ev.end}`);
   if (!ev) warnings.push(`Date de résultats inconnue pour ${tk || "ce titre"} : vérifier le calendrier avant d'entrer.`);
-  else if (ev.precise && ev.date >= date && ev.date <= holdEnd) vetoes.push(`Résultats le ${ev.date}, pendant la détention prévue (jusqu'au ${holdEnd}).`);
-  else if (!ev.precise && ev.date.slice(0, 7) >= date.slice(0, 7) && ev.date.slice(0, 7) <= holdEnd.slice(0, 7))
-    warnings.push(`Résultats attendus en ${ev.date.slice(0, 7)} (jour inconnu) : risque d'événement pendant la détention.`);
-  else if (ev.date < date) warnings.push(`Date de résultats enregistrée (${stock.nextEarnings}) dépassée : actualiser la fiche.`);
+  else if (ev.end < date) warnings.push(`Date de résultats enregistrée (${stock.nextEarnings}) dépassée : actualiser la fiche.`);
+  else if (ev.date <= holdEnd) {
+    if (ev.precise) vetoes.push(`Résultats ${when}, pendant la détention prévue (jusqu'au ${holdEnd}).`);
+    else warnings.push(`Résultats attendus ${when} (jour inconnu) : risque d'événement pendant la détention.`);
+  }
 
-  // V.D — two positions in correlated instruments are one bet.
+  // V.D — two positions in correlated instruments are one bet. Direction matters: long A + short B
+  // with ρ > 0 is a hedge, long A + short B with ρ < 0 doubles the bet. Bets are clusters (single
+  // linkage, like RISQUE), so the new order is checked against everything it is chained to.
   const sector = stock?.sector;
-  for (const t of open) {
-    const other = String(t.ticker).toUpperCase();
-    if (other === tk) { vetoes.push(`Position déjà ouverte sur ${tk}.`); continue; }
-    const i = corr?.tickers?.indexOf(tk), j = corr?.tickers?.indexOf(other);
-    if (i >= 0 && j >= 0 && isNum(corr.matrix[i][j])) {
-      const rho = corr.matrix[i][j];
-      if (rho > rules.corrThreshold) {
-        const joint = (risk + tradeMetrics(t, rules).openRisk) / E;
-        const msg = `${tk} et ${other} corrélés (ρ = ${rho.toFixed(2)}) : un seul pari, risque cumulé ${(joint * 100).toFixed(2)} %.`;
-        if (joint > rules.fMax * (1 + 1e-6)) vetoes.push(msg); else warnings.push(msg);
-      }
-    } else if (sector && stocks.find((s) => s.ticker === other)?.sector === sector) {
-      warnings.push(`Même secteur que ${other} (${sector}) : corrélation non mesurée, à vérifier dans RISQUE.`);
+  const pos = (t) => corr?.tickers?.indexOf(t) ?? -1;
+  const nodes = [{ tk, dir, risk }, ...open.map((t) => ({
+    tk: String(t.ticker).toUpperCase(), dir: t.side === "short" ? -1 : 1, risk: tradeMetrics(t, rules).openRisk }))];
+  const signedRho = (a, b) => {
+    const i = pos(a.tk), j = pos(b.tk);
+    return i >= 0 && j >= 0 && isNum(corr.matrix[i][j]) ? a.dir * b.dir * corr.matrix[i][j] : NaN;
+  };
+  for (const n of nodes.slice(1)) {
+    if (n.tk === tk) { vetoes.push(`Position déjà ouverte sur ${tk}.`); continue; }
+    const r = signedRho(nodes[0], n);
+    if (isNum(r)) {
+      if (r < -rules.corrThreshold) warnings.push(`${tk} couvre ${n.tk} (corrélation ${r.toFixed(2)} une fois les sens pris en compte).`);
+    } else if (sector && n.dir === dir && stocks.find((s) => s.ticker === n.tk)?.sector === sector) {
+      warnings.push(`Même secteur et même sens que ${n.tk} (${sector}) : corrélation non mesurée, à vérifier dans RISQUE.`);
     }
+  }
+  const bet = new Set([0]), queue = [0];
+  while (queue.length) {
+    const a = queue.shift();
+    nodes.forEach((n, b) => {
+      if (!bet.has(b) && n.tk !== tk && signedRho(nodes[a], n) > rules.corrThreshold) { bet.add(b); queue.push(b); }
+    });
+  }
+  if (bet.size > 1) {
+    const members = [...bet].slice(1).map((b) => nodes[b].tk);
+    const joint = sum([...bet].map((b) => nodes[b].risk)) / E;
+    const msg = `${tk} forme un seul pari avec ${members.join(", ")} (corrélation > ${rules.corrThreshold} dans le même sens) : risque cumulé ${(joint * 100).toFixed(2)} %`;
+    if (joint > rules.fMax * (1 + 1e-6)) vetoes.push(`${msg} > f_max ${(rules.fMax * 100).toFixed(2)} %.`); else warnings.push(`${msg}.`);
   }
   return { approved: vetoes.length === 0, vetoes, warnings, risk, riskFrac, heatAfter, holdEnd };
 }

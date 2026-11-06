@@ -195,7 +195,7 @@ export function warmupIndex(ctx, maxBreakout = 20) {
 /**
  * Event-driven backtest on bars [start, end).
  * Signal at the close of t → entry at the open of t+1(+delay). Stop = k·ATR, target = R × stop distance,
- * time exit after maxHold bars, stop checked before target inside a bar (conservative), gaps fill at the open.
+ * time exit after maxHold bars. Gaps fill at the open; inside a bar the stop is checked before the target.
  * Sizing follows (14): notional fraction w = f·P_e/(k·ATR), capped at 100 % (no leverage).
  * (4) every round trip is charged c_rt = 2·(commission + slippage).
  */
@@ -222,15 +222,17 @@ export function backtest(ctx, sig, p, { start, end, costs = {}, riskFraction = 0
       inMarket++;
       const { dir, stop, target } = pos, later = t > pos.entryIdx;
       let exit = null, reason = null;
+      // The open is the first print: a gap through either level fills there. Inside the bar the
+      // order of high and low is unknown, so the stop is assumed to come first.
       if (dir > 0) {
         if (later && o[t] <= stop) { exit = o[t]; reason = "stop (gap)"; }
-        else if (l[t] <= stop) { exit = stop; reason = "stop"; }
         else if (later && o[t] >= target) { exit = o[t]; reason = "objectif (gap)"; }
+        else if (l[t] <= stop) { exit = stop; reason = "stop"; }
         else if (h[t] >= target) { exit = target; reason = "objectif"; }
       } else {
         if (later && o[t] >= stop) { exit = o[t]; reason = "stop (gap)"; }
-        else if (h[t] >= stop) { exit = stop; reason = "stop"; }
         else if (later && o[t] <= target) { exit = o[t]; reason = "objectif (gap)"; }
+        else if (h[t] >= stop) { exit = stop; reason = "stop"; }
         else if (l[t] <= target) { exit = target; reason = "objectif"; }
       }
       if (exit === null && t - pos.entryIdx + 1 >= p.maxHold) { exit = c[t]; reason = "temps"; }
@@ -310,13 +312,16 @@ export function deflatedSharpe({ sr, T, skew = 0, kurt = 3, N = 1, sigmaSR }) {
 }
 
 // ─── Walk-forward, plateau, noise (III.D, Table III) ─────────────────────────
-/** 81 variants centred on the base parameters — the family the walk-forward fits on. */
-export function centeredGrid(p) {
+/**
+ * Variants centred on the base parameters: the family the walk-forward fits on, and N for the DSR.
+ * 81 with volume data; 27 without, since the volume multiplier then has no effect.
+ */
+export function centeredGrid(p, withVolume = true) {
   const uniq = (a) => [...new Set(a)];
   const ks = uniq([0.75, 1, 1.25].map((f) => round2(p.stopK * f)).filter((x) => x > 0));
   const rs = uniq([0.75, 1, 1.5].map((f) => round2(p.targetR * f)).filter((x) => x > 0));
   const bs = uniq([0.5, 1, 1.5].map((f) => Math.max(2, Math.round(p.breakout * f))));
-  const vs = uniq([-0.25, 0, 0.25].map((d) => round2(p.volMult + d)).filter((x) => x >= 0));
+  const vs = withVolume ? uniq([-0.25, 0, 0.25].map((d) => round2(p.volMult + d)).filter((x) => x >= 0)) : [p.volMult];
   const grid = [];
   for (const stopK of ks) for (const targetR of rs) for (const breakout of bs) for (const volMult of vs)
     grid.push({ ...p, stopK, targetR, breakout, volMult });
@@ -359,7 +364,7 @@ export function walkForward(ctx, base, grid, { start0, trainBars = 504, testBars
 export function plateauTest(ctx, base, start, end, opts) {
   const baseSharpe = runOnce(ctx, base, start, end, opts).es.sharpe;
   const neighbours = [];
-  for (const key of ["stopK", "targetR", "breakout", "volMult"]) {
+  for (const key of ctx.hasVolume === false ? ["stopK", "targetR", "breakout"] : ["stopK", "targetR", "breakout", "volMult"]) {
     for (const f of [0.8, 1.2]) {
       const value = key === "breakout" ? Math.max(2, Math.round(base[key] * f)) : round2(base[key] * f);
       if (value === base[key]) continue;
@@ -378,7 +383,7 @@ export const MIN_HISTORY_BARS = 756; // "at least three years of history" (III.C
  */
 export function runLab(bars, base, opts = {}) {
   const ctx = prepare(bars);
-  const grid = centeredGrid(base);
+  const grid = centeredGrid(base, ctx.hasVolume);
   const maxBreakout = Math.max(...grid.map((g) => g.breakout));
   const start = warmupIndex(ctx, maxBreakout + 1), end = ctx.n;
   const span = end - start;

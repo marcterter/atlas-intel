@@ -167,8 +167,8 @@ export default function Lab({ rules, dataset, setDataset, lab, setLab, strategie
               <option value={63}>3 mois</option><option value={126}>6 mois</option><option value={252}>1 an</option>
             </select>
           </Field>
-          <Field label="ESSAIS N (7)" hint="Vide = 81 variantes du walk-forward. Ajoute toutes les idées déjà testées.">
-            <Num value={wf.trials} onChange={(v) => setWf({ ...wf, trials: v === "" ? "" : Math.max(1, Math.round(v)) })} placeholder="81" />
+          <Field label="ESSAIS N (7)" hint="Vide = variantes du walk-forward (81, ou 27 sans volume). Ajoute toutes les idées déjà testées.">
+            <Num value={wf.trials} onChange={(v) => setWf({ ...wf, trials: v === "" ? "" : Math.max(1, Math.round(v)) })} placeholder={dataset?.bars?.some((b) => b.v > 0) === false ? "27" : "81"} />
           </Field>
         </Grid>
         <Note>
@@ -245,7 +245,7 @@ export default function Lab({ rules, dataset, setDataset, lab, setLab, strategie
           </Card>
 
           <Card title={`WALK-FORWARD (III.D) · ${lab.wf.windows.length} FENÊTRES · ${fmtPct(lab.wf.positiveShare, 0, false)} POSITIVES`} right={<Btn t="ghost" small onClick={() => toggle("wf")}>{open.wf ? "−" : "+"}</Btn>}>
-            <Note>À chaque fenêtre, les 81 variantes sont ajustées sur l'apprentissage (meilleur Sharpe, ≥ 3 trades), puis appliquées telles quelles sur le test suivant. Hors échantillon cumulé : {lab.wf.oosStats.n} trades, R_net {fmtPct(lab.wf.oosStats.Rnet, 1)}, p = {fmtPct(lab.wf.oosStats.winRate, 0, false)}, b = {fmtNum(lab.wf.oosStats.payoff)}.</Note>
+            <Note>À chaque fenêtre, les {lab.grid.size} variantes sont ajustées sur l'apprentissage (meilleur Sharpe, ≥ 3 trades), puis appliquées telles quelles sur le test suivant. Hors échantillon cumulé : {lab.wf.oosStats.n} trades, R_net {fmtPct(lab.wf.oosStats.Rnet, 1)}, p = {fmtPct(lab.wf.oosStats.winRate, 0, false)}, b = {fmtNum(lab.wf.oosStats.payoff)}.</Note>
             {open.wf && (
               <Table small head={["TEST", "PARAMS AJUSTÉS (N/vol/k/R)", "SR APPR.", "TRADES", "R_NET", ""]} rows={lab.wf.windows.map((w) => [
                 `${lab.dates[w.testStart]} → ${lab.dates[w.testEnd - 1]}`,
