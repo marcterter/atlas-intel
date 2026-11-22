@@ -17,6 +17,13 @@ test('lecture des charges telles qu’écrites dans le sheet du coach', () => {
   assert.deepEqual(parsePerf('8,75kg x 6 ; 7,5kgx8 ; 6,25kg x 8').map((s) => s.weight), [8.75, 7.5, 6.25])
   assert.deepEqual(parsePerf('skip a cause du doigt'), [])
   assert.deepEqual(parsePerf(''), [])
+  // Saisies sans « kg » des semaines 2 et 3
+  assert.deepEqual(parsePerf('55x9 50x9 45x9'), [{ weight: 55, reps: 9 }, { weight: 50, reps: 9 }, { weight: 45, reps: 9 }])
+  assert.deepEqual(parsePerf('22,5x8 ; 20x8 ; 17,5x8').map((s) => s.weight), [22.5, 20, 17.5])
+  assert.deepEqual(parsePerf('14x7 ; 12x6 10x8').length, 3)
+  assert.deepEqual(parsePerf('10kg x 12, 7,5kg x 10'), [{ weight: 10, reps: 12 }, { weight: 7.5, reps: 10 }])
+  assert.deepEqual(parsePerf('22,5kg x 9 20kg x 9 , 17,5kg x 8').length, 3)
+  assert.deepEqual(parsePerf('60kg x8  50kg x 10'), [{ weight: 60, reps: 8 }, { weight: 50, reps: 10 }])
 })
 
 test('écriture au même format', () => {
@@ -67,20 +74,32 @@ test('« Progressé en POIDS / CHARGE ? » calculé par rapport à la fois préc
   assert.equal(progressLabel(same.exercises[0], 'weight', [prev], same.startedAt), 'Maintenu')
   assert.equal(progressLabel(down.exercises[0], 'weight', [prev], down.startedAt), 'Regressé')
   assert.equal(progressLabel(up.exercises[0], 'weight', [], up.startedAt), '', 'première fois : rien')
+  // Même exercice le lundi (52,5 × 11) et le jeudi (60 × 8) : la séance du lundi suivant se compare au lundi.
+  const lundi = { ...session('l', 1000, 'x1', [set(52.5, 11)]), coachDay: 'LUNDI' }
+  const jeudi = { ...session('j', 1500, 'x1', [set(60, 8)]), coachDay: 'JEUDI' }
+  const lundi2 = { ...session('l2', 2000, 'x1', [set(55, 10)]), coachDay: 'LUNDI' }
+  assert.equal(progressLabel(lundi2.exercises[0], 'weight', [lundi, jeudi], lundi2.startedAt, 'LUNDI'), 'OUI')
+  assert.equal(progressLabel(lundi2.exercises[0], 'weight', [lundi, jeudi], lundi2.startedAt), 'Regressé', 'sans jour : la dernière fois (jeudi)')
 })
 
 const PROGRAM: CoachProgram = {
-  semaine: 1,
-  debut: '2026-10-02',
+  semaine: 8,
+  semaineActuelle: 8,
   seances: [
-    { jour: 'LUNDI', date: '2026-10-05', exercices: [{ nom: 'Tirage vertical unilatéral', rir: '0', perf: '35kg x 6, 30KGX8' }, { nom: 'Développé couché à la smith', rir: '1', perf: '52,5kg x 11 ; 47,4kg x 11 ; 47,5kgx8' }, { nom: 'Rotation latérale abdos', rir: '2', perf: '' }] },
-    { jour: 'MARDI', date: '2026-10-06', exercices: [{ nom: 'Leg press', rir: '1', perf: '180kg x 8' }, { nom: 'Seated leg curl', rir: '0', perf: '60kg x 8 ; 50kg x 9' }, { nom: 'Adductor machine', rir: '0', perf: '60kg x 6 ; 50kg x 8' }] },
-    { jour: 'JEUDI', date: '2026-10-08', exercices: [{ nom: 'Tirage vertical unilatéral', rir: '0', perf: '' }, { nom: 'Développé incliné à la smith', rir: '1', perf: '55kgx9' }] },
-    { jour: 'VENDREDI', date: '2026-10-02', exercices: [{ nom: 'Leg press', rir: '1', perf: '70kg x 9 ; 62,5kg x 8' }, { nom: 'Stiff leg deadlift', rir: '1', perf: 'skip a cause du doigt' }, { nom: 'Leg extension', rir: '0', perf: '75kg x 7' }] },
+    { jour: 'LUNDI', exercices: [{ nom: 'Tirage vertical unilatéral', series: 2, reps: '10,8', rir: '0' }, { nom: 'Développé couché à la smith', series: 3, reps: '10,8,6', rir: '1' }, { nom: 'Rotation latérale abdos', series: 2, reps: '10,8', rir: '2' }] },
+    { jour: 'MARDI', exercices: [{ nom: 'Leg press', series: 1, reps: '5-8', rir: '1' }, { nom: 'Seated leg curl', series: 2, reps: '10,8', rir: '0' }, { nom: 'Adductor machine', series: 2, reps: '10,8', rir: '0' }] },
+    { jour: 'JEUDI', exercices: [{ nom: 'Tirage vertical unilatéral', series: 2, reps: '10,8', rir: '0' }, { nom: 'Développé incliné à la smith', series: 3, reps: '10,8,6', rir: '1' }] },
+    { jour: 'VENDREDI', exercices: [{ nom: 'Leg press', series: 2, reps: '5-8', rir: '1' }, { nom: 'Stiff leg deadlift', series: 2, reps: '8,6', rir: '1' }, { nom: 'Leg extension ', series: 2, reps: '10,8', rir: '0' }] },
   ],
+  historique: [
+    { semaine: 1, jour: 'LUNDI', date: '2026-10-05', exercices: [{ nom: 'Tirage vertical unilatéral', perf: '35kg x 6, 30KGX8' }, { nom: 'Développé couché à la smith', perf: '52,5kg x 11 ; 47,4kg x 11 ; 47,5kgx8', notes: '' }] },
+    { semaine: 1, jour: 'VENDREDI', date: '2026-10-02', exercices: [{ nom: 'Leg press', perf: '70kg x 9 ; 62,5kg x 8' }, { nom: 'Stiff leg deadlift', perf: 'skip a cause du doigt' }, { nom: 'Leg extension ', perf: '75kg x 7', notes: 'genou ok' }] },
+    { semaine: 2, jour: 'LUNDI', date: '2026-10-12', exercices: [{ nom: 'Tirage vertical unilatéral', perf: '65kg x 7 ; 55kg x 9' }, { nom: 'Développé couché à la smith', perf: '55x9 50x9 45x9' }] },
+  ],
+  objectifs: { on: { kcal: 2640, protein: 215, carbs: 310, fat: 60, fiber: 30 }, off: { kcal: 2140, protein: 200, carbs: 200, fat: 60, fiber: 30 }, pas: 15000 },
 }
 
-test('import du programme : Upper A / Lower A / Upper B / Lower B, noms exacts, historique', () => {
+test('import du programme : Upper A / Lower A / Upper B / Lower B, séries et reps du coach, historique', () => {
   const plan = planImport(PROGRAM, { customExercises: [], routines: [], sessions: [] }, 120)
   assert.deepEqual(plan.routines.map((r) => [r.name, r.coachDay]), [
     ['Upper A', 'LUNDI'],
@@ -88,19 +107,19 @@ test('import du programme : Upper A / Lower A / Upper B / Lower B, noms exacts, 
     ['Upper B', 'JEUDI'],
     ['Lower B', 'VENDREDI'],
   ])
-  // « Tirage vertical unilatéral » et « Leg press » ne sont créés qu'une fois.
+  // « Tirage vertical unilatéral », « Leg press »… ne sont créés qu'une fois ; « Leg extension » sans l'espace final.
   assert.equal(plan.newExercises.length, 9)
+  assert.ok(plan.newExercises.some((e) => e.name === 'Leg extension'))
   assert.equal(plan.newExercises.find((e) => e.name === 'Développé couché à la smith')?.equipment, 'smith')
-  const lundi = plan.routines[0]
-  assert.deepEqual(lundi.items.map((i) => [i.sets, i.rir]), [[2, '0'], [3, '1'], [3, '2']])
-  // Historique : 4 séances datées, séries lues dans le sheet ; « skip » gardé comme note.
-  assert.equal(plan.history.length, 4)
-  const h = plan.history.find((s) => s.coachDay === 'LUNDI')
-  assert.ok(h?.imported)
-  assert.equal(h?.date, '2026-10-05')
-  assert.deepEqual(h?.exercises[1].sets.map((s) => [s.weight, s.reps]), [[52.5, 11], [47.4, 11], [47.5, 8]])
+  assert.deepEqual(plan.routines[0].items.map((i) => [i.sets, i.reps, i.rir]), [[2, '10,8', '0'], [3, '10,8,6', '1'], [2, '10,8', '2']])
+  // Historique : 3 séances datées ; « 55x9 50x9 45x9 » lu sans unité ; « skip » et les notes gardés.
+  assert.equal(plan.history.length, 3)
+  const s2 = plan.history.find((s) => s.date === '2026-10-12')
+  assert.ok(s2?.imported)
+  assert.equal(s2?.name, 'Upper A · semaine 2')
+  assert.deepEqual(s2?.exercises[1].sets.map((s) => [s.weight, s.reps]), [[55, 9], [50, 9], [45, 9]])
   const vendredi = plan.history.find((s) => s.coachDay === 'VENDREDI')
-  assert.equal(vendredi?.exercises.find((e) => e.note)?.note, 'skip a cause du doigt')
+  assert.deepEqual(vendredi?.exercises.map((e) => e.note), ['', 'skip a cause du doigt', 'genou ok'])
 
   // Deuxième import : séances mises à jour (mêmes id), pas de doublons d'exercices ni d'historique.
   const again = planImport(PROGRAM, { customExercises: plan.newExercises, routines: plan.routines, sessions: plan.history }, 120)

@@ -113,7 +113,7 @@ export function toggleSetDone(
   if (!st) return null
   if (st.done) return updateSet(s, exUid, setId, { done: false, doneAt: undefined })
   const kind = findExercise(ex.exerciseId, custom).kind
-  const prev = previousSets(history, ex.exerciseId, s.startedAt)
+  const prev = previousSets(history, ex.exerciseId, s.startedAt, s.coachDay)
   const before = nearestFilled(ex.sets, idx)
   const ref = prev[idx] ?? before ?? prev[prev.length - 1]
   const patch: Partial<SetEntry> = { done: true, doneAt: now }

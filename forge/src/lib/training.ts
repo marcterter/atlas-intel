@@ -89,19 +89,30 @@ export function exerciseHistory(sessions: Session[], exerciseId: string, custom:
   return pts.sort((a, b) => a.startedAt - b.startedAt)
 }
 
-/** Séries réalisées la dernière fois sur cet exercice (avant `before`). */
-export function previousSets(sessions: Session[], exerciseId: string, before = Infinity): SetEntry[] {
-  let best: { at: number; sets: SetEntry[] } | null = null
-  for (const s of sessions) {
-    if (s.startedAt >= before) continue
-    for (const ex of s.exercises) {
-      if (ex.exerciseId !== exerciseId) continue
-      const done = ex.sets.filter((x) => x.done)
-      if (!done.length) continue
-      if (!best || s.startedAt > best.at) best = { at: s.startedAt, sets: done }
+/**
+ * Séries réalisées la dernière fois sur cet exercice (avant `before`).
+ * Avec `coachDay`, on compare d'abord au même jour du programme (comme le sheet du coach,
+ * semaine après semaine), puis à la dernière fois toutes séances confondues.
+ */
+export function previousSets(sessions: Session[], exerciseId: string, before = Infinity, coachDay?: string | null): SetEntry[] {
+  const pick = (keep: (s: Session) => boolean): SetEntry[] => {
+    let best: { at: number; sets: SetEntry[] } | null = null
+    for (const s of sessions) {
+      if (s.startedAt >= before || !keep(s)) continue
+      for (const ex of s.exercises) {
+        if (ex.exerciseId !== exerciseId) continue
+        const done = ex.sets.filter((x) => x.done)
+        if (!done.length) continue
+        if (!best || s.startedAt > best.at) best = { at: s.startedAt, sets: done }
+      }
     }
+    return best?.sets ?? []
   }
-  return best?.sets ?? []
+  if (coachDay) {
+    const same = pick((s) => s.coachDay === coachDay)
+    if (same.length) return same
+  }
+  return pick(() => true)
 }
 
 export function lastNoteFor(sessions: Session[], exerciseId: string, before = Infinity): { note: string; date: ISODate } | null {

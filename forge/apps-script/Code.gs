@@ -6,9 +6,14 @@
  * puis remplit le sheet de ton coach :
  *   - onglet « Suivi journalier » : une ligne par jour (poids, sommeil, pas, cardio,
  *     séance, ressenti, calories, macros, eau, notes) ;
- *   - onglet « Entraînement » : charges × reps de chaque exercice, dans le bloc
- *     « Semaine N » et le bandeau du jour (LUNDI, MARDI…), + « Progressé ? ».
- * Les lignes « Moyenne », les formules et les cases du coach ne sont jamais touchées.
+ *   - onglet « Entraînement » : dans le bloc « Semaine N » de la semaine en cours et le
+ *     bandeau du jour (LUNDI, MARDI…), sur la ligne de l'exercice : « POIDS X REPS »,
+ *     « Progressé en POIDS/ CHARGE ? » (OUI / Maintenu / Regressé / Nouvel exo) et
+ *     « Douleurs/ Notes ».
+ * Il lit aussi, pour l'import dans l'app : le programme (séries, reps, RIR), les semaines
+ * déjà remplies et les objectifs de l'onglet Nutrition (Jour ON / Jour off, pas).
+ * Les lignes « Moyenne », les formules, la colonne Exercise et les cases du coach ne sont
+ * jamais touchées.
  *
  * Installation (une seule fois) :
  *  1. Dans ton Google Sheet : Extensions > Apps Script, colle tout ce fichier
@@ -72,11 +77,14 @@ const COACH_MAPPING = {
   entrainement: {
     onglet: 'Entraînement',
   },
+  nutrition: {
+    onglet: 'Nutrition',
+  },
 };
 
 // =========================================================
 
-const VERSION = 2;
+const VERSION = 3;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
@@ -277,6 +285,9 @@ function resetCaches_() {
   Object.keys(dayRowCache_).forEach(function (k) {
     delete dayRowCache_[k];
   });
+  Object.keys(weekStartCache_).forEach(function (k) {
+    delete weekStartCache_[k];
+  });
 }
 
 function coachSs_() {
@@ -347,10 +358,12 @@ function coachDayRow_(sh, cfg, date) {
 function formatCoachValue_(key, v) {
   if (v == null || v === '') return '';
   if (key === 'sommeil' || key === 'qualiteSommeil') {
+    // Liste du coach : 10, 9,5, 9, 8,5, 8, 7,5, 7, 6,5, 6, 5, 4 et « 1 à 3 ».
     const n = Number(v);
     if (!isFinite(n)) return '';
-    if (n <= 3) return '1 à 3';
-    return Math.round(n * 2) / 2;
+    if (n < 3.5) return '1 à 3';
+    if (n < 6) return Math.round(n);
+    return Math.min(10, Math.round(n * 2) / 2);
   }
   if (key === 'kcal' || key === 'proteines' || key === 'glucides' || key === 'lipides' || key === 'fibres' || key === 'pas' || key === 'cardio') {
     const n = Number(v);
@@ -393,6 +406,14 @@ function weekOfDate_(date) {
 
 /** Date de début de la semaine N (via la colonne « Semaine »), pour dater l'historique importé. */
 function weekStart_(n) {
+  if (n in weekStartCache_) return weekStartCache_[n];
+  weekStartCache_[n] = weekStartUncached_(n);
+  return weekStartCache_[n];
+}
+
+const weekStartCache_ = {};
+
+function weekStartUncached_(n) {
   const cfg = COACH_MAPPING && COACH_MAPPING.jours;
   if (!cfg || !cfg.colonneSemaine) return null;
   const sh = sheetByName_(coachSs_(), cfg.onglet);
@@ -417,126 +438,181 @@ function weekStart_(n) {
 
 let trainingCache_ = null;
 
-/** Lit l'onglet Entraînement : blocs « Semaine N » > bandeaux de jour > lignes d'exercices. */
+/**
+ * Lit l'onglet Entraînement : les noms d'exercices sont dans la colonne « Exercise » (B),
+ * communs à toutes les semaines ; chaque bloc « Semaine N » (côte à côte) a ses colonnes
+ * Série / Reps / Intensité (RIR) / POIDS X REPS / RIR / Progressé / Douleurs-Notes.
+ */
 function trainingStructure_() {
   if (trainingCache_) return trainingCache_;
   const cfg = COACH_MAPPING && COACH_MAPPING.entrainement;
   if (!cfg) return null;
   const sh = sheetByName_(coachSs_(), cfg.onglet);
   if (!sh) throw new Error('Onglet « ' + cfg.onglet + ' » introuvable dans le sheet du coach');
-  const range = sh.getDataRange();
-  const values = range.getDisplayValues();
-  let rules = null;
-  try {
-    rules = range.getDataValidations();
-  } catch (err) {
-    rules = null;
-  }
-  trainingCache_ = { sheet: sh, blocks: parseTraining_(values, rules) };
+  trainingCache_ = { sheet: sh, blocks: parseTraining_(sh.getDataRange().getDisplayValues()) };
   return trainingCache_;
 }
 
-/** Découpe une grille de valeurs (texte) en blocs de semaines. Index 0-based. */
-function parseTraining_(values, rules) {
+/** Découpe la grille (valeurs affichées, index 0-based) en semaines > jours > exercices. */
+function parseTraining_(values) {
   const rows = values.length;
   const cols = rows ? values[0].length : 0;
   const titles = [];
+  let exCol = -1;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const m = String(values[r][c] || '').trim().match(/^semaine\s*(\d+)$/i);
+      const v = String(values[r][c] || '').trim();
+      const m = v.match(/^semaine\s*(\d+)$/i);
       if (m) titles.push({ n: Number(m[1]), r: r, c: c });
+      else if (/^exerci[cs]es?$/i.test(v) && (exCol < 0 || c < exCol)) exCol = c;
     }
   }
   return titles.map(function (t) {
-    let rowEnd = rows - 1;
     let colEnd = cols - 1;
+    let rowEnd = rows - 1;
     titles.forEach(function (o) {
-      if (o === t) return;
       if (o.r === t.r && o.c > t.c) colEnd = Math.min(colEnd, o.c - 1);
       if (o.c === t.c && o.r > t.r) rowEnd = Math.min(rowEnd, o.r - 1);
     });
-    return parseBlock_(values, rules, t, rowEnd, colEnd);
+    return parseBlock_(values, t, rowEnd, colEnd, exCol);
   });
 }
 
 const DAY_RE = /^(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)$/i;
 const SESSION_RE = /^(s[ée]ance|jour|day|workout)\s*\d+$/i;
 
-function parseBlock_(values, rules, t, rowEnd, colEnd) {
+function parseBlock_(values, t, rowEnd, colEnd, exCol) {
   const block = { semaine: t.n, row: t.r, col: t.c, bands: [] };
   let band = null;
-  let cols = null;
   for (let r = t.r + 1; r <= rowEnd; r++) {
     const row = values[r] || [];
-    let isBand = false;
-    for (let c = t.c; c <= colEnd; c++) {
+    let label = '';
+    for (let c = t.c; c <= colEnd && !label; c++) {
       const v = String(row[c] || '').trim();
-      if (DAY_RE.test(v) || SESSION_RE.test(v)) {
-        band = { label: v.toUpperCase(), exercises: [], free: [], cols: null };
-        block.bands.push(band);
-        isBand = true;
-        break;
-      }
+      if (DAY_RE.test(v) || SESSION_RE.test(v)) label = v;
     }
-    if (isBand) continue;
+    if (label) {
+      band = { label: label.toUpperCase(), cols: null, exercises: [] };
+      block.bands.push(band);
+      continue;
+    }
     let perfCol = -1;
     for (let c = t.c; c <= colEnd; c++) if (/poids\s*x\s*reps/i.test(String(row[c] || ''))) perfCol = c;
     if (perfCol >= 0) {
-      cols = { perf: perfCol, ex: t.c, rir: -1, cible: -1, progres: -1 };
+      const h = { perf: perfCol, ex: exCol >= 0 ? exCol : t.c, serie: -1, reps: -1, cible: -1, rir: -1, progres: -1, notes: -1 };
       for (let c = t.c; c <= colEnd; c++) {
         const v = String(row[c] || '').trim();
-        if (/^exerci/i.test(v)) cols.ex = c;
-        else if (/^rir$/i.test(v)) cols.rir = c;
-        else if (/\(rir\)/i.test(v)) cols.cible = c;
-        else if (/progress/i.test(v)) cols.progres = c;
+        if (/^s[ée]ries?$/i.test(v)) h.serie = c;
+        else if (/^reps?$/i.test(v)) h.reps = c;
+        else if (/\(rir\)|intensit/i.test(v)) h.cible = c;
+        else if (/^rir$/i.test(v)) h.rir = c;
+        else if (/progress/i.test(v)) h.progres = c;
+        else if (/douleur|note/i.test(v)) h.notes = c;
+        else if (/^exerci/i.test(v)) h.ex = c;
       }
-      if (band) band.cols = cols;
+      if (!band) {
+        band = { label: '', cols: null, exercises: [] };
+        block.bands.push(band);
+      }
+      band.cols = h;
       continue;
     }
-    if (!band || !(band.cols || cols)) continue;
-    if (!band.cols) band.cols = cols;
+    if (!band || !band.cols) continue;
     const name = String(row[band.cols.ex] || '').trim();
-    if (name) {
-      band.exercises.push({
-        row: r,
-        nom: name,
-        rir: band.cols.cible >= 0 ? String(row[band.cols.cible] || '').trim() : '',
-        perf: String(row[band.cols.perf] || '').trim(),
-      });
-    } else if (!rules || band.cols.progres < 0 || (rules[r] && rules[r][band.cols.progres])) {
-      // Ligne vide du tableau (elle porte la liste déroulante « Progressé ? ») : utilisable pour un exercice ajouté.
-      band.free.push(r);
-    }
+    if (!name || /^exerci/i.test(name)) continue;
+    const cols = band.cols;
+    const get = function (k) {
+      return cols[k] >= 0 ? String(row[cols[k]] || '').trim() : '';
+    };
+    band.exercises.push({ row: r, nom: name, series: get('serie'), reps: get('reps'), rir: get('cible'), perf: get('perf'), progres: get('progres'), notes: get('notes') });
   }
   return block;
 }
 
-/** Programme du coach (pour l'import dans l'app) : dernière semaine remplie + exercices par jour. */
+/**
+ * Programme du coach pour l'import dans l'app : séances de la semaine en cours (séries, reps, RIR),
+ * toutes les semaines déjà remplies (historique) et objectifs de l'onglet Nutrition.
+ */
 function readCoachProgram_() {
   if (!COACH_SHEET_URL) throw new Error('Renseigne COACH_SHEET_URL dans le script.');
   const st = trainingStructure_();
-  const withEx = st.blocks.filter(function (b) {
+  const blocks = st.blocks.filter(function (b) {
     return b.bands.some(function (x) { return x.exercises.length; });
   });
-  if (!withEx.length) throw new Error('Aucun bloc « Semaine N » avec des exercices dans l’onglet Entraînement.');
-  const withPerf = withEx.filter(function (b) {
-    return b.bands.some(function (x) { return x.exercises.some(function (e) { return e.perf; }); });
+  if (!blocks.length) throw new Error('Aucun bloc « Semaine N » avec des exercices dans l’onglet Entraînement.');
+  const wk = weekOfDate_(todayIso_());
+  const current = (wk && blocks.filter(function (b) { return b.semaine === wk.semaine; })[0]) || blocks.reduce(function (a, b) { return b.semaine > a.semaine ? b : a; });
+  const seances = current.bands
+    .filter(function (b) { return b.exercises.length; })
+    .map(function (b) {
+      return {
+        jour: b.label,
+        exercices: b.exercises.map(function (e) {
+          return { nom: e.nom, series: Number(e.series) || null, reps: e.reps, rir: e.rir };
+        }),
+      };
+    });
+  const historique = [];
+  blocks.forEach(function (b) {
+    const start = weekStart_(b.semaine);
+    b.bands.forEach(function (band, i) {
+      const ex = band.exercises
+        .filter(function (e) { return e.perf || e.notes; })
+        .map(function (e) { return { nom: e.nom, perf: e.perf, notes: e.notes }; });
+      if (ex.length) historique.push({ semaine: b.semaine, jour: band.label, date: bandDate_(start, band.label, i), exercices: ex });
+    });
   });
-  const block = (withPerf.length ? withPerf : withEx).reduce(function (a, b) { return b.semaine > a.semaine ? b : a; });
-  const start = weekStart_(block.semaine);
-  return {
-    semaine: block.semaine,
-    debut: start,
-    seances: block.bands
-      .filter(function (b) { return b.exercises.length; })
-      .map(function (b, i) {
-        return {
-          jour: b.label,
-          date: bandDate_(start, b.label, i),
-          exercices: b.exercises.map(function (e) { return { nom: e.nom, rir: e.rir, perf: e.perf }; }),
-        };
-      }),
+  let objectifs = null;
+  try {
+    objectifs = readCoachTargets_();
+  } catch (err) {
+    objectifs = null;
+  }
+  return { semaine: current.semaine, semaineActuelle: wk ? wk.semaine : null, seances: seances, historique: historique, objectifs: objectifs };
+}
+
+/** Objectifs de l'onglet Nutrition : « Jour ON » / « Jour off » (ligne « Macro Cible ») et « Pas ». */
+function readCoachTargets_() {
+  const cfg = COACH_MAPPING && COACH_MAPPING.nutrition;
+  if (!cfg) return null;
+  const sh = sheetByName_(coachSs_(), cfg.onglet);
+  if (!sh) return null;
+  const v = sh.getDataRange().getDisplayValues();
+  const find = function (re) {
+    for (let r = 0; r < v.length; r++) for (let c = 0; c < v[r].length; c++) if (re.test(String(v[r][c] || '').trim())) return { r: r, c: c };
+    return null;
   };
+  const day = function (re) {
+    const at = find(re);
+    if (!at) return null;
+    let target = -1;
+    for (let r = at.r + 1; r < Math.min(v.length, at.r + 4) && target < 0; r++) if (/cible/i.test(String(v[r][at.c] || ''))) target = r;
+    if (target < 0) return null;
+    const out = {};
+    v[at.r].forEach(function (h, c) {
+      const key = /calor/i.test(h) ? 'kcal' : /prot/i.test(h) ? 'protein' : /glucid|carb/i.test(h) ? 'carbs' : /lipid|fat/i.test(h) ? 'fat' : /fibre/i.test(h) ? 'fiber' : null;
+      const n = key ? parseNumber_(v[target][c]) : null;
+      if (key && n != null) out[key] = n;
+    });
+    return out.kcal ? out : null;
+  };
+  const on = day(/^jour\s*on$/i);
+  const off = day(/^jour\s*off$/i);
+  let pas = null;
+  const p = find(/^pas$/i);
+  if (p && v[p.r + 1]) {
+    const t = String(v[p.r + 1][p.c] || '').toLowerCase().replace(/\s/g, '').replace(',', '.');
+    const m = t.match(/^(\d+(?:\.\d+)?)(k?)/);
+    if (m) pas = Math.round(Number(m[1]) * (m[2] ? 1000 : 1));
+  }
+  return on || off ? { on: on, off: off, pas: pas } : null;
+}
+
+function parseNumber_(x) {
+  const t = String(x == null ? '' : x).replace(/[\s  ]/g, '').replace(',', '.');
+  if (!t) return null;
+  const n = Number(t);
+  return isFinite(n) ? n : null;
 }
 
 /** Date du bandeau dans la semaine : le jour de la semaine correspondant au libellé (LUNDI…). */
@@ -551,7 +627,7 @@ function bandDate_(start, label, index) {
   return null;
 }
 
-/** Écrit les séances de l'app dans l'onglet Entraînement. */
+/** Écrit les séances de l'app dans l'onglet Entraînement (bloc de la semaine, bandeau du jour). */
 function writeCoachTraining_(sessions) {
   const cfg = COACH_MAPPING && COACH_MAPPING.entrainement;
   if (!COACH_SHEET_URL || !cfg) return { ok: true, message: '', cells: 0 };
@@ -563,10 +639,13 @@ function writeCoachTraining_(sessions) {
   const sh = st.sheet;
   let cells = 0;
   const problems = [];
+  const put = function (row, col, value) {
+    sh.getRange(row + 1, col + 1).setValue(value);
+    cells++;
+  };
   todo.forEach(function (s) {
     const wk = weekOfDate_(s.date);
-    let block = null;
-    if (wk) block = st.blocks.filter(function (b) { return b.semaine === wk.semaine; })[0] || null;
+    let block = wk ? st.blocks.filter(function (b) { return b.semaine === wk.semaine; })[0] || null : null;
     if (!block && st.blocks.length === 1) block = st.blocks[0]; // un seul tableau, réécrit chaque semaine
     if (!block) {
       problems.push((wk ? 'Semaine ' + wk.semaine : s.date) + ' absente de l’onglet Entraînement');
@@ -578,29 +657,32 @@ function writeCoachTraining_(sessions) {
       return;
     }
     (s.exercices || []).forEach(function (ex) {
-      const text = ex.perf ? (ex.note ? ex.perf + ' (' + ex.note + ')' : ex.perf) : ex.note || '';
-      if (!text) return;
-      let target = band.exercises.filter(function (e) { return sameExercise_(e.nom, ex.nom); })[0];
+      if (!ex.perf && !ex.note) return;
+      const target = band.exercises.filter(function (e) { return sameExercise_(e.nom, ex.nom); })[0];
       if (!target) {
-        const free = band.free.shift();
-        if (free == null) {
-          problems.push('« ' + ex.nom + ' » : plus de ligne libre le ' + band.label.toLowerCase());
-          return;
-        }
-        target = { row: free, nom: ex.nom };
-        band.exercises.push(target);
-        sh.getRange(free + 1, band.cols.ex + 1).setValue(ex.nom);
-        cells++;
+        problems.push('« ' + ex.nom + ' » n’est pas dans le programme du ' + band.label.toLowerCase());
+        return;
       }
-      sh.getRange(target.row + 1, band.cols.perf + 1).setValue(text);
-      cells++;
-      if (band.cols.progres >= 0 && ex.progres) {
-        sh.getRange(target.row + 1, band.cols.progres + 1).setValue(ex.progres);
-        cells++;
+      if (ex.perf) put(target.row, band.cols.perf, ex.perf);
+      let progres = ex.progres || '';
+      if (!progres && ex.perf && isNewExercise_(st.blocks, block, target.row)) progres = 'Nouvel exo';
+      if (progres && band.cols.progres >= 0) put(target.row, band.cols.progres, progres);
+      if (ex.note) {
+        if (band.cols.notes >= 0) put(target.row, band.cols.notes, ex.note);
+        else if (!ex.perf) put(target.row, band.cols.perf, ex.note);
       }
     });
   });
   return { ok: problems.length === 0, message: problems.join(' · '), cells: cells };
+}
+
+/** Aucune performance sur cette ligne dans les semaines précédentes → « Nouvel exo ». */
+function isNewExercise_(blocks, block, row) {
+  return !blocks.some(function (b) {
+    return b.semaine < block.semaine && b.bands.some(function (x) {
+      return x.exercises.some(function (e) { return e.row === row && e.perf; });
+    });
+  });
 }
 
 /** Bandeau du jour : celui lié à la séance (LUNDI…), sinon celui qui partage le plus d'exercices. */

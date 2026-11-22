@@ -112,7 +112,7 @@ export function buildSession(s: State, x: Session) {
         groupe: MUSCLE_LABEL[exo.muscle],
         resume: work.map((st) => setLabel(st, exo.kind)).join(', '),
         perf: formatPerf(ex.sets, exo.kind),
-        progres: progressLabel(ex, exo.kind, s.sessions.filter((y) => y.id !== x.id), x.startedAt),
+        progres: progressLabel(ex, exo.kind, s.sessions.filter((y) => y.id !== x.id), x.startedAt, x.coachDay),
         rir: ex.rir ?? '',
         note: ex.note ?? '',
         series: work.map((st, i) => ({
@@ -218,7 +218,13 @@ export async function fetchProgram(): Promise<CoachProgram> {
   const { url, token } = useStore.getState().sync
   const r = await getAction(url, { action: 'programme', token })
   if (!r.ok) throw new Error(String(r.error ?? 'Lecture du programme impossible'))
-  return { semaine: Number(r.semaine) || 0, debut: (r.debut as string) ?? null, seances: (r.seances as CoachProgram['seances']) ?? [] }
+  return {
+    semaine: Number(r.semaine) || 0,
+    semaineActuelle: (r.semaineActuelle as number | null | undefined) ?? null,
+    seances: (r.seances as CoachProgram['seances']) ?? [],
+    historique: (r.historique as CoachProgram['historique']) ?? [],
+    objectifs: (r.objectifs as CoachProgram['objectifs']) ?? null,
+  }
 }
 
 let running: Promise<SyncResult> | null = null

@@ -55,18 +55,19 @@ Le script est réglé pour le sheet du coach (`COACH_MAPPING` dans `Code.gs`) :
 | Onglet du coach | Ce que l'app remplit |
 | --- | --- |
 | **Suivi journalier** (une ligne par jour, dates en colonne C dès la ligne 11) | G poids · H sommeil (h, « 1 à 3 » si nuit courte) · I qualité du sommeil · K pas · L cardio (min) · M séance · O énergie · P motivation · Q satiété · R digestion · T calories · U/V/W protéines/glucides/lipides · X fibres · Y eau · AC notes |
-| **Entraînement** (blocs « Semaine N », bandeaux LUNDI / MARDI…) | « POIDS X REPS » au format `55kg x 10 ; 50kg x 11` et « Progressé en POIDS/ CHARGE ? » (OUI / Maintenu / Regressé, calculé sur le meilleur 1RM estimé vs la fois précédente) |
+| **Entraînement** (12 blocs « Semaine N » côte à côte, bandeaux LUNDI / MARDI / JEUDI / VENDREDI, exercices en colonne B) | Dans le bloc de la semaine en cours, sur la ligne de l'exercice : « POIDS X REPS » au format `55kg x 10 ; 50kg x 11`, « Progressé en POIDS/ CHARGE ? » (OUI / Maintenu / Regressé, ou Nouvel exo) et « Douleurs/ Notes » |
+| **Nutrition** (lecture seule) | Objectifs Jour ON / Jour off et pas, repris dans l'app à l'import |
 
 - Les lignes « Moyenne », les formules et les colonnes du coach (Nutrition Phase…) ne sont jamais touchées ; une case n'est écrite que si l'app a une valeur.
-- La semaine se retrouve grâce à « Semaine N » (colonne B du suivi journalier). Si l'onglet Entraînement n'a qu'un seul bloc, il est réécrit chaque semaine ; sinon une semaine absente est signalée dans l'app.
-- Un exercice ajouté en séance (absent du programme) est écrit sur la première ligne vide du jour.
+- La semaine se retrouve grâce à « Semaine N » (colonne B du suivi journalier) : la séance du 23 novembre va dans le bloc « Semaine 8 ». Une semaine absente de l'onglet Entraînement (après la 12e) est signalée dans l'app.
+- Un exercice hors programme n'est pas ajouté chez le coach (la colonne Exercise est la sienne) : l'app le signale, et il reste dans ton propre sheet.
 - L'onglet **Checkins** (questionnaire de la semaine) reste à remplir à la main. Les photos du bilan s'envoient depuis l'app (Suivi → Bilan → « Envoyer les photos au coach », via WhatsApp ou Messages).
 
 Mise en route :
 
 1. Dans l'app, **Profil → Google Sheets** : colle le lien du sheet du coach (il doit te l'avoir partagé en modification).
 2. Guide → **Copier le script** : il contient déjà ton jeton et ce lien. Colle-le dans Apps Script, déploie (voir 3).
-3. **Importer le programme du coach** : les séances (Upper A = lundi, Lower A = mardi…) sont créées avec les noms exacts des exercices, et les charges de la dernière semaine remplie deviennent ton historique (colonne « Précédent »).
+3. **Importer le programme du coach** : les séances (Upper A = lundi, Lower A = mardi, Upper B = jeudi, Lower B = vendredi) sont créées avec les noms exacts, les séries, reps et RIR de la semaine en cours ; toutes les semaines déjà remplies deviennent ton historique (colonne « Précédent », courbes) ; les objectifs de l'onglet Nutrition remplacent les tiens (jour ON / jour off, 15 000 pas).
 4. Chaque jour : pesée, **Ressenti du jour** (sommeil, énergie, motivation, satiété, digestion, eau, note), diète, séance. Tout part tout seul.
 
 La fonction `diagnosticCoach()` (à lancer depuis l'éditeur Apps Script) affiche ce que le script a repéré : ligne du jour, numéro de semaine, blocs et jours de l'onglet Entraînement.

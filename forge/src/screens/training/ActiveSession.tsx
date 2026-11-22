@@ -143,6 +143,7 @@ export function ActiveSession() {
               count={active.exercises.length}
               nextSuperset={active.exercises[i + 1]?.superset ?? null}
               startedAt={active.startedAt}
+              coachDay={active.coachDay ?? null}
               history={history}
               custom={custom}
             />
@@ -181,6 +182,7 @@ const ExerciseBlock = memo(function ExerciseBlock({
   count,
   nextSuperset,
   startedAt,
+  coachDay,
   history,
   custom,
 }: {
@@ -189,6 +191,7 @@ const ExerciseBlock = memo(function ExerciseBlock({
   count: number
   nextSuperset: string | null
   startedAt: number
+  coachDay: string | null
   history: Session[]
   custom: Exercise[]
 }) {
@@ -197,7 +200,7 @@ const ExerciseBlock = memo(function ExerciseBlock({
   const autoRest = useStore((s) => s.settings.autoRest)
   const hapticsOn = useStore((s) => s.settings.haptics)
   const exo = findExercise(ex.exerciseId, custom)
-  const prev = useMemo(() => previousSets(history, ex.exerciseId, startedAt), [history, ex.exerciseId, startedAt])
+  const prev = useMemo(() => previousSets(history, ex.exerciseId, startedAt, coachDay), [history, ex.exerciseId, startedAt, coachDay])
   const lastNote = useMemo(() => lastNoteFor(history, ex.exerciseId, startedAt), [history, ex.exerciseId, startedAt])
   const [shakeId, setShakeId] = useState<string | null>(null)
   const [showNote, setShowNote] = useState(!!ex.note)

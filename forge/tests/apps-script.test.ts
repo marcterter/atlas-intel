@@ -8,6 +8,19 @@ import vm from 'node:vm'
 process.env.TZ = 'Europe/Paris'
 type Cell = unknown
 
+/** Horloge figée au dimanche 22 novembre 2026, midi (semaine 8 du programme). */
+const FIXED = new Date(2026, 10, 22, 12).getTime()
+class FixedDate extends Date {
+  constructor(...a: unknown[]) {
+    if (a.length === 0) super(FIXED)
+    else super(...(a as [number]))
+  }
+  static now() {
+    return FIXED
+  }
+}
+const D = (y: number, m: number, d: number) => new FixedDate(y, m, d)
+
 class MockRange {
   sheet: MockSheet
   r: number
@@ -136,7 +149,7 @@ function load(opts: { coach?: MockSpreadsheet } = {}) {
     ContentService: { createTextOutput: (s: string) => ({ s, setMimeType() { return this } }), MimeType: { JSON: 'json' } },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     Logger: { log() {} },
-    Date,
+    Date: FixedDate,
     JSON,
     Math,
     Number,
@@ -173,7 +186,7 @@ function suiviJournalier(weeks = 9) {
   for (let n = 1; n <= weeks; n++) {
     const r0 = 11 + 8 * (n - 1)
     sh.set(r0, COL.B, `Semaine ${n}`) // cellule fusionnée : valeur en haut du bloc seulement
-    for (let d = 0; d < 7; d++) sh.set(r0 + d, COL.C, new Date(2026, 9, 2 + 7 * (n - 1) + d))
+    for (let d = 0; d < 7; d++) sh.set(r0 + d, COL.C, D(2026, 9, 2 + 7 * (n - 1) + d))
     sh.set(r0 + 7, COL.B, 'Moyenne')
     sh.set(r0 + 7, COL.G, `=AVERAGE(G${r0}:G${r0 + 6})`)
     sh.set(r0 + 7, COL.T, `=AVERAGE(T${r0}:T${r0 + 6})`)
@@ -182,80 +195,101 @@ function suiviJournalier(weeks = 9) {
   return sh
 }
 
-const LUNDI = [
-  ['Tirage vertical unilatéral', '0', '35kg x 6, 30KGX8', 'OUI'],
-  ['Développé couché à la smith', '1', '52,5kg x 11 ; 47,4kg x 11 ; 47,5kgx8', 'OUI'],
-  ['Tirage horizontal machine', '0', '47,5kg x 9 ; 45kg x 9', 'OUI'],
-  ['Écarté à la poulie sur banc', '0', '12 x 7,5kg ; 10 x 7,5kg ; 8 x 7,5kg', 'Maintenu'],
-  ['Élévation latérale unilatéral cuff de poignet', '0', '7,5kg x 12 ; 7,5kg x 8 ; 6,25kg x 8', 'OUI'],
-  ['Curl pupitre unilatéral avec haltères', '0', '12kg x 10 ; 12kg x 7', 'Regressé'],
-  ['Overhead triceps extension cable', '0', '22,5kg x 7 ; 17,5kg x 9 ; 15kg x 9', 'OUI'],
-  ['Rotation latérale abdos', '2', '', ''],
+type Exo = [nom: string, series: string, reps: string, rir: string, perf: string, progres: string, notes?: string]
+const LUNDI: Exo[] = [
+  ['Tirage vertical unilatéral', '2', '10,8', '0', '35kg x 6, 30KGX8', 'OUI'],
+  ['Développé couché à la smith', '3', '10,8,6', '1', '52,5kg x 11 ; 47,4kg x 11 ; 47,5kgx8', 'OUI'],
+  ['Tirage horizontal machine', '2', '10,8', '0', '47,5kg x 9 ; 45kg x 9', 'OUI'],
+  ['Écarté à la poulie sur banc', '3', '12,10,8', '0', '12 x 7,5kg ; 10 x 7,5kg ; 8 x 7,5kg', 'Maintenu'],
+  ['Élévation latérale unilatéral cuff de poignet', '3', '12,10,8', '0', '7,5kg x 12 ; 7,5kg x 8 ; 6,25kg x 8', 'OUI'],
+  ['Curl pupitre unilatéral avec haltères', '3', '12,10,8', '0', '12kg x 10 ; 12kg x 7', 'Regressé', 'regressé a cause du doigt'],
+  ['Overhead triceps extension cable', '3', '12,10,8', '0', '22,5kg x 7 ; 17,5kg x 9 ; 15kg x 9', 'OUI'],
+  ['Rotation latérale abdos', '2', '10,8', '2', '', ''],
 ]
-const MARDI = [
-  ['Adductor machine', '0', '60kg x 6 ; 50kg x 8', 'Maintenu'],
-  ['Seated leg curl', '0', '60kg x 8 ; 50kg x 9', 'Maintenu'],
-  ['Pendulum', '1', '25kg x8 ; 25kg x 6', 'Maintenu'],
-  ['Leg press', '1', '180kg x 8', 'OUI'],
-  ['Leg extension', '0', '70kg x 8 ; 60kg x 6', 'OUI'],
-  ['Extension mollet', '0', '', ''],
-  ['Crunch poulie abdos', '0', '40kg x 8 ; 35kg x 8', 'Maintenu'],
+const MARDI: Exo[] = [
+  ['Adductor machine', '2', '10,8', '0', '60kg x 6 ; 50kg x 8', 'Maintenu'],
+  ['Seated leg curl', '2', '10,8', '0', '60kg x 8 ; 50kg x 9', 'Maintenu'],
+  ['Pendulum', '2', '8,6', '1', '25kg x8 ; 25kg x 6', 'Maintenu'],
+  ['Leg press', '1', '5-8', '1', '180kg x 8', 'OUI'],
+  ['Leg extension ', '2', '10,8', '0', '70kg x 8 ; 60kg x 6', 'OUI'],
+  ['Extension mollet', '2', '10,8', '0', '', ''],
+  ['Crunch poulie abdos', '2', '10,8', '0', '40kg x 8 ; 35kg x 8', 'Maintenu'],
 ]
-const JEUDI = [
-  ['Tirage vertical unilatéral', '0', '35kg x 6, 30KGX8', 'Maintenu'],
-  ['Développé incliné à la smith', '1', '55kgx9 ; 47,5kg x 10 . 45kg x 8', 'OUI'],
-  ['Tirage horizontal machine', '0', '47,5kg x 9 ; 45kg x 9', 'Maintenu'],
-  ['Écarté à la poulie sur banc', '0', '12 x 7,5kg ; 10 x 7,5kg ; 8 x 7,5kg', 'Maintenu'],
-  ['Élévation latérale unilatéral cuff de poignet', '0', '8,75kg x 6 ; 7,5kgx8 ; 6,25kg x 8', 'OUI'],
-  ['Curl pupitre unilatéral avec haltères', '0', '14kgx7 ; 12kgx8 ; 12kgx6', 'OUI'],
-  ['Overhead triceps extension cable', '0', '22,5kg x 7 ; 17,5kg x 10', 'OUI'],
-  ['Rotation latérale abdos', '2', '', ''],
+const JEUDI: Exo[] = [
+  ['Tirage vertical unilatéral', '2', '10,8', '0', '35kg x 6, 30KGX8', 'Maintenu'],
+  ['Développé incliné à la smith', '3', '10,8,6', '1', '55kgx9 ; 47,5kg x 10 . 45kg x 8', 'OUI'],
+  ['Tirage horizontal machine', '2', '10,8', '0', '47,5kg x 9 ; 45kg x 9', 'Maintenu'],
+  ['Écarté à la poulie sur banc', '3', '12,10,8', '0', '12 x 7,5kg ; 10 x 7,5kg ; 8 x 7,5kg', 'Maintenu'],
+  ['Élévation latérale unilatéral cuff de poignet', '3', '12,10,8', '0', '8,75kg x 6 ; 7,5kgx8 ; 6,25kg x 8', 'OUI'],
+  ['Curl pupitre unilatéral avec haltères', '3', '12,10,8', '0', '14kgx7 ; 12kgx8 ; 12kgx6', 'OUI'],
+  ['Overhead triceps extension cable', '3', '12,10,8', '0', '22,5kg x 7 ; 17,5kg x 10', 'OUI'],
+  ['Rotation latérale abdos', '2', '10,8', '2', '', ''],
 ]
-const VENDREDI = [
-  ['Adductor machine', '0', '60kg x 7 ; 50kg x 9', 'OUI'],
-  ['Seated leg curl', '0', '65kg x 6 ; 55kg x 7 ; 50kg x 7', 'OUI'],
-  ['Stiff leg deadlift', '1', 'skip a cause du doigt', ''],
-  ['Leg press', '1', '70kg x 9 ; 62,5kg x 8', 'OUI'],
-  ['Leg extension', '0', '75kg x 7 ; 65kg x 7', 'OUI'],
-  ['Extension mollet', '0', '', ''],
-  ['Crunch poulie abdos', '0', 'demain sur seance cardio', ''],
+const VENDREDI: Exo[] = [
+  ['Adductor machine', '2', '10,8', '0', '60kg x 7 ; 50kg x 9', 'OUI'],
+  ['Seated leg curl', '2', '10,8', '0', '65kg x 6 ; 55kg x 7 ; 50kg x 7', 'OUI'],
+  ['Stiff leg deadlift', '2', '8,6', '1', 'skip a cause du doigt', ''],
+  ['Leg press', '2', '5-8', '1', '70kg x 9 ; 62,5kg x 8', 'OUI'],
+  ['Leg extension ', '2', '10,8', '0', '75kg x 7 ; 65kg x 7', 'OUI'],
+  ['Extension mollet', '2', '10,8', '0', '', ''],
+  ['Crunch poulie abdos', '2', '10,8', '0', 'demain sur seance cardio', ''],
 ]
+const DAYS: [number, string, Exo[], boolean][] = [
+  [7, 'LUNDI', LUNDI, true],
+  [19, 'MARDI', MARDI, false],
+  [32, 'JEUDI', JEUDI, true],
+  [45, 'VENDREDI', VENDREDI, true],
+]
+const HEADERS = ['Série', 'Reps', 'Intensité (RIR)', 'POIDS X REPS', 'RIR', 'Progressé en POIDS/ CHARGE ?', 'Douleurs/ Notes']
+/** Colonne de début du bloc « Semaine n » : D, L, T, AB… (8 colonnes par semaine). */
+const blockCol = (n: number) => 4 + 8 * (n - 1)
 
-/** « Entraînement » : bloc « Semaine N » (B→I), bandeaux de jour, en-têtes, exercices, lignes vides avec liste déroulante. */
-function trainingBlock(sh: MockSheet, n: number, dc: number, withPerf: boolean) {
-  const c = (col: number) => col + dc
-  sh.set(3, c(2), `Semaine ${n}`)
-  const day = (bandRow: number, label: string, bandCol: number, exos: string[][], rows: number, exerciseHeader: boolean) => {
-    sh.set(bandRow, c(bandCol), label)
-    if (exerciseHeader) sh.set(bandRow + 1, c(2), 'Exercise')
-    sh.set(bandRow + 1, c(6), 'Intensité (RIR)')
-    sh.set(bandRow + 1, c(7), 'POIDS X REPS')
-    sh.set(bandRow + 1, c(8), 'RIR')
-    sh.set(bandRow + 1, c(9), 'Progressé en POIDS/ CHARGE ?')
-    for (let i = 0; i < rows; i++) {
-      const r = bandRow + 2 + i
-      sh.rules.add(`${r},${c(9)}`)
-      const e = exos[i]
-      if (!e) continue
-      sh.set(r, c(2), e[0])
-      sh.set(r, c(6), e[1])
-      if (withPerf) {
-        sh.set(r, c(7), e[2])
-        sh.set(r, c(9), e[3])
-      }
+/** « Entraînement » : noms en colonne B (communs), puis 12 blocs « Semaine N » côte à côte ; `filled` semaines remplies. */
+function entrainement(weeks = 12, filled = 3) {
+  const sh = new MockSheet('Entraînement')
+  for (const [band, , exos, exHeader] of DAYS) {
+    if (exHeader) sh.set(band + 1, 2, 'Exercise')
+    exos.forEach((e, i) => sh.set(band + 2 + i, 2, e[0]))
+  }
+  for (let n = 1; n <= weeks; n++) {
+    const c0 = blockCol(n)
+    sh.set(3, c0, `Semaine ${n}`)
+    for (const [band, label, exos] of DAYS) {
+      sh.set(band, c0, label)
+      HEADERS.forEach((h, k) => sh.set(band + 1, c0 + k, h))
+      exos.forEach((e, i) => {
+        const r = band + 2 + i
+        sh.set(r, c0, e[1])
+        sh.set(r, c0 + 1, e[2])
+        sh.set(r, c0 + 2, e[3])
+        if (n <= filled) {
+          sh.set(r, c0 + 3, n === 1 ? e[4] : e[4].replace(/kg/g, '').replace(/ ; /g, ' '))
+          sh.set(r, c0 + 5, e[5])
+          if (e[6]) sh.set(r, c0 + 6, e[6])
+        }
+      })
     }
   }
-  day(7, 'LUNDI', 7, LUNDI, 10, true)
-  day(19, 'MARDI', 7, MARDI, 10, false)
-  day(32, 'JEUDI', 7, JEUDI, 10, true)
-  day(45, 'VENDREDI', 7, VENDREDI, 10, true)
+  return sh
 }
 
-function coachSheet(opts: { weeksInTraining: number } = { weeksInTraining: 2 }) {
+function nutrition() {
+  const sh = new MockSheet('Nutrition')
+  ;[['B', 'Jour ON'], ['C', 'Calories'], ['D', 'Protein'], ['E', 'Glucides'], ['F', 'Lipides'], ['G', 'Fibres'], ['J', 'Consommation eau'], ['L', 'Cardio']].forEach(([c, v]) => sh.set(2, c.charCodeAt(0) - 64, v))
+  ;[['B', 'Macro Cible'], ['C', 2640], ['D', 215], ['E', 310], ['F', 60], ['G', 30], ['J', '3-4 L'], ['L', '60 min zone 2 ']].forEach(([c, v]) => sh.set(3, (c as string).charCodeAt(0) - 64, v))
+  sh.set(6, 12, 'Pas')
+  ;[['B', 'Jour off'], ['C', 'Calories'], ['D', 'Protein'], ['E', 'Glucides'], ['F', 'Lipides'], ['G', 'Fibres'], ['L', '15k']].forEach(([c, v]) => sh.set(7, c.charCodeAt(0) - 64, v))
+  ;[['B', 'Macro Cible'], ['C', 2140], ['D', 200], ['E', 200], ['F', 60], ['G', 30]].forEach(([c, v]) => sh.set(8, (c as string).charCodeAt(0) - 64, v))
+  sh.set(13, 2, 'JOUR ON')
+  sh.set(13, 15, 'JOUR OFF')
+  return sh
+}
+
+function coachSheet(opts: { weeks?: number; filled?: number } = {}) {
   const suivi = suiviJournalier()
-  const entr = new MockSheet('Entraînement')
-  for (let n = 1; n <= opts.weeksInTraining; n++) trainingBlock(entr, n, 9 * (n - 1), n === 1)
-  return { ss: new MockSpreadsheet('Coaching Marc', [new MockSheet('Page d’accueil'), suivi, entr, new MockSheet('Checkins')]), suivi, entr }
+  const entr = entrainement(opts.weeks ?? 12, opts.filled ?? 3)
+  const ss = new MockSpreadsheet('Coaching Marc', [new MockSheet('Page daccueil'), suivi, entr, nutrition(), new MockSheet('Checkins')])
+  return { ss, suivi, entr }
 }
 
 const day = (date: string, extra: Record<string, unknown> = {}) => ({
@@ -309,7 +343,7 @@ test('Apps Script : pas reçus du Raccourci iOS (format français) puis relus pa
   assert.equal(list.steps.length, 1)
   assert.equal(list.steps[0].steps, 9100)
   assert.equal(get({ action: 'pas', steps: 'abc' }).ok, false)
-  assert.equal(get({ action: 'pas', steps: '1200' }).date, iso(new Date()))
+  assert.equal(get({ action: 'pas', steps: '1200' }).date, '2026-11-22')
 })
 
 test('Apps Script : journées, séances et bilans dans ton sheet, sans doublons', () => {
@@ -363,12 +397,12 @@ test('Coach : « Suivi journalier » rempli sur la ligne du jour, colonnes G →
   const { ss, suivi } = coachSheet()
   const { post, get } = load({ coach: ss })
   const ping = get({ action: 'ping' })
-  assert.deepEqual([ping.coach.ok, ping.coach.nom, ping.coach.suivi, ping.coach.semaines], [true, 'Coaching Marc', true, [1, 2]])
+  assert.deepEqual([ping.coach.ok, ping.coach.nom, ping.coach.suivi, ping.coach.semaines.length], [true, 'Coaching Marc', true, 12])
 
   const r = post({ action: 'push', days: [day('2026-11-22')] })
   assert.equal(r.coach.ok, true, JSON.stringify(r.coach))
   const row = 11 + 8 * 7 + 2 // semaine 8 (20 → 26 nov.), 22 nov. = 3e jour
-  assert.equal(String(suivi.get(row, COL.C)), new Date(2026, 10, 22).toString())
+  assert.equal(String(suivi.get(row, COL.C)), D(2026, 10, 22).toString())
   const got = Object.fromEntries(Object.entries(COL).filter(([k]) => !['B', 'C'].includes(k)).map(([k, c]) => [k, suivi.get(row, c)]))
   assert.deepEqual(got, {
     G: 72.6, H: 7.5, I: 8, K: 12774, L: 30, M: 'Upper A', O: 8, P: 9, Q: 7, R: 4,
@@ -412,19 +446,26 @@ test('Coach : date hors du suivi journalier signalée sans rien écrire', () => 
   assert.equal(suivi.writes.length, 0)
 })
 
-test('Coach : lecture du programme (onglet Entraînement) pour l’import dans l’app', () => {
+test('Coach : lecture du programme, de l’historique et des objectifs', () => {
   const { ss } = coachSheet()
   const { get } = load({ coach: ss })
+  const ping = get({ action: 'ping' })
+  assert.deepEqual(ping.coach.semaines, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
   const p = get({ action: 'programme' })
   assert.equal(p.ok, true, JSON.stringify(p))
-  assert.equal(p.semaine, 1, 'dernière semaine remplie')
-  assert.equal(p.debut, '2026-10-02')
+  assert.equal(p.semaineActuelle, 8)
+  assert.equal(p.semaine, 8, 'programme de la semaine en cours')
   assert.deepEqual(p.seances.map((s: { jour: string }) => s.jour), ['LUNDI', 'MARDI', 'JEUDI', 'VENDREDI'])
-  assert.deepEqual(p.seances.map((s: { date: string }) => s.date), ['2026-10-05', '2026-10-06', '2026-10-08', '2026-10-02'])
-  assert.equal(p.seances[0].exercices.length, 8)
-  assert.deepEqual(p.seances[0].exercices[1], { nom: 'Développé couché à la smith', rir: '1', perf: '52,5kg x 11 ; 47,4kg x 11 ; 47,5kgx8' })
+  assert.deepEqual(p.seances[0].exercices[1], { nom: 'Développé couché à la smith', series: 3, reps: '10,8,6', rir: '1' })
+  assert.equal(p.seances[1].exercices[4].nom, 'Leg extension')
   assert.equal(p.seances[1].exercices.length, 7)
-  assert.equal(p.seances[3].exercices[2].perf, 'skip a cause du doigt')
+  // Historique : semaines 1 à 3, datées au bon jour (la semaine 1 commence le vendredi 2 octobre)
+  assert.equal(p.historique.length, 12)
+  const s1 = p.historique.filter((h: { semaine: number }) => h.semaine === 1)
+  assert.deepEqual(s1.map((h: { jour: string; date: string }) => [h.jour, h.date]), [['LUNDI', '2026-10-05'], ['MARDI', '2026-10-06'], ['JEUDI', '2026-10-08'], ['VENDREDI', '2026-10-02']])
+  assert.deepEqual(s1[0].exercices[5], { nom: 'Curl pupitre unilatéral avec haltères', perf: '12kg x 10 ; 12kg x 7', notes: 'regressé a cause du doigt' })
+  assert.equal(p.historique.find((h: { semaine: number; jour: string }) => h.semaine === 2 && h.jour === 'LUNDI').date, '2026-10-12')
+  assert.deepEqual(p.objectifs, { on: { kcal: 2640, protein: 215, carbs: 310, fat: 60, fiber: 30 }, off: { kcal: 2140, protein: 200, carbs: 200, fat: 60, fiber: 30 }, pas: 15000 })
 })
 
 const upperA = (date: string, extra: Record<string, unknown> = {}) => ({
@@ -434,48 +475,55 @@ const upperA = (date: string, extra: Record<string, unknown> = {}) => ({
   jourCoach: 'LUNDI',
   exercices: [
     { nom: 'Développé couché à la smith', perf: '55kg x 10 ; 50kg x 11 ; 50kg x 9', progres: 'OUI', note: '' },
-    { nom: 'Curl pupitre unilatéral avec haltères', perf: '12kg x 11 ; 12kg x 9', progres: 'Maintenu', note: '' },
+    { nom: 'Curl pupitre unilatéral avec haltères', perf: '12kg x 11 ; 12kg x 9', progres: 'Maintenu', note: 'doigt ok' },
     { nom: 'Rotation latérale abdos', perf: '', progres: '', note: 'pas le temps' },
     { nom: 'Pull-over poulie', perf: '30kg x 12', progres: '', note: '' },
   ],
   ...extra,
 })
 
-test('Coach : séance écrite dans le bloc de la bonne semaine et le bon jour', () => {
-  const { ss, entr } = coachSheet({ weeksInTraining: 2 })
+test('Coach : séance écrite dans le bloc de la semaine en cours, sur la ligne de l’exercice', () => {
+  const { ss, entr } = coachSheet()
   const { post } = load({ coach: ss })
-  const r = post({ action: 'push', sessions: [upperA('2026-10-12')] }) // 12 oct. = semaine 2
-  assert.equal(r.coach.ok, true, JSON.stringify(r.coach))
-  const K = 9 // décalage du bloc « Semaine 2 » (colonnes K → R)
-  assert.equal(entr.get(10, 7 + K), '55kg x 10 ; 50kg x 11 ; 50kg x 9')
-  assert.equal(entr.get(10, 9 + K), 'OUI')
-  assert.equal(entr.get(14, 7 + K), '12kg x 11 ; 12kg x 9')
-  assert.equal(entr.get(14, 9 + K), 'Maintenu')
-  assert.equal(entr.get(16, 7 + K), 'pas le temps', 'exercice sauté : la note est écrite')
-  assert.equal(entr.get(17, 2 + K), 'Pull-over poulie', 'exercice ajouté sur la première ligne libre du jour')
-  assert.equal(entr.get(17, 7 + K), '30kg x 12')
-  assert.equal(entr.get(10, 7), '52,5kg x 11 ; 47,4kg x 11 ; 47,5kgx8', 'la semaine 1 reste intacte')
+  const r = post({ action: 'push', sessions: [upperA('2026-11-23')] }) // lundi 23 nov. = semaine 8
+  const c = blockCol(8) // BH
+  assert.equal(entr.get(10, c + 3), '55kg x 10 ; 50kg x 11 ; 50kg x 9', 'POIDS X REPS')
+  assert.equal(entr.get(10, c + 5), 'OUI', 'Progressé ?')
+  assert.equal(entr.get(14, c + 3), '12kg x 11 ; 12kg x 9')
+  assert.equal(entr.get(14, c + 5), 'Maintenu')
+  assert.equal(entr.get(14, c + 6), 'doigt ok', 'Douleurs/ Notes')
+  assert.equal(entr.get(16, c + 6), 'pas le temps', 'exercice sauté : seule la note est écrite')
+  assert.equal(entr.get(16, c + 3), '')
+  assert.equal(entr.get(10, c), '3', 'séries prévues par le coach intactes')
+  assert.equal(r.coach.ok, false)
+  assert.match(r.coach.message, /Pull-over poulie.*pas dans le programme/)
+  assert.ok(entr.writes.every((w) => Number(w.split(',')[1]) >= c && Number(w.split(',')[1]) <= c + 6), 'rien d’écrit hors du bloc semaine 8 (ni dans la colonne B du coach)')
+  assert.equal(entr.get(10, blockCol(1) + 3), '52,5kg x 11 ; 47,4kg x 11 ; 47,5kgx8', 'semaine 1 intacte')
+})
+
+test('Coach : « Nouvel exo » quand l’exercice n’a jamais été fait', () => {
+  const { ss, entr } = coachSheet()
+  const { post } = load({ coach: ss })
+  post({ action: 'push', sessions: [{ id: 'w2', date: '2026-11-24', nom: 'Lower A', jourCoach: 'MARDI', exercices: [{ nom: 'Extension mollet', perf: '80kg x 12 ; 80kg x 10', progres: '' }, { nom: 'Leg extension', perf: '80kg x 8', progres: '' }] }] })
+  const c = blockCol(8)
+  assert.equal(entr.get(26, c + 3), '80kg x 12 ; 80kg x 10')
+  assert.equal(entr.get(26, c + 5), 'Nouvel exo')
+  assert.equal(entr.get(25, c + 3), '80kg x 8', 'nom du coach avec espace final : retrouvé')
+  assert.equal(entr.get(25, c + 5), '', 'déjà fait les semaines passées : pas « Nouvel exo »')
 })
 
 test('Coach : sans jour lié, le bon bandeau est retrouvé par les exercices', () => {
-  const { ss, entr } = coachSheet({ weeksInTraining: 2 })
+  const { ss, entr } = coachSheet()
   const { post } = load({ coach: ss })
-  post({ action: 'push', sessions: [{ id: 'w2', date: '2026-10-13', nom: 'Séance libre', exercices: [{ nom: 'Leg press', perf: '190kg x 8', progres: 'OUI' }, { nom: 'Seated leg curl', perf: '65kg x 8', progres: 'OUI' }] }] })
-  assert.equal(entr.get(24, 7 + 9), '190kg x 8', 'MARDI (1er bandeau avec ces exercices)')
-  assert.equal(entr.get(22, 7 + 9), '65kg x 8')
+  post({ action: 'push', sessions: [{ id: 'w3', date: '2026-11-21', nom: 'Séance libre', exercices: [{ nom: 'Développé incliné à la smith', perf: '57,5kg x 9', progres: 'OUI' }] }] })
+  assert.equal(entr.get(35, blockCol(8) + 3), '57,5kg x 9', 'samedi 21 nov. = semaine 8 (20 → 26 nov.), bandeau JEUDI')
 })
 
-test('Coach : un seul tableau « Semaine 1 » → réécrit chaque semaine ; semaine manquante signalée sinon', () => {
-  const single = coachSheet({ weeksInTraining: 1 })
-  const a = load({ coach: single.ss })
-  const r1 = a.post({ action: 'push', sessions: [upperA('2026-11-23')] })
-  assert.equal(r1.coach.ok, true, JSON.stringify(r1.coach))
-  assert.equal(single.entr.get(10, 7), '55kg x 10 ; 50kg x 11 ; 50kg x 9')
-
-  const multi = coachSheet({ weeksInTraining: 2 })
-  const b = load({ coach: multi.ss })
-  const r2 = b.post({ action: 'push', sessions: [upperA('2026-11-23')] })
-  assert.equal(r2.coach.ok, false)
-  assert.match(r2.coach.message, /Semaine 8 absente/)
-  assert.equal(multi.entr.writes.length, 0)
+test('Coach : semaine absente de l’onglet Entraînement signalée', () => {
+  const { ss, entr } = coachSheet({ weeks: 6 })
+  const { post } = load({ coach: ss })
+  const r = post({ action: 'push', sessions: [upperA('2026-11-23')] })
+  assert.equal(r.coach.ok, false)
+  assert.match(r.coach.message, /Semaine 8 absente/)
+  assert.equal(entr.writes.length, 0)
 })
