@@ -29,7 +29,9 @@ export function ProgramImport() {
   const goal = useStore((s) => s.profile.goal)
   const updateProfile = useStore((s) => s.updateProfile)
   const [removeTemplates, setRemoveTemplates] = useState(true)
-  const [useTargets, setUseTargets] = useState(true)
+  // Au premier import on reprend les objectifs du coach ; ensuite on garde les tiens (son onglet Nutrition
+  // n'est pas toujours à jour), sauf si tu actives l'option.
+  const [useTargets, setUseTargets] = useState(() => !routines.some((r) => r.coachDay))
   // La colonne « Nutrition Phase » du coach n'est pas toujours tenue à jour : on ne change l'objectif que si tu le demandes.
   const [useGoal, setUseGoal] = useState(false)
 
@@ -119,7 +121,9 @@ export function ProgramImport() {
                       <br />
                       Pas : {fmt(coachTargets.steps)} · fibres {coachTargets.fiber} g
                       {coachTargets.cardioNote ? ` · cardio ${coachTargets.cardioNote}` : ''}
-
+                    </div>
+                    <div className="small" style={{ marginTop: 6, color: useTargets ? 'var(--warn)' : 'var(--text-2)' }}>
+                      {useTargets ? 'Remplacent les tiens' : 'Tes objectifs actuels sont gardés'} : {targets.rest ? `ON ${fmt(targets.base.kcal)} · OFF ${fmt(targets.rest.kcal)} kcal` : `${fmt(targets.base.kcal)} kcal`}
                     </div>
                   </div>
                   <Toggle on={useTargets} onChange={setUseTargets} label="Utiliser les objectifs du coach" />
