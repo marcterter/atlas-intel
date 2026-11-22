@@ -1,0 +1,133 @@
+import type { Activity, FoodEntry, Goal, ISODate, MacroTargets, MealId, Nutrients, Profile, Recipe, Targets } from './types.ts'
+
+export const ACTIVITY: Record<Activity, { label: string; hint: string; factor: number }> = {
+  sedentaire: { label: 'Sédentaire', hint: 'Bureau, peu de marche', factor: 1.2 },
+  leger: { label: 'Légèrement actif', hint: '1-3 séances / semaine', factor: 1.375 },
+  modere: { label: 'Actif', hint: '3-5 séances / semaine', factor: 1.55 },
+  actif: { label: 'Très actif', hint: '6-7 séances / semaine', factor: 1.725 },
+  tres_actif: { label: 'Extrêmement actif', hint: 'Travail physique + sport', factor: 1.9 },
+}
+
+export const GOALS: Record<Goal, { label: string; hint: string; kcalFactor: number; proteinPerKg: number }> = {
+  seche: { label: 'Sèche', hint: 'Perdre du gras', kcalFactor: 0.82, proteinPerKg: 2.2 },
+  maintien: { label: 'Maintien', hint: 'Recomposition', kcalFactor: 1, proteinPerKg: 2 },
+  prise: { label: 'Prise de masse', hint: 'Prendre du muscle', kcalFactor: 1.1, proteinPerKg: 1.8 },
+}
+
+export const MEALS: { id: MealId; label: string }[] = [
+  { id: 'petit_dej', label: 'Petit-déjeuner' },
+  { id: 'dejeuner', label: 'Déjeuner' },
+  { id: 'collation', label: 'Collation' },
+  { id: 'diner', label: 'Dîner' },
+]
+
+export const MEAL_LABEL: Record<MealId, string> = Object.fromEntries(MEALS.map((m) => [m.id, m.label])) as Record<MealId, string>
+
+/** Repas par défaut selon l'heure. */
+export function mealForNow(d = new Date()): MealId {
+  const h = d.getHours()
+  if (h < 11) return 'petit_dej'
+  if (h < 15) return 'dejeuner'
+  if (h < 18) return 'collation'
+  return 'diner'
+}
+
+export function ageFrom(birthYear: number, today = new Date()): number {
+  return Math.max(14, today.getFullYear() - birthYear)
+}
+
+/** Métabolisme de base (Mifflin-St Jeor). */
+export function bmr(p: Pick<Profile, 'sex' | 'heightCm' | 'birthYear'>, weightKg: number, today = new Date()): number {
+  const age = ageFrom(p.birthYear, today)
+  const base = 10 * weightKg + 6.25 * p.heightCm - 5 * age
+  return p.sex === 'H' ? base + 5 : base - 161
+}
+
+export function tdee(p: Profile, weightKg: number, today = new Date()): number {
+  return bmr(p, weightKg, today) * ACTIVITY[p.activity].factor
+}
+
+const round = (n: number, step: number) => Math.round(n / step) * step
+
+/** Objectifs suggérés : kcal selon l'objectif, protéines g/kg, lipides ~0,9 g/kg (≥ 22 % des kcal), glucides = le reste. */
+export function suggestTargets(p: Profile, weightKg: number, today = new Date()): MacroTargets {
+  const goal = GOALS[p.goal]
+  const kcal = round(tdee(p, weightKg, today) * goal.kcalFactor, 10)
+  const protein = round(weightKg * goal.proteinPerKg, 5)
+  const fat = round(Math.max(weightKg * 0.9, (kcal * 0.22) / 9), 5)
+  const carbs = Math.max(0, round((kcal - protein * 4 - fat * 9) / 4, 5))
+  return { kcal, protein, carbs, fat }
+}
+
+/** Kcal issues des macros (4/4/9). */
+export function kcalFromMacros(m: Pick<MacroTargets, 'protein' | 'carbs' | 'fat'>): number {
+  return Math.round(m.protein * 4 + m.carbs * 4 + m.fat * 9)
+}
+
+export const ZERO: Nutrients = { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
+
+export function scaleNutrients(per100: Nutrients, grams: number): Nutrients {
+  const k = grams / 100
+  return {
+    kcal: per100.kcal * k,
+    protein: per100.protein * k,
+    carbs: per100.carbs * k,
+    fat: per100.fat * k,
+    fiber: (per100.fiber ?? 0) * k,
+  }
+}
+
+export function addNutrients(a: Nutrients, b: Nutrients): Nutrients {
+  return {
+    kcal: a.kcal + b.kcal,
+    protein: a.protein + b.protein,
+    carbs: a.carbs + b.carbs,
+    fat: a.fat + b.fat,
+    fiber: (a.fiber ?? 0) + (b.fiber ?? 0),
+  }
+}
+
+export function sumNutrients(list: Nutrients[]): Nutrients {
+  return list.reduce(addNutrients, { ...ZERO })
+}
+
+export function entriesOn(entries: FoodEntry[], date: ISODate): FoodEntry[] {
+  return entries.filter((e) => e.date === date)
+}
+
+export function dayTotals(entries: FoodEntry[], date: ISODate): Nutrients {
+  return sumNutrients(entriesOn(entries, date).map((e) => e.n))
+}
+
+export function mealTotals(entries: FoodEntry[], date: ISODate, meal: MealId): Nutrients {
+  return sumNutrients(entries.filter((e) => e.date === date && e.meal === meal).map((e) => e.n))
+}
+
+/** Objectifs applicables à une journée (jour d'entraînement ou de repos si le coach différencie). */
+export function targetsFor(targets: Targets, isTrainingDay: boolean): MacroTargets {
+  if (!targets.rest || isTrainingDay) return targets.base
+  return targets.rest
+}
+
+export function recipeTotals(r: Pick<Recipe, 'ingredients'>): { n: Nutrients; grams: number } {
+  const n = sumNutrients(r.ingredients.map((i) => scaleNutrients(i.per100, i.grams)))
+  const grams = r.ingredients.reduce((s, i) => s + i.grams, 0)
+  return { n, grams }
+}
+
+/** Valeurs d'une recette ramenées à 100 g (pour la stocker comme un aliment). */
+export function recipePer100(r: Pick<Recipe, 'ingredients'>): Nutrients {
+  const { n, grams } = recipeTotals(r)
+  if (grams <= 0) return { ...ZERO }
+  return scaleNutrients(n, (100 / grams) * 100)
+}
+
+/** Part de chaque macro dans les kcal (pour les barres empilées). */
+export function macroSplit(n: Nutrients): { protein: number; carbs: number; fat: number } {
+  const p = n.protein * 4
+  const c = n.carbs * 4
+  const f = n.fat * 9
+  const total = p + c + f
+  if (total <= 0) return { protein: 0, carbs: 0, fat: 0 }
+  return { protein: p / total, carbs: c / total, fat: f / total }
+}
