@@ -33,6 +33,23 @@ export interface Targets {
   rest: MacroTargets | null
   steps: number
   fiber: number
+  /** Cardio prescrit par le coach, tel qu'il l'a écrit (« 60 min zone 2 »). */
+  cardioNote?: string | null
+}
+
+export type CardioIntensity = 'zone2' | 'modere' | 'intense'
+
+/** Cardio noté en deux gestes depuis Aujourd'hui (en plus du cardio des séances). */
+export interface CardioEntry {
+  id: string
+  date: ISODate
+  /** Activité : « Marche inclinée », « Vélo »… ou texte libre. */
+  type: string
+  minutes: number
+  intensity: CardioIntensity | null
+  km: number | null
+  kcal: number | null
+  at: number
 }
 
 export type Muscle =
@@ -319,6 +336,7 @@ export interface AppData {
   daylogs: Record<ISODate, DayLog>
   /** Bilans du lundi déjà tranchés (clé : le lundi). */
   reviews: Record<ISODate, ReviewDecision>
+  cardio: CardioEntry[]
   /** Jour forcé en "entraînement" (true) ou "repos" (false) pour les objectifs. */
   dayType: Record<ISODate, boolean>
   sync: SyncConfig

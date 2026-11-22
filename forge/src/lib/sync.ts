@@ -5,6 +5,7 @@ import { findExercise, MUSCLE_LABEL } from '../data/exercises.ts'
 import { dayTotals, MEAL_LABEL } from './nutrition.ts'
 import { sessionDurationMs, sessionTonnage, sessionWorkSets, setLabel } from './training.ts'
 import { formatPerf, progressLabel, type CoachProgram } from './coach.ts'
+import { cardioMinutes, cardioText, dayCardio } from './cardio.ts'
 import { weekAverage } from './body.ts'
 import { addDays, todayISO } from './date.ts'
 import type { DirtyState, ISODate, Session, StepsDay } from './types.ts'
@@ -12,7 +13,7 @@ import type { DirtyState, ISODate, Session, StepsDay } from './types.ts'
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 /** Version de apps-script/Code.gs livrée avec cette version de l'app. */
-export const SCRIPT_VERSION = 5
+export const SCRIPT_VERSION = 6
 
 export function scriptOutdated(s: Pick<State, 'sync'>): boolean {
   return s.sync.scriptVersion != null && s.sync.scriptVersion < SCRIPT_VERSION
@@ -40,18 +41,10 @@ export function buildDay(s: State, date: ISODate) {
   const log = s.daylogs[date]
   // Séances de musculation (nom) et cardio (minutes) séparés, comme dans le sheet du coach.
   const training = sessions.filter((x) => x.exercises.some((e) => findExercise(e.exerciseId, s.customExercises).kind !== 'cardio'))
-  let cardioSec = 0
-  const cardioNames: string[] = []
-  for (const x of sessions)
-    for (const e of x.exercises) {
-      const exo = findExercise(e.exerciseId, s.customExercises)
-      if (exo.kind !== 'cardio') continue
-      const sec = e.sets.filter((st2) => st2.done).reduce((a, st2) => a + (st2.seconds ?? 0), 0)
-      if (sec > 0) {
-        cardioSec += sec
-        cardioNames.push(`${Math.round(sec / 60)} min ${exo.name.toLowerCase()}`)
-      }
-    }
+  // Cardio noté depuis Aujourd'hui + cardio des séances ; le détail (lequel) part dans la note du jour.
+  const cardio = dayCardio(s, date)
+  const cardioMin = cardioMinutes(cardio)
+  const cardioDetail = cardioText(cardio)
   return {
     date,
     poids: w ? w.kg : null,
@@ -63,10 +56,10 @@ export function buildDay(s: State, date: ISODate) {
     satiete: log?.satiety ?? null,
     digestion: log?.digestion ?? null,
     eau: log?.waterL ?? null,
-    notes: log?.note?.trim() ?? '',
+    notes: [log?.note?.trim() ?? '', cardioDetail ? `Cardio : ${cardioDetail}` : ''].filter(Boolean).join(' · '),
     entrainement: training.map((x) => x.name).join(' + '),
-    cardio: cardioSec ? Math.round(cardioSec / 60) : null,
-    cardioDetail: cardioNames.join(', '),
+    cardio: cardioMin || null,
+    cardioDetail,
     kcal: hasFood ? Math.round(n.kcal) : null,
     proteines: hasFood ? r1(n.protein) : null,
     glucides: hasFood ? r1(n.carbs) : null,

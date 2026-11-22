@@ -86,7 +86,7 @@ const COACH_MAPPING = {
 
 // =========================================================
 
-const VERSION = 5;
+const VERSION = 6;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
@@ -638,7 +638,11 @@ function readCoachTargets_() {
     const m = t.match(/^(\d+(?:\.\d+)?)(k?)/);
     if (m) pas = Math.round(Number(m[1]) * (m[2] ? 1000 : 1));
   }
-  return on || off ? { on: on, off: off, pas: pas } : null;
+  // Cardio prescrit (« 60 min zone 2 »), repris tel quel pour l'afficher dans l'app.
+  let cardio = null;
+  const cc = find(/^cardio$/i);
+  if (cc && v[cc.r + 1]) cardio = String(v[cc.r + 1][cc.c] || '').trim() || null;
+  return on || off ? { on: on, off: off, pas: pas, cardio: cardio } : null;
 }
 
 function parseNumber_(x) {

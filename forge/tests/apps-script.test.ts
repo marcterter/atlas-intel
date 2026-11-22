@@ -469,7 +469,7 @@ test('Coach : lecture du programme, de l’historique et des objectifs', () => {
   assert.deepEqual(s1.map((h: { jour: string; date: string }) => [h.jour, h.date]), [['LUNDI', '2026-10-05'], ['MARDI', '2026-10-06'], ['JEUDI', '2026-10-08'], ['VENDREDI', '2026-10-02']])
   assert.deepEqual(s1[0].exercices[5], { nom: 'Curl pupitre unilatéral avec haltères', perf: '12kg x 10 ; 12kg x 7', notes: 'regressé a cause du doigt' })
   assert.equal(p.historique.find((h: { semaine: number; jour: string }) => h.semaine === 2 && h.jour === 'LUNDI').date, '2026-10-12')
-  assert.deepEqual(p.objectifs, { on: { kcal: 2640, protein: 215, carbs: 310, fat: 60, fiber: 30 }, off: { kcal: 2140, protein: 200, carbs: 200, fat: 60, fiber: 30 }, pas: 15000 })
+  assert.deepEqual(p.objectifs, { on: { kcal: 2640, protein: 215, carbs: 310, fat: 60, fiber: 30 }, off: { kcal: 2140, protein: 200, carbs: 200, fat: 60, fiber: 30 }, pas: 15000, cardio: '60 min zone 2' })
   assert.equal(p.phase, 'Sèche', 'phase nutrition notée par le coach')
 })
 

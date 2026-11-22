@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   AppData,
+  CardioEntry,
   CheckIn,
   DayLog,
   DirtyState,
@@ -55,6 +56,7 @@ export function defaultData(): AppData {
     checkins: [],
     daylogs: {},
     reviews: {},
+    cardio: [],
     dayType: {},
     sync: { url: '', token: '', coachUrl: '', enabled: false, lastPushAt: null, lastPullAt: null, lastError: null, scriptVersion: null },
     dirty: { days: {}, sessions: {}, checkins: {} },
@@ -81,6 +83,7 @@ export function migrate(raw: unknown): AppData {
     dayType: r.dayType ?? {},
     daylogs: r.daylogs ?? {},
     reviews: r.reviews ?? {},
+    cardio: r.cardio ?? [],
   }
 }
 
@@ -137,6 +140,9 @@ export interface Actions {
   applyImport: (plan: ImportPlan, removeRoutineIds?: string[]) => void
   setDayLog: (date: ISODate, patch: Partial<Omit<DayLog, 'date' | 'at'>>) => void
   addWater: (date: ISODate, liters: number) => void
+  /** Ajoute ou modifie un cardio noté depuis Aujourd'hui. */
+  saveCardio: (c: Omit<CardioEntry, 'id' | 'at'> & { id?: string }) => void
+  deleteCardio: (id: string) => void
   /** Bilan du lundi : appliquer les objectifs proposés, garder les siens, ou simplement « vu ». */
   decideReview: (monday: ISODate, decision: Omit<ReviewDecision, 'at'>, next?: Targets | null) => void
   saveCheckIn: (c: CheckIn) => void
@@ -370,6 +376,20 @@ export const useStore = create<State>()((set, get) => ({
     const cur = get().daylogs[date]?.waterL ?? 0
     get().setDayLog(date, { waterL: Math.max(0, Math.round((cur + liters) * 100) / 100) })
   },
+  saveCardio: (c) =>
+    set((s) => {
+      const old = c.id ? s.cardio.find((x) => x.id === c.id) : undefined
+      // `at` = moment de la saisie : une modification ne change pas l'ordre de la journée.
+      const entry: CardioEntry = { ...c, id: old?.id ?? uid('k'), at: old?.at ?? Date.now() }
+      const cardio = old ? s.cardio.map((x) => (x.id === old.id ? entry : x)) : [...s.cardio, entry]
+      return { cardio, dirty: touchDays(s.dirty, ...(old && old.date !== entry.date ? [old.date, entry.date] : [entry.date])) }
+    }),
+  deleteCardio: (id) =>
+    set((s) => {
+      const old = s.cardio.find((x) => x.id === id)
+      if (!old) return {}
+      return { cardio: s.cardio.filter((x) => x.id !== id), dirty: touchDays(s.dirty, old.date) }
+    }),
   decideReview: (monday, decision, next) =>
     set((s) => ({
       reviews: { ...s.reviews, [monday]: { ...decision, at: Date.now() } },

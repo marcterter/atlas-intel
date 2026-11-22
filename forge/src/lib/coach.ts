@@ -103,6 +103,8 @@ export interface CoachTargets {
   on: { kcal: number; protein?: number; carbs?: number; fat?: number; fiber?: number } | null
   off: { kcal: number; protein?: number; carbs?: number; fat?: number; fiber?: number } | null
   pas: number | null
+  /** Cardio prescrit, tel qu'écrit par le coach. */
+  cardio?: string | null
 }
 
 export interface CoachProgram {

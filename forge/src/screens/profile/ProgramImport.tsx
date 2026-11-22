@@ -50,7 +50,13 @@ export function ProgramImport() {
   const coachTargets: Targets | null = useMemo(() => {
     const on = toMacros(program?.objectifs?.on)
     if (!on) return null
-    return { base: on, rest: toMacros(program?.objectifs?.off), steps: program?.objectifs?.pas ?? targets.steps, fiber: Math.round(program?.objectifs?.on?.fiber ?? targets.fiber) }
+    return {
+      base: on,
+      rest: toMacros(program?.objectifs?.off),
+      steps: program?.objectifs?.pas ?? targets.steps,
+      fiber: Math.round(program?.objectifs?.on?.fiber ?? targets.fiber),
+      cardioNote: program?.objectifs?.cardio ?? targets.cardioNote ?? null,
+    }
   }, [program, targets])
   const weeks = program ? [...new Set(program.historique.map((h) => h.semaine))].sort((a, b) => a - b) : []
   const coachGoal = phaseToGoal(program?.phase)
@@ -111,6 +117,7 @@ export function ProgramImport() {
                       )}
                       <br />
                       Pas : {fmt(coachTargets.steps)} · fibres {coachTargets.fiber} g
+                      {coachTargets.cardioNote ? ` · cardio ${coachTargets.cardioNote}` : ''}
                       {program.phase && (
                         <>
                           <br />

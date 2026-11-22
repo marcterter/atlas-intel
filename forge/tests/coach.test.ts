@@ -144,9 +144,14 @@ test('journée envoyée au sheet : ressenti, cardio séparé, pas de 0 kcal quan
   const d = buildDay(s, '2026-11-22')
   assert.equal(d.sommeil, 7.5)
   assert.equal(d.energie, 8)
-  assert.equal(d.notes, 'Resto japonais')
+  assert.equal(d.notes, 'Resto japonais · Cardio : 30 min escalier')
   assert.equal(d.entrainement, 'Upper A', 'la séance cardio seule et l’historique importé ne comptent pas')
   assert.equal(d.cardio, 30)
+  // Cardio noté depuis Aujourd'hui : ajouté aux minutes et au détail
+  const withQuick = { ...s, cardio: [{ id: 'k1', date: '2026-11-22', type: 'Marche inclinée', minutes: 45, intensity: 'zone2', km: null, kcal: null, at: 1 }] } as unknown as State
+  const d2 = buildDay(withQuick, '2026-11-22')
+  assert.equal(d2.cardio, 75)
+  assert.equal(d2.notes, 'Resto japonais · Cardio : 45 min marche inclinée (zone 2), 30 min escalier')
   assert.equal(d.kcal, null, 'aucun aliment noté : le sheet du coach reste vide')
   assert.equal(d.pas, null)
 })
