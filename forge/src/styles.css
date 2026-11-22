@@ -680,6 +680,50 @@ textarea.input {
   height: 46px;
 }
 
+/* Interrupteur Jour ON / Jour OFF */
+.daytype {
+  display: inline-flex;
+  flex-shrink: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.daytype span {
+  min-width: 48px;
+  height: 34px;
+  padding: 0 12px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.daytype.small span {
+  min-width: 40px;
+  height: 30px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+.daytype span.active.on {
+  background: var(--accent);
+  color: #160b05;
+}
+
+.daytype span.active.off {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
 .plan-row {
   display: flex;
   align-items: center;

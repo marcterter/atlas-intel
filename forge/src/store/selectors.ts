@@ -1,7 +1,8 @@
-import { EXERCISES, findExercise } from '../data/exercises.ts'
+import { EXERCISES, findExercise, normalize } from '../data/exercises.ts'
 import { findBaseFood } from '../data/foods.ts'
 import { recipePer100, recipeTotals, targetsFor } from '../lib/nutrition.ts'
-import type { Exercise, Food, ISODate, MacroTargets, Recipe } from '../lib/types.ts'
+import { fromISO, todayISO } from '../lib/date.ts'
+import type { Exercise, Food, ISODate, MacroTargets, Recipe, Routine } from '../lib/types.ts'
 import { useStore, type State } from './store.ts'
 import { useMemo } from 'react'
 
@@ -28,12 +29,46 @@ export function getFood(s: Pick<State, 'foods' | 'recipes'>, id: string): Food |
   return s.foods[id]
 }
 
-export function isTrainingDay(s: Pick<State, 'dayType' | 'sessions' | 'active'>, date: ISODate): boolean {
-  if (date in s.dayType) return s.dayType[date]
-  return s.sessions.some((x) => x.date === date) || s.active?.date === date
+const WEEKDAY: Record<string, number> = { dimanche: 0, lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6 }
+
+/** Jours de la semaine prévus par le programme du coach (séances liées à LUNDI, MARDI…). */
+export function plannedWeekdays(routines: Routine[]): Set<number> {
+  const out = new Set<number>()
+  for (const r of routines) {
+    const d = WEEKDAY[normalize(r.coachDay ?? '')]
+    if (d != null) out.add(d)
+  }
+  return out
 }
 
-export function dayTargets(s: Pick<State, 'dayType' | 'sessions' | 'active' | 'targets'>, date: ISODate): MacroTargets {
+type DayState = Pick<State, 'dayType' | 'sessions' | 'active' | 'routines' | 'customExercises'>
+export type DaySource = 'manuel' | 'seance' | 'programme' | 'aucune'
+
+/**
+ * Jour ON (entraînement) ou OFF, sans le choix manuel : ON si une séance de muscu est faite ce jour-là,
+ * ou, pour aujourd'hui et les jours à venir, si le programme du coach prévoit une séance ce jour de la semaine.
+ */
+export function autoDay(s: Omit<DayState, 'dayType'>, date: ISODate, today = todayISO()): { on: boolean; source: DaySource } {
+  const trained = [...s.sessions, ...(s.active ? [s.active] : [])].some(
+    (x) => x.date === date && x.exercises.some((e) => findExercise(e.exerciseId, s.customExercises).kind !== 'cardio'),
+  )
+  if (trained) return { on: true, source: 'seance' }
+  if (date >= today && plannedWeekdays(s.routines).has(fromISO(date).getDay())) return { on: true, source: 'programme' }
+  return { on: false, source: 'aucune' }
+}
+
+/** D'où vient le type du jour (pour l'afficher) : choix manuel, séance faite, programme… */
+export function daySource(s: DayState, date: ISODate): DaySource {
+  if (date in s.dayType) return 'manuel'
+  return autoDay(s, date).source
+}
+
+export function isTrainingDay(s: DayState, date: ISODate): boolean {
+  if (date in s.dayType) return s.dayType[date]
+  return autoDay(s, date).on
+}
+
+export function dayTargets(s: DayState & Pick<State, 'targets'>, date: ISODate): MacroTargets {
   return targetsFor(s.targets, isTrainingDay(s, date))
 }
 

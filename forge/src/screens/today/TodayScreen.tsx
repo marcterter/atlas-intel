@@ -10,6 +10,7 @@ import { SessionRecap } from '../training/SessionRecap.tsx'
 import { StepsSheet } from './StepsSheet.tsx'
 import { SyncChip } from '../profile/SyncChip.tsx'
 import { DayLogCard } from './DayLog.tsx'
+import { DayTypeSwitch, useDayLabel } from '../diet/DayType.tsx'
 import { useStore } from '../../store/store.ts'
 import { dayTargets } from '../../store/selectors.ts'
 import { ui, useUI } from '../../store/ui.ts'
@@ -99,6 +100,7 @@ export function TodayScreen() {
   const custom = useStore((s) => s.customExercises)
   const active = useStore((s) => s.active)
   const t = useStore((s) => dayTargets(s, date))
+  const dayLabel = useDayLabel(date, true)
   const today = todayISO()
 
   const totals = useMemo(() => dayTotals(entries, date), [entries, date])
@@ -140,10 +142,11 @@ export function TodayScreen() {
             <div className="icon-tile">
               <Icon name="food" size={20} />
             </div>
-            <div className="grow">
+            <div className="grow" style={{ minWidth: 0 }}>
               <div className="card-title">Calories</div>
-              <div className="faint small">Ce qu’il te reste aujourd’hui</div>
+              <div className="faint small ellipsis">{dayLabel}</div>
             </div>
+            <DayTypeSwitch date={date} size="small" />
             <span
               className="icon-btn accent"
               role="button"

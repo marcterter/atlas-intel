@@ -3,7 +3,7 @@ import { Sheet, Field, NumInput, Segmented, Stepper, Toggle } from '../../compon
 import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
 import { GOALS, kcalFromMacros } from '../../lib/nutrition.ts'
-import { activityLevel, activityText, estimateEnergy, goalPlans, measureTdee, MEASURE_NEEDS } from '../../lib/energy.ts'
+import { activityLevel, activityText, defaultOff, estimateEnergy, goalPlans, measureTdee, MEASURE_NEEDS, splitOnOff } from '../../lib/energy.ts'
 import { latestWeight } from '../../lib/body.ts'
 import { todayISO } from '../../lib/date.ts'
 import { fmt, fmtKg, fmtSigned } from '../../lib/format.ts'
@@ -121,7 +121,7 @@ function MacroFields({ value, onChange }: { value: MacroTargets; onChange: (m: M
  * Calculateur : dépense estimée (formule) ou mesurée (apports + courbe de poids), puis sèche,
  * maintien et prise de masse côte à côte.
  */
-function Calculator({ goal, onUse }: { goal: Goal; onUse: (t: MacroTargets, goal: Goal) => void }) {
+function Calculator({ goal, split, onUse }: { goal: Goal; split: boolean; onUse: (on: MacroTargets, off: MacroTargets | null, goal: Goal) => void }) {
   const profile = useStore((s) => s.profile)
   const weighins = useStore((s) => s.weighins)
   const steps = useStore((s) => s.steps)
@@ -137,7 +137,9 @@ function Calculator({ goal, onUse }: { goal: Goal; onUse: (t: MacroTargets, goal
   const est = estimateEnergy(profile, weight, level)
   const useMeasured = basis === 'mesure' && measured.ok
   const tdee = useMeasured ? measured.value.tdee : est.tdee
-  const plans = goalPlans(tdee, weight)
+  // Avec Jour ON / OFF : même moyenne sur la semaine, plus de glucides les jours de séance.
+  const sessionsPerWeek = level.sessions ?? 4
+  const plans = goalPlans(tdee, weight).map((p) => ({ ...p, split: split ? splitOnOff(p.targets, sessionsPerWeek) : null }))
   return (
     <div className="card stack" style={{ gap: 12 }}>
       <div className="row-between">
@@ -175,15 +177,21 @@ function Calculator({ goal, onUse }: { goal: Goal; onUse: (t: MacroTargets, goal
                 <span className="num bold">{fmt(p.targets.kcal)} kcal</span>
               </div>
               <div className="tiny faint">
-                P {p.targets.protein} · G {p.targets.carbs} · L {p.targets.fat} · {p.goal === 'maintien' ? 'poids stable' : `${fmtSigned(p.kgPerWeek, 2)} kg/sem`}
+                {p.split ? `ON ${fmt(p.split.on.kcal)} · OFF ${fmt(p.split.off.kcal)} · ` : `P ${p.targets.protein} · G ${p.targets.carbs} · L ${p.targets.fat} · `}
+                {p.goal === 'maintien' ? 'poids stable' : `${fmtSigned(p.kgPerWeek, 2)} kg/sem`}
               </div>
             </div>
-            <button className="btn soft small" onClick={() => onUse(p.targets, p.goal)}>
+            <button className="btn soft small" onClick={() => (p.split ? onUse(p.split.on, p.split.off, p.goal) : onUse(p.targets, null, p.goal))}>
               Utiliser
             </button>
           </div>
         ))}
       </div>
+      {split && (
+        <div className="tiny faint">
+          Moyenne de la semaine répartie sur {fmt(sessionsPerWeek)} jour{sessionsPerWeek > 1 ? 's' : ''} ON : mêmes protéines et lipides, plus de glucides les jours de séance.
+        </div>
+      )}
       {!measured.ok && (
         <div className="tiny faint">
           Dépense réelle mesurée après ~2-3 semaines de suivi : {Math.min(measured.progress.foodDays, MEASURE_NEEDS.foodDays)}/{MEASURE_NEEDS.foodDays} journées de diète complètes,{' '}
@@ -194,12 +202,13 @@ function Calculator({ goal, onUse }: { goal: Goal; onUse: (t: MacroTargets, goal
   )
 }
 
-export function TargetsEditor() {
+/** `withOff` : ouvert depuis l'interrupteur ON / OFF, avec un Jour OFF proposé s'il n'existe pas encore. */
+export function TargetsEditor({ withOff = false }: { withOff?: boolean }) {
   const targets = useStore((s) => s.targets)
   const setTargets = useStore((s) => s.setTargets)
   const profile = useStore((s) => s.profile)
   const updateProfile = useStore((s) => s.updateProfile)
-  const [draft, setDraft] = useState<Targets>(targets)
+  const [draft, setDraft] = useState<Targets>(() => (withOff && !targets.rest ? { ...targets, rest: defaultOff(targets.base) } : targets))
   const [goal, setGoal] = useState<Goal>(profile.goal)
 
   return (
@@ -221,26 +230,27 @@ export function TargetsEditor() {
     >
       <div className="stack">
         <div className="callout">Ton coach te donne tes macros ? Saisis-les telles quelles. Sinon, pars du calculateur.</div>
-        <Calculator
-          goal={goal}
-          onUse={(t, g) => {
-            setGoal(g)
-            setDraft({ ...draft, base: t, rest: null })
-            ui.toast(draft.rest ? `${GOALS[g].label} : mêmes objectifs tous les jours` : `${GOALS[g].label} : ${fmt(t.kcal)} kcal`, 'ok')
-          }}
-        />
-        <div className="section-label">{draft.rest ? 'Jour d’entraînement' : 'Chaque jour'}</div>
-        <MacroFields value={draft.base} onChange={(base) => setDraft({ ...draft, base })} />
         <div className="row-between card tight">
           <div>
-            <div className="bold">Objectifs différents les jours de repos</div>
-            <div className="faint small">Ex : moins de glucides sans séance</div>
+            <div className="bold">Jour ON / Jour OFF</div>
+            <div className="faint small">Objectifs différents les jours sans séance (moins de glucides). Bascule en un geste sur Aujourd’hui et Diète.</div>
           </div>
-          <Toggle on={!!draft.rest} onChange={(v) => setDraft({ ...draft, rest: v ? { ...draft.base } : null })} label="Jour de repos" />
+          <Toggle on={!!draft.rest} onChange={(v) => setDraft({ ...draft, rest: v ? defaultOff(draft.base) : null })} label="Jour ON / Jour OFF" />
         </div>
+        <Calculator
+          goal={goal}
+          split={!!draft.rest}
+          onUse={(on, off, g) => {
+            setGoal(g)
+            setDraft({ ...draft, base: on, rest: off })
+            ui.toast(off ? `${GOALS[g].label} : ON ${fmt(on.kcal)} · OFF ${fmt(off.kcal)} kcal` : `${GOALS[g].label} : ${fmt(on.kcal)} kcal`, 'ok')
+          }}
+        />
+        <div className="section-label">{draft.rest ? 'Jour ON · séance' : 'Chaque jour'}</div>
+        <MacroFields value={draft.base} onChange={(base) => setDraft({ ...draft, base })} />
         {draft.rest && (
           <>
-            <div className="section-label">Jour de repos</div>
+            <div className="section-label">Jour OFF · repos</div>
             <MacroFields value={draft.rest} onChange={(rest) => setDraft({ ...draft, rest })} />
           </>
         )}

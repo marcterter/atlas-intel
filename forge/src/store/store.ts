@@ -227,7 +227,10 @@ export const useStore = create<State>()((set, get) => ({
       return null
     }
     const done = finalizeSession(s.active)
+    const dayType = { ...s.dayType }
+    if (dayType[done.date] === false) delete dayType[done.date]
     set({
+      dayType,
       sessions: [...s.sessions, done],
       active: null,
       restTimer: null,

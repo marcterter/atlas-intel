@@ -152,3 +152,28 @@ export function activityText(level: ActivityLevel, profile: Profile): string {
   const sessions = level.sessions != null ? `${String(level.sessions).replace('.', ',')} séance${level.sessions > 1 ? 's' : ''}/sem${from}` : 'séances non renseignées'
   return `${steps} · ${sessions}`
 }
+
+const r5 = (x: number) => Math.round(x / 5) * 5
+const r10 = (x: number) => Math.round(x / 10) * 10
+
+/**
+ * Répartit un objectif moyen en Jour ON / Jour OFF, sans changer la moyenne de la semaine :
+ * protéines et lipides identiques, un écart de ~20 % des kcal pris sur les glucides (comme ton coach :
+ * 2 640 / 2 140 kcal pour une moyenne de ~2 430).
+ */
+export function splitOnOff(avg: MacroTargets, sessionsPerWeek: number): { on: MacroTargets; off: MacroTargets } {
+  const n = Math.min(6, Math.max(1, Math.round(sessionsPerWeek)))
+  const gap = r5((avg.kcal * 0.2) / 4) // grammes de glucides d'écart entre ON et OFF
+  const up = r5((gap * (7 - n)) / 7)
+  const down = Math.min(gap - up, Math.max(0, avg.carbs - 50))
+  return {
+    on: { ...avg, kcal: r10(avg.kcal + up * 4), carbs: avg.carbs + up },
+    off: { ...avg, kcal: r10(avg.kcal - down * 4), carbs: avg.carbs - down },
+  }
+}
+
+/** Jour OFF proposé à partir du Jour ON : mêmes protéines et lipides, ~20 % de kcal en moins sur les glucides. */
+export function defaultOff(on: MacroTargets): MacroTargets {
+  const cut = Math.min(r5((on.kcal * 0.2) / 4), Math.max(0, on.carbs - 50))
+  return { ...on, kcal: r10(on.kcal - cut * 4), carbs: on.carbs - cut }
+}

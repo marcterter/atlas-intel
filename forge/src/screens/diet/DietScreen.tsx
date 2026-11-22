@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
 import { Icon } from '../../components/Icon.tsx'
-import { menuDialog, Segmented } from '../../components/ui.tsx'
+import { menuDialog } from '../../components/ui.tsx'
+import { DayTypeSwitch, useDayLabel } from './DayType.tsx'
 import { AddFood } from './AddFood.tsx'
 import { FoodDetail } from './FoodDetail.tsx'
 import { MacroBars, MacroDots, MacroSummary } from './components.tsx'
 import { RecipeEditor } from './Recipes.tsx'
 import { useStore } from '../../store/store.ts'
-import { dayTargets, getFood, isTrainingDay } from '../../store/selectors.ts'
+import { dayTargets, getFood } from '../../store/selectors.ts'
 import { ui, useUI } from '../../store/ui.ts'
 import { MEALS, dayTotals, mealForNow, sumNutrients } from '../../lib/nutrition.ts'
 import { addDays, cap, relativeDay, formatLong, todayISO } from '../../lib/date.ts'
@@ -26,9 +27,8 @@ export function DietScreen() {
   const foods = useStore((s) => s.foods)
   const recipes = useStore((s) => s.recipes)
   const copyEntries = useStore((s) => s.copyEntries)
-  const setDayType = useStore((s) => s.setDayType)
-  const training = useStore((s) => isTrainingDay(s, date))
   const t = useStore((s) => dayTargets(s, date))
+  const dayLabel = useDayLabel(date)
   const dayEntries = useMemo(() => entries.filter((e) => e.date === date).sort((a, b) => a.createdAt - b.createdAt), [entries, date])
   const totals = useMemo(() => dayTotals(entries, date), [entries, date])
   const yesterdayCount = useMemo(() => entries.filter((e) => e.date === addDays(date, -1)).length, [entries, date])
@@ -93,18 +93,15 @@ export function DietScreen() {
           <MacroSummary n={totals} t={t} fiberGoal={targets.fiber} />
           <div className="hr" />
           <MacroBars n={totals} t={t} fiberGoal={targets.fiber} />
-          {targets.rest && (
-            <div style={{ marginTop: 14 }}>
-              <Segmented
-                value={training ? 'on' : 'off'}
-                onChange={(v) => setDayType(date, v === 'on')}
-                options={[
-                  { value: 'on', label: 'Jour d’entraînement' },
-                  { value: 'off', label: 'Jour de repos' },
-                ]}
-              />
+          <div className="row-between" style={{ marginTop: 14, gap: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <div className="bold small">{dayLabel}</div>
+              <div className="tiny faint">
+                {targets.rest ? `ON ${fmt(targets.base.kcal)} kcal · OFF ${fmt(targets.rest.kcal)} kcal` : 'Mêmes objectifs tous les jours'}
+              </div>
             </div>
-          )}
+            <DayTypeSwitch date={date} />
+          </div>
         </div>
 
         {dayEntries.length === 0 && yesterdayCount > 0 && (
