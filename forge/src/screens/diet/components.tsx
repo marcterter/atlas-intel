@@ -21,11 +21,12 @@ export function MacroDots({ n }: { n: Nutrients }) {
   )
 }
 
-export function MacroBars({ n, t }: { n: Nutrients; t: MacroTargets }) {
+export function MacroBars({ n, t, fiberGoal }: { n: Nutrients; t: MacroTargets; fiberGoal?: number }) {
   const rows = [
-    { label: 'Protéines', v: n.protein, goal: t.protein, color: 'var(--protein)' },
-    { label: 'Glucides', v: n.carbs, goal: t.carbs, color: 'var(--carbs)' },
-    { label: 'Lipides', v: n.fat, goal: t.fat, color: 'var(--fat)' },
+    { label: 'Protéines', v: n.protein, goal: t.protein, color: 'var(--protein)', min: false },
+    { label: 'Glucides', v: n.carbs, goal: t.carbs, color: 'var(--carbs)', min: false },
+    { label: 'Lipides', v: n.fat, goal: t.fat, color: 'var(--fat)', min: false },
+    ...(fiberGoal ? [{ label: 'Fibres', v: n.fiber ?? 0, goal: fiberGoal, color: 'var(--fiber)', min: true }] : []),
   ]
   return (
     <div className="stack" style={{ gap: 10 }}>
@@ -37,11 +38,17 @@ export function MacroBars({ n, t }: { n: Nutrients; t: MacroTargets }) {
               <span>
                 <b>{r.label}</b> <span className="faint num">{fmt(r.v)} / {fmt(r.goal)} g</span>
               </span>
-              <span className="num" style={{ color: left < 0 ? 'var(--danger)' : 'var(--text-2)', fontWeight: 600 }}>
-                {left >= 0 ? `reste ${fmt(left)} g` : `+${fmt(-left)} g`}
-              </span>
+              {r.min && left <= 0 ? (
+                <span className="num ok" style={{ fontWeight: 600 }}>
+                  objectif atteint ✓
+                </span>
+              ) : (
+                <span className="num" style={{ color: left < 0 ? 'var(--danger)' : 'var(--text-2)', fontWeight: 600 }}>
+                  {left >= 0 ? `reste ${fmt(left)} g` : `+${fmt(-left)} g`}
+                </span>
+              )}
             </div>
-            <Bar value={r.goal > 0 ? r.v / r.goal : 0} color={r.color} />
+            <Bar value={r.goal > 0 ? r.v / r.goal : 0} color={r.color} overOk={r.min} />
           </div>
         )
       })}
@@ -50,7 +57,7 @@ export function MacroBars({ n, t }: { n: Nutrients; t: MacroTargets }) {
 }
 
 /** Carte "ce qu'il te reste" : anneau kcal + barres de macros. */
-export function MacroSummary({ n, t, compact }: { n: Nutrients; t: MacroTargets; compact?: boolean }) {
+export function MacroSummary({ n, t, compact, fiberGoal }: { n: Nutrients; t: MacroTargets; compact?: boolean; fiberGoal?: number }) {
   const left = t.kcal - n.kcal
   const over = left < 0
   return (
@@ -74,19 +81,20 @@ export function MacroSummary({ n, t, compact }: { n: Nutrients; t: MacroTargets;
         <MiniMacro label="P" v={n.protein} goal={t.protein} color="var(--protein)" />
         <MiniMacro label="G" v={n.carbs} goal={t.carbs} color="var(--carbs)" />
         <MiniMacro label="L" v={n.fat} goal={t.fat} color="var(--fat)" />
+        {fiberGoal ? <MiniMacro label="F" v={n.fiber ?? 0} goal={fiberGoal} color="var(--fiber)" overOk /> : null}
       </div>
     </div>
   )
 }
 
-function MiniMacro({ label, v, goal, color }: { label: string; v: number; goal: number; color: string }) {
+function MiniMacro({ label, v, goal, color, overOk }: { label: string; v: number; goal: number; color: string; overOk?: boolean }) {
   return (
     <div className="row" style={{ gap: 8 }}>
       <b className="tiny" style={{ width: 12, color }}>
         {label}
       </b>
       <div className="grow">
-        <Bar value={goal > 0 ? v / goal : 0} color={color} thin />
+        <Bar value={goal > 0 ? v / goal : 0} color={color} thin overOk={overOk} />
       </div>
       <span className="tiny num muted" style={{ minWidth: 58, textAlign: 'right' }}>
         {fmt(v)}/{fmt(goal)} g

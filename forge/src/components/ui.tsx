@@ -308,8 +308,8 @@ export function Ring({
   )
 }
 
-export function Bar({ value, color, thin }: { value: number; color?: string; thin?: boolean }) {
-  const over = value > 1
+export function Bar({ value, color, thin, overOk }: { value: number; color?: string; thin?: boolean; overOk?: boolean }) {
+  const over = value > 1 && !overOk
   return (
     <div className={`bar ${thin ? 'thin' : ''}`}>
       <i style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%`, background: over ? 'var(--danger)' : color }} />

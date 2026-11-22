@@ -90,9 +90,9 @@ export function DietScreen() {
 
       <div className="stack">
         <div className="card">
-          <MacroSummary n={totals} t={t} />
+          <MacroSummary n={totals} t={t} fiberGoal={targets.fiber} />
           <div className="hr" />
-          <MacroBars n={totals} t={t} />
+          <MacroBars n={totals} t={t} fiberGoal={targets.fiber} />
           {targets.rest && (
             <div style={{ marginTop: 14 }}>
               <Segmented

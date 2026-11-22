@@ -92,6 +92,7 @@ export function TodayScreen() {
   const entries = useStore((s) => s.entries)
   const steps = useStore((s) => s.steps)
   const stepsGoal = useStore((s) => s.targets.steps)
+  const fiberGoal = useStore((s) => s.targets.fiber)
   const weighins = useStore((s) => s.weighins)
   const sessions = useStore((s) => s.sessions)
   const routines = useStore((s) => s.routines)
@@ -155,7 +156,7 @@ export function TodayScreen() {
               <Icon name="plus" />
             </span>
           </div>
-          <MacroSummary n={totals} t={t} compact />
+          <MacroSummary n={totals} t={t} compact fiberGoal={fiberGoal} />
         </button>
 
         <div className="grid-2">

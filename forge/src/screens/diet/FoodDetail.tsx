@@ -137,6 +137,12 @@ export function FoodDetail({
               </div>
               <div className="tiny faint bold">LIP.</div>
             </div>
+            <div>
+              <div className="big-number" style={{ fontSize: 22, color: 'var(--fiber)' }}>
+                {fmt(n.fiber ?? 0, 1)}
+              </div>
+              <div className="tiny faint bold">FIB.</div>
+            </div>
           </div>
         </div>
 

@@ -139,6 +139,7 @@ export function QuickAdd({ date, meal: initialMeal }: { date: ISODate; meal: Mea
   const [protein, setProtein] = useState<number | null>(null)
   const [carbs, setCarbs] = useState<number | null>(null)
   const [fat, setFat] = useState<number | null>(null)
+  const [fiber, setFiber] = useState<number | null>(null)
   const computed = kcal ?? Math.round((protein ?? 0) * 4 + (carbs ?? 0) * 4 + (fat ?? 0) * 9)
   const valid = computed > 0
   return (
@@ -156,7 +157,7 @@ export function QuickAdd({ date, meal: initialMeal }: { date: ISODate; meal: Mea
               foodId: null,
               name: name.trim() || 'Ajout rapide',
               grams: 0,
-              n: { kcal: computed, protein: protein ?? 0, carbs: carbs ?? 0, fat: fat ?? 0, fiber: 0 },
+              n: { kcal: computed, protein: protein ?? 0, carbs: carbs ?? 0, fat: fat ?? 0, fiber: fiber ?? 0 },
             })
             ui.pop()
             ui.toast(`Ajouté · ${MEAL_LABEL[meal]}`, 'ok')
@@ -182,6 +183,9 @@ export function QuickAdd({ date, meal: initialMeal }: { date: ISODate; meal: Mea
           </Field>
           <Field label="Lipides (g)">
             <NumInput value={fat} onChange={setFat} />
+          </Field>
+          <Field label="Fibres (g)">
+            <NumInput value={fiber} onChange={setFiber} />
           </Field>
         </div>
         <div className="chips">
