@@ -2,6 +2,8 @@
 
 App web installable sur iPhone (PWA) : elle s'ouvre en plein écran depuis l'écran d'accueil et marche hors connexion à la salle.
 
+![Aperçu des écrans](docs/apercu.png)
+
 | Module | Ce que ça fait |
 | --- | --- |
 | **Séance** | Programmes (Push, Pull…), séance en direct avec **tes perfs de la dernière fois sur chaque série**, chrono de repos auto (bip, vibration, −15 / +15 s), échauffement / dégressive / échec, supersets, cardio, exercice de remplacement si la machine est prise, notes. Récap de fin : tonnage, records battus, comparaison avec la dernière fois. |
