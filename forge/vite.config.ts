@@ -24,6 +24,10 @@ function sheetScript(): Plugin {
 // Forge — PWA installable sur iPhone (Safari > Partager > Sur l'écran d'accueil)
 export default defineConfig({
   base: './',
+  // Version affichée dans Profil (commit fourni par Vercel au moment du build).
+  define: {
+    __APP_BUILD__: JSON.stringify({ sha: (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 7) || 'local', date: new Date().toISOString() }),
+  },
   plugins: [
     react(),
     sheetScript(),

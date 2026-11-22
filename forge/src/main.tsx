@@ -16,8 +16,8 @@ void hydrate()
 
 // Service worker : l'app fonctionne hors connexion (salle de sport sans réseau).
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  import('virtual:pwa-register')
-    .then(({ registerSW }) => registerSW({ immediate: true }))
+  Promise.all([import('virtual:pwa-register'), import('./lib/update.ts')])
+    .then(([{ registerSW }, { watchUpdates }]) => registerSW({ immediate: true, onRegisteredSW: (_url, reg) => watchUpdates(reg) }))
     .catch(() => {
       /* contexte sans service worker (aperçu, navigation privée) */
     })

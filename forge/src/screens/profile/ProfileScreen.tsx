@@ -5,6 +5,7 @@ import { ProfileEditor, TargetsEditor } from './ProfileForms.tsx'
 import { SyncSetup } from './SyncSetup.tsx'
 import { ShortcutGuide } from './Guides.tsx'
 import { useStore, exportJSON, parseImport } from '../../store/store.ts'
+import { checkForUpdate } from '../../lib/update.ts'
 import { storageMode } from '../../store/persist.ts'
 import { ui } from '../../store/ui.ts'
 import { ACTIVITY, GOALS, ageFrom } from '../../lib/nutrition.ts'
@@ -193,8 +194,23 @@ export function ProfileScreen() {
           }}
         />
         <div className="faint tiny center" style={{ marginTop: 8 }}>
-          Forge 1.0 · stockage {storageMode() === 'idb' ? 'local (IndexedDB)' : storageMode() === 'local' ? 'local (localStorage)' : 'temporaire'} · données sur ce téléphone
+          Forge · version du {new Date(__APP_BUILD__.date).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} ({__APP_BUILD__.sha}) · {location.host}
+          <br />
+          stockage {storageMode() === 'idb' ? 'local (IndexedDB)' : storageMode() === 'local' ? 'local (localStorage)' : 'temporaire'} · données sur ce téléphone
         </div>
+        <button
+          className="link-btn"
+          style={{ alignSelf: 'center' }}
+          onClick={async () => {
+            const r = await checkForUpdate()
+            ui.toast(
+              r === 'nouvelle' ? 'Mise à jour en cours : l’app va se recharger' : r === 'a-jour' ? 'Tu as la dernière version' : 'Vérification impossible (hors connexion ?)',
+              r === 'indisponible' ? 'err' : 'ok',
+            )
+          }}
+        >
+          Rechercher une mise à jour
+        </button>
       </div>
     </div>
   )
