@@ -30,6 +30,8 @@ export function ProgramImport() {
   const updateProfile = useStore((s) => s.updateProfile)
   const [removeTemplates, setRemoveTemplates] = useState(true)
   const [useTargets, setUseTargets] = useState(true)
+  // La colonne « Nutrition Phase » du coach n'est pas toujours tenue à jour : on ne change l'objectif que si tu le demandes.
+  const [useGoal, setUseGoal] = useState(false)
 
   useEffect(() => {
     fetchProgram()
@@ -72,8 +74,7 @@ export function ProgramImport() {
             onClick={() => {
               applyImport(plan, removeTemplates ? templates.map((r) => r.id) : [])
               if (useTargets && coachTargets) setTargets(coachTargets)
-              // La phase du coach (Sèche…) devient ton objectif : le bilan du lundi s'en sert.
-              if (useTargets && coachGoal && coachGoal !== goal) updateProfile({ goal: coachGoal })
+              if (useGoal && coachGoal && coachGoal !== goal) updateProfile({ goal: coachGoal })
               ui.pop()
               ui.toast(`${plan.routines.length} séances importées`, 'ok')
             }}
@@ -118,17 +119,24 @@ export function ProgramImport() {
                       <br />
                       Pas : {fmt(coachTargets.steps)} · fibres {coachTargets.fiber} g
                       {coachTargets.cardioNote ? ` · cardio ${coachTargets.cardioNote}` : ''}
-                      {program.phase && (
-                        <>
-                          <br />
-                          Phase : {program.phase}
-                          {coachGoal && coachGoal !== goal ? ` → ton objectif passe de ${GOALS[goal].label} à ${GOALS[coachGoal].label}` : ''}
-                        </>
-                      )}
+
                     </div>
                   </div>
                   <Toggle on={useTargets} onChange={setUseTargets} label="Utiliser les objectifs du coach" />
                 </div>
+              </div>
+            )}
+
+            {coachGoal && coachGoal !== goal && (
+              <div className="row-between card tight">
+                <div>
+                  <div className="bold">Passer en {GOALS[coachGoal].label} ?</div>
+                  <div className="faint small" style={{ marginTop: 4 }}>
+                    Ton coach a noté « {program.phase} » dans la colonne Nutrition Phase, peut-être pour une ancienne semaine. Ton objectif dans l’app reste {GOALS[goal].label} si tu ne
+                    changes rien (le bilan du lundi s’en sert).
+                  </div>
+                </div>
+                <Toggle on={useGoal} onChange={setUseGoal} label={`Passer en ${GOALS[coachGoal].label}`} />
               </div>
             )}
 
