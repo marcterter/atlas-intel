@@ -8,11 +8,23 @@ import { MEALS, MEAL_LABEL } from '../../lib/nutrition.ts'
 import type { Food, ISODate, MealId } from '../../lib/types.ts'
 
 /** Création / modification d'un aliment perso (ex : produit introuvable au scan). */
-export function CustomFoodForm({ food, barcode, onSaved }: { food?: Food; barcode?: string; onSaved?: (f: Food) => void }) {
+export function CustomFoodForm({
+  food,
+  barcode,
+  prefill,
+  reason = 'notfound',
+  onSaved,
+}: {
+  food?: Food
+  barcode?: string
+  prefill?: { name?: string; brand?: string }
+  reason?: 'notfound' | 'incomplete'
+  onSaved?: (f: Food) => void
+}) {
   const saveFood = useStore((s) => s.saveFood)
   const deleteFood = useStore((s) => s.deleteFood)
-  const [name, setName] = useState(food?.name ?? '')
-  const [brand, setBrand] = useState(food?.brand ?? '')
+  const [name, setName] = useState(food?.name ?? prefill?.name ?? '')
+  const [brand, setBrand] = useState(food?.brand ?? prefill?.brand ?? '')
   const [unit, setUnit] = useState<'g' | 'ml'>(food?.unit ?? 'g')
   const [kcal, setKcal] = useState<number | null>(food?.per100.kcal ?? null)
   const [protein, setProtein] = useState<number | null>(food?.per100.protein ?? null)
@@ -70,7 +82,14 @@ export function CustomFoodForm({ food, barcode, onSaved }: { food?: Food; barcod
       }
     >
       <div className="stack">
-        {barcode && <div className="callout">Code-barres {barcode} introuvable dans Open Food Facts. Recopie l'étiquette : il sera reconnu au prochain scan.</div>}
+        {barcode && (
+          <div className="callout">
+            {reason === 'incomplete'
+              ? `Produit trouvé (code ${barcode}) mais sans valeurs nutritionnelles dans Open Food Facts.`
+              : `Code-barres ${barcode} introuvable dans Open Food Facts.`}{' '}
+            Recopie le tableau de l'étiquette (pour 100 g) : il sera reconnu à ton prochain scan.
+          </div>
+        )}
         <Field label="Nom">
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="ex : Galette protéinée maison" autoFocus={!food} />
         </Field>

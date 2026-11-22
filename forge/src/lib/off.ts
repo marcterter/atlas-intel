@@ -88,15 +88,40 @@ async function getJSON(url: string, timeoutMs = 9000): Promise<unknown> {
   }
 }
 
-export async function lookupBarcode(code: string): Promise<Food | null> {
+type OffProductResponse = { status?: number; product?: OffProduct }
+
+export type BarcodeResult =
+  | { status: 'found'; food: Food }
+  /** Produit connu d'Open Food Facts mais sans valeurs nutritionnelles exploitables. */
+  | { status: 'incomplete'; code: string; name?: string; brand?: string }
+  | { status: 'notfound'; code: string }
+
+/** Cherche un code-barres dans Open Food Facts. Lève une erreur seulement en cas de problème réseau / serveur. */
+export async function lookupBarcode(code: string): Promise<BarcodeResult> {
   const clean = code.replace(/\D/g, '')
-  if (!clean) return null
-  const data = (await getJSON(`https://world.openfoodfacts.org/api/v2/product/${clean}.json?fields=${FIELDS}`)) as {
-    status?: number
-    product?: OffProduct
+  if (!clean) return { status: 'notfound', code }
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), 9000)
+  let res: Response
+  try {
+    res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${clean}.json?fields=${FIELDS}`, { signal: ctrl.signal })
+  } finally {
+    clearTimeout(t)
   }
-  if (!data || data.status === 0 || !data.product) return null
-  return offToFood({ ...data.product, code: data.product.code ?? clean })
+  let data: OffProductResponse | null
+  try {
+    data = (await res.json()) as OffProductResponse
+  } catch {
+    data = null
+  }
+  // L'API répond 404 (status 0) quand le produit n'existe pas : ce n'est pas une panne.
+  if (res.status === 404 || data?.status === 0) return { status: 'notfound', code: clean }
+  if (!res.ok || !data) throw new Error(`HTTP ${res.status}`)
+  if (!data.product) return { status: 'notfound', code: clean }
+  const food = offToFood({ ...data.product, code: data.product.code ?? clean })
+  if (food) return { status: 'found', food }
+  const name = (data.product.product_name_fr || data.product.product_name || data.product.generic_name_fr || '').trim()
+  return { status: 'incomplete', code: clean, name: name || undefined, brand: data.product.brands?.split(',')[0]?.trim() || undefined }
 }
 
 export async function searchOff(query: string): Promise<Food[]> {

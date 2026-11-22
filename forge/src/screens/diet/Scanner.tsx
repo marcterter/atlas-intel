@@ -5,7 +5,7 @@ import { FoodDetail } from './FoodDetail.tsx'
 import { CustomFoodForm } from './CustomFood.tsx'
 import { useStore } from '../../store/store.ts'
 import { useUI } from '../../store/ui.ts'
-import { lookupBarcode } from '../../lib/off.ts'
+import { lookupBarcode, type BarcodeResult } from '../../lib/off.ts'
 import { haptic } from '../../lib/device.ts'
 import type { Food, ISODate, MealId } from '../../lib/types.ts'
 
@@ -33,11 +33,11 @@ async function getDetector(): Promise<DetectorCtor> {
   return mod.BarcodeDetector as unknown as DetectorCtor
 }
 
-/** Cherche d'abord dans mes aliments (codes déjà scannés), puis dans Open Food Facts. */
-async function resolveBarcode(code: string): Promise<Food | null> {
+/** Cherche d'abord dans mes aliments (codes déjà scannés ou créés), puis dans Open Food Facts. */
+async function resolveBarcode(code: string): Promise<BarcodeResult> {
   const foods = useStore.getState().foods
   const local = Object.values(foods).find((f) => f.barcode === code)
-  if (local) return local
+  if (local) return { status: 'found', food: local }
   return lookupBarcode(code)
 }
 
@@ -47,20 +47,31 @@ export function Scanner({ date, meal, onPick }: { date: ISODate; meal: MealId; o
   const [error, setError] = useState('')
   const [manual, setManual] = useState('')
   const handled = useRef(false)
+  const failed = useRef<{ code: string; at: number } | null>(null)
 
   const handle = async (code: string) => {
     if (handled.current) return
+    // Après un échec réseau, on évite de relancer en boucle sur le même code.
+    if (failed.current && failed.current.code === code && Date.now() - failed.current.at < 4000) return
     handled.current = true
     setStatus('looking')
+    setError('')
     try {
-      const food = await resolveBarcode(code)
-      const { replaceTop } = useUI.getState()
-      if (food) replaceTop(<FoodDetail food={food} date={date} meal={meal} onPick={onPick} />)
-      else replaceTop(<CustomFoodForm barcode={code} onSaved={(f) => useUI.getState().push(<FoodDetail food={f} date={date} meal={meal} onPick={onPick} />)} />)
+      const r = await resolveBarcode(code)
+      const { replaceTop, push } = useUI.getState()
+      const openDetail = (f: Food) => push(<FoodDetail food={f} date={date} meal={meal} onPick={onPick} />)
+      if (r.status === 'found') replaceTop(<FoodDetail food={r.food} date={date} meal={meal} onPick={onPick} />)
+      else if (r.status === 'incomplete') replaceTop(<CustomFoodForm barcode={r.code} reason="incomplete" prefill={{ name: r.name, brand: r.brand }} onSaved={openDetail} />)
+      else replaceTop(<CustomFoodForm barcode={r.code} onSaved={openDetail} />)
     } catch {
+      failed.current = { code, at: Date.now() }
       handled.current = false
-      setStatus('error')
-      setError('Impossible de joindre Open Food Facts. Vérifie ta connexion.')
+      setStatus('scanning')
+      setError(
+        navigator.onLine === false
+          ? 'Pas de réseau : un nouveau produit a besoin d’internet pour être reconnu. Tes aliments récents et la base intégrée restent disponibles.'
+          : 'Open Food Facts ne répond pas. Réessaie dans un instant, ou saisis le code ci-dessous.',
+      )
     }
   }
 
@@ -85,15 +96,14 @@ export function Scanner({ date, meal, onPick }: { date: ISODate; meal: MealId; o
         if (stopped) return
         setStatus('scanning')
         const tick = async () => {
-          if (stopped || handled.current) return
+          if (stopped) return
           try {
-            if (video.readyState >= 2) {
+            if (!handled.current && video.readyState >= 2) {
               const codes = await detector.detect(video)
               const code = codes.find((c) => /^\d{8,14}$/.test(c.rawValue))
-              if (code) {
+              if (code && !(failed.current?.code === code.rawValue && Date.now() - failed.current.at < 4000)) {
                 haptic(false)
                 void handle(code.rawValue)
-                return
               }
             }
           } catch {
