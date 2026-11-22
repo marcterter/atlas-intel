@@ -6,7 +6,7 @@ import { MacroDots } from './components.tsx'
 import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
 import { uid } from '../../lib/id.ts'
-import { recipeTotals, scaleNutrients } from '../../lib/nutrition.ts'
+import { recipeTotals, recipeYield, scaleNutrients } from '../../lib/nutrition.ts'
 import { fmt } from '../../lib/format.ts'
 import { todayISO } from '../../lib/date.ts'
 import type { Recipe } from '../../lib/types.ts'
@@ -19,7 +19,9 @@ export function RecipeEditor({ recipeId }: { recipeId?: string }) {
     () => existing ?? { id: uid(), name: '', portions: 1, ingredients: [], createdAt: Date.now(), updatedAt: Date.now() },
   )
   const { n, grams } = recipeTotals(draft)
+  const total = recipeYield(draft)
   const per = draft.portions > 0 ? scaleNutrients(n, 100 / draft.portions) : n
+  const partName = draft.portionName?.trim() || 'portion'
   const valid = draft.name.trim() !== '' && draft.ingredients.length > 0
 
   return (
@@ -46,7 +48,7 @@ export function RecipeEditor({ recipeId }: { recipeId?: string }) {
             className="btn grow"
             disabled={!valid}
             onClick={() => {
-              saveRecipe({ ...draft, name: draft.name.trim() })
+              saveRecipe({ ...draft, name: draft.name.trim(), portionName: draft.portionName?.trim() || undefined })
               ui.pop()
               ui.toast('Recette enregistrée', 'ok')
             }}
@@ -60,17 +62,26 @@ export function RecipeEditor({ recipeId }: { recipeId?: string }) {
         <Field label="Nom">
           <input className="input" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="ex : Pancakes protéinés" />
         </Field>
-        <div className="row-between">
-          <div>
-            <div className="bold">Portions</div>
-            <div className="faint small num">{draft.portions > 0 ? `${fmt(grams / draft.portions)} g par portion` : ''}</div>
+        <div className="grid-2">
+          <div className="field">
+            <span>Nombre de parts</span>
+            <Stepper value={draft.portions} min={1} max={40} onChange={(v) => setDraft({ ...draft, portions: v })} />
           </div>
-          <Stepper value={draft.portions} min={1} max={20} onChange={(v) => setDraft({ ...draft, portions: v })} />
+          <Field label="Une part =">
+            <input className="input" value={draft.portionName ?? ''} onChange={(e) => setDraft({ ...draft, portionName: e.target.value })} placeholder="portion, pancake…" />
+          </Field>
         </div>
+        <Field
+          label="Poids du plat cuit (facultatif)"
+          hint={`Pèse tout le plat cuit pour pouvoir peser ta part en grammes. Sinon : poids des ingrédients (${fmt(grams)} g).`}
+        >
+          <NumInput value={draft.cookedGrams ?? null} decimal={false} suffix="g" onChange={(v) => setDraft({ ...draft, cookedGrams: v && v > 0 ? Math.round(v) : null })} />
+        </Field>
 
         <div className="card">
           <div className="tiny faint bold" style={{ letterSpacing: '.08em' }}>
-            PAR PORTION
+            PAR {partName.toUpperCase()}
+            {draft.portions > 0 && total > 0 ? ` · ${fmt(total / draft.portions)} G` : ''}
           </div>
           <div className="row-between" style={{ marginTop: 4 }}>
             <div className="big-number">
@@ -79,7 +90,8 @@ export function RecipeEditor({ recipeId }: { recipeId?: string }) {
             <MacroDots n={per} />
           </div>
           <div className="faint small" style={{ marginTop: 6 }}>
-            Recette entière : {fmt(n.kcal)} kcal · {fmt(grams)} g
+            Recette entière : {fmt(n.kcal)} kcal · {fmt(total)} g{draft.cookedGrams ? ' cuit' : ''} · {draft.portions} {partName}
+            {draft.portions > 1 && !/[sxz]$/i.test(partName) ? 's' : ''}
           </div>
         </div>
 
@@ -92,11 +104,11 @@ export function RecipeEditor({ recipeId }: { recipeId?: string }) {
                 <div className="title ellipsis">{ing.name}</div>
                 <div className="meta">{fmt(scaleNutrients(ing.per100, ing.grams).kcal)} kcal</div>
               </div>
-              <div style={{ width: 96 }}>
+              <div style={{ width: 118, flexShrink: 0 }}>
                 <NumInput
                   value={ing.grams}
                   suffix="g"
-                  style={{ height: 40 }}
+                  style={{ height: 40, fontSize: 16 }}
                   onChange={(v) => setDraft((d) => ({ ...d, ingredients: d.ingredients.map((x, k) => (k === i ? { ...x, grams: v ?? 0 } : x)) }))}
                 />
               </div>

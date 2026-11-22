@@ -1,21 +1,26 @@
 import { EXERCISES, findExercise, normalize } from '../data/exercises.ts'
 import { findBaseFood } from '../data/foods.ts'
-import { recipePer100, recipeTotals, targetsFor } from '../lib/nutrition.ts'
+import { recipePer100, recipeYield, targetsFor } from '../lib/nutrition.ts'
 import { fromISO, todayISO } from '../lib/date.ts'
 import type { Exercise, Food, ISODate, MacroTargets, Recipe, Routine } from '../lib/types.ts'
 import { useStore, type State } from './store.ts'
 import { useMemo } from 'react'
 
+/** Une recette se choisit comme un aliment : « 1 pancake », la recette entière, ou au poids (plat cuit). */
 export function recipeAsFood(r: Recipe): Food {
-  const { grams } = recipeTotals(r)
-  const portion = r.portions > 0 ? grams / r.portions : grams
+  const total = recipeYield(r)
+  const part = r.portions > 0 ? total / r.portions : total
+  const name = r.portionName?.trim() || 'portion'
+  // Au dixième de gramme : les kcal d'une part tombent juste (380 g / 8 = 47,5 g).
+  const portions = part > 0 ? [{ label: `1 ${name}`, grams: Math.round(part * 10) / 10 }] : []
+  if (r.portions > 1 && total > 0) portions.push({ label: 'Recette entière', grams: Math.round(total) })
   return {
     id: `r:${r.id}`,
     name: r.name,
     source: 'recette',
     per100: recipePer100(r),
     unit: 'g',
-    portions: portion > 0 ? [{ label: '1 portion', grams: Math.round(portion) }] : [],
+    portions,
     category: 'Mes recettes',
   }
 }

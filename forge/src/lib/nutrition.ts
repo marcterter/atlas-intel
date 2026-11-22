@@ -132,11 +132,38 @@ export function recipeTotals(r: Pick<Recipe, 'ingredients'>): { n: Nutrients; gr
   return { n, grams }
 }
 
-/** Valeurs d'une recette ramenées à 100 g (pour la stocker comme un aliment). */
-export function recipePer100(r: Pick<Recipe, 'ingredients'>): Nutrients {
-  const { n, grams } = recipeTotals(r)
+/** Poids du plat fini : le poids cuit s'il a été pesé, sinon la somme des ingrédients. */
+export function recipeYield(r: Pick<Recipe, 'ingredients' | 'cookedGrams'>): number {
+  return r.cookedGrams && r.cookedGrams > 0 ? r.cookedGrams : recipeTotals(r).grams
+}
+
+/** Valeurs d'une recette ramenées à 100 g du plat fini (pour la stocker comme un aliment). */
+export function recipePer100(r: Pick<Recipe, 'ingredients' | 'cookedGrams'>): Nutrients {
+  const { n } = recipeTotals(r)
+  const grams = recipeYield(r)
   if (grams <= 0) return { ...ZERO }
   return scaleNutrients(n, (100 / grams) * 100)
+}
+
+/**
+ * Quantité notée en toutes lettres : « 1 pancake » × 3 → « 3 pancakes », « 1 œuf moyen » × 2 → « 2 œufs moyens »,
+ * « 1 tranche de pain » × 2 → « 2 tranches de pain », × 1,5 → « 1,5 tranche de pain ».
+ */
+export function portionText(label: string, count: number): string {
+  if (count === 1) return label
+  const n = String(Math.round(count * 100) / 100).replace('.', ',')
+  const m = label.match(/^1 (.+)$/)
+  if (!m) return `${n} × ${label}`
+  if (count < 2) return `${n} ${m[1]}`
+  let stop = false
+  const words = m[1].split(' ').map((w) => {
+    if (stop || /^(de|du|des|à|au|aux|en|pour|sans)$/i.test(w) || /^d[’']/i.test(w) || /^[(\d]/.test(w)) {
+      stop = true
+      return w
+    }
+    return /^[\p{L}-]+$/u.test(w) && !/[sxz]$/i.test(w) ? `${w}s` : w
+  })
+  return `${n} ${words.join(' ')}`
 }
 
 /** Part de chaque macro dans les kcal (pour les barres empilées). */

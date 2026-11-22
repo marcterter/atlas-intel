@@ -217,7 +217,12 @@ export interface RecipeIngredient {
 export interface Recipe {
   id: string
   name: string
+  /** Nombre de parts que donne la recette. */
   portions: number
+  /** Nom d'une part, au singulier : « pancake », « part », « tranche » (défaut : « portion »). */
+  portionName?: string
+  /** Poids du plat cuit, pour peser sa part en grammes (sinon : poids des ingrédients). */
+  cookedGrams?: number | null
   ingredients: RecipeIngredient[]
   minutes?: number
   note?: string

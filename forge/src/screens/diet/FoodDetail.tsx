@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react'
 import { Sheet, Stepper, NumInput, confirmDialog } from '../../components/ui.tsx'
 import { Icon } from '../../components/Icon.tsx'
 import { CustomFoodForm } from './CustomFood.tsx'
+import { RecipeEditor } from './Recipes.tsx'
 import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
-import { MEALS, MEAL_LABEL, scaleNutrients } from '../../lib/nutrition.ts'
+import { MEALS, MEAL_LABEL, portionText, scaleNutrients } from '../../lib/nutrition.ts'
 import { fmt } from '../../lib/format.ts'
 import type { Food, ISODate, MealId, Portion } from '../../lib/types.ts'
 
@@ -32,7 +33,15 @@ export function FoodDetail({
   const entry = useStore((s) => (entryId ? s.entries.find((e) => e.id === entryId) : undefined))
 
   const portions: Portion[] = useMemo(() => [...(food.portions ?? []), { label: `100 ${food.unit}`, grams: 100 }], [food])
-  const startPortion = entry?.portionLabel ? portions.find((p) => entry.portionLabel?.endsWith(p.label)) : !entry && !initialGrams && food.portions?.length ? food.portions[0] : undefined
+  // Entrée déjà notée (« 3 pancakes ») : on retrouve la part et le nombre.
+  const startPortion = entry?.portionLabel
+    ? (portions.find((p) => {
+        const c = Math.round((entry.grams / p.grams) * 2) / 2
+        return c > 0 && portionText(p.label, c) === entry.portionLabel
+      }) ?? portions.find((p) => entry.portionLabel?.endsWith(p.label)))
+    : !entry && !initialGrams && food.portions?.length
+      ? food.portions[0]
+      : undefined
   const [portion, setPortion] = useState<Portion | null>(startPortion ?? null)
   const [count, setCount] = useState(() => (startPortion && entry ? Math.round((entry.grams / startPortion.grams) * 2) / 2 || 1 : 1))
   const [grams, setGrams] = useState<number | null>(entry?.grams ?? initialGrams ?? (startPortion ? startPortion.grams : 100))
@@ -42,7 +51,7 @@ export function FoodDetail({
   const n = scaleNutrients(food.per100, qty)
   const valid = qty > 0
 
-  const portionLabel = portion && portion.label !== `100 ${food.unit}` ? `${count === 1 ? '' : `${String(count).replace('.', ',')} × `}${portion.label}` : undefined
+  const portionLabel = portion && portion.label !== `100 ${food.unit}` ? portionText(portion.label, count) : undefined
 
   const save = () => {
     if (!valid) return
@@ -70,6 +79,11 @@ export function FoodDetail({
         <>
           {food.source === 'perso' && (
             <button className="icon-btn" onClick={() => ui.push(<CustomFoodForm food={food} />)} aria-label="Modifier l'aliment">
+              <Icon name="pencil" size={20} />
+            </button>
+          )}
+          {food.source === 'recette' && (
+            <button className="icon-btn" onClick={() => ui.push(<RecipeEditor recipeId={food.id.slice(2)} />)} aria-label="Modifier la recette">
               <Icon name="pencil" size={20} />
             </button>
           )}
@@ -170,7 +184,7 @@ export function FoodDetail({
         {portion ? (
           <div className="row-between card tight">
             <div>
-              <div className="bold">{portion.label}</div>
+              <div className="bold">{portionText(portion.label, count)}</div>
               <div className="faint small num">
                 = {fmt(qty)} {food.unit}
               </div>

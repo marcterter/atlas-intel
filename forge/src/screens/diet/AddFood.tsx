@@ -85,14 +85,19 @@ export function AddFood({ date, meal: initialMeal, onPick, title }: { date: ISOD
         </div>
 
         {!onPick && !q && (
-          <div className="grid-2">
-            <button className="btn soft small" onClick={() => ui.push(<QuickAdd date={date} meal={meal} />)}>
-              <Icon name="bolt" size={18} /> Ajout rapide
+          <>
+            <div className="grid-2">
+              <button className="btn soft small" onClick={() => ui.push(<QuickAdd date={date} meal={meal} />)}>
+                <Icon name="bolt" size={18} /> Ajout rapide
+              </button>
+              <button className="btn soft small" onClick={() => ui.push(<CustomFoodForm onSaved={open} />)}>
+                <Icon name="plus" size={18} /> Créer un aliment
+              </button>
+            </div>
+            <button className="btn soft small block" onClick={() => ui.push(<RecipeEditor />)}>
+              <Icon name="book" size={18} /> Créer une recette à partir d’aliments
             </button>
-            <button className="btn soft small" onClick={() => ui.push(<CustomFoodForm onSaved={open} />)}>
-              <Icon name="plus" size={18} /> Créer un aliment
-            </button>
-          </div>
+          </>
         )}
 
         {q.trim() ? (
@@ -119,7 +124,7 @@ export function AddFood({ date, meal: initialMeal, onPick, title }: { date: ISOD
                 [
                   ['recents', 'Récents'],
                   ['favoris', 'Favoris'],
-                  ['perso', 'Mes aliments'],
+                  ['perso', 'Mes recettes & aliments'],
                   ['parcourir', 'Parcourir'],
                 ] as [Tab, string][]
               ).map(([k, label]) => (
