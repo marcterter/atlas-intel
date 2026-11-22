@@ -81,6 +81,17 @@ export function kcalFromMacros(m: Pick<MacroTargets, 'protein' | 'carbs' | 'fat'
   return Math.round(m.protein * 4 + m.carbs * 4 + m.fat * 9)
 }
 
+/**
+ * Calories et macros liées : changer une macro recalcule les kcal ; changer les kcal ajuste les glucides,
+ * protéines et lipides gardés (on les fixe en g/kg, les glucides complètent).
+ */
+export function editMacro(m: MacroTargets, key: keyof MacroTargets, value: number | null): MacroTargets {
+  const v = Math.max(0, Math.round(value ?? 0))
+  if (key === 'kcal') return { ...m, kcal: v, carbs: Math.max(0, Math.round((v - m.protein * 4 - m.fat * 9) / 4)) }
+  const next = { ...m, [key]: v }
+  return { ...next, kcal: kcalFromMacros(next) }
+}
+
 export const ZERO: Nutrients = { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
 
 export function scaleNutrients(per100: Nutrients, grams: number): Nutrients {

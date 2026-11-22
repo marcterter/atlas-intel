@@ -57,3 +57,16 @@ test('libellé de la quantité notée : « 3 pancakes », « 1,5 portion »', ()
   assert.equal(portionText('Recette entière', 0.5), '0,5 × Recette entière')
   assert.equal(portionText('Recette entière', 1), 'Recette entière')
 })
+
+test('objectifs : calories et macros liées', async () => {
+  const { editMacro } = await import('../src/lib/nutrition.ts')
+  const off = { kcal: 2105, protein: 145, carbs: 235, fat: 65 }
+  // Les kcal changent → les glucides s'ajustent, protéines et lipides gardés
+  assert.deepEqual(editMacro(off, 'kcal', 2500), { kcal: 2500, protein: 145, carbs: 334, fat: 65 })
+  // Une macro change → les kcal suivent
+  assert.deepEqual(editMacro(off, 'protein', 200), { kcal: 2325, protein: 200, carbs: 235, fat: 65 })
+  assert.deepEqual(editMacro(off, 'fat', 60), { kcal: 2060, protein: 145, carbs: 235, fat: 60 })
+  // Sous le minimum des protéines + lipides : glucides à 0
+  assert.deepEqual(editMacro(off, 'kcal', 1000), { kcal: 1000, protein: 145, carbs: 0, fat: 65 })
+  assert.deepEqual(editMacro(off, 'kcal', null), { kcal: 0, protein: 145, carbs: 0, fat: 65 })
+})

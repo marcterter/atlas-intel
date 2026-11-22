@@ -3,7 +3,7 @@ import { Field, NumInput, Toggle } from '../../components/ui.tsx'
 import { Icon } from '../../components/Icon.tsx'
 import { ProfileFields } from '../profile/ProfileForms.tsx'
 import { useStore } from '../../store/store.ts'
-import { kcalFromMacros, suggestTargets, tdee } from '../../lib/nutrition.ts'
+import { editMacro, suggestTargets, tdee } from '../../lib/nutrition.ts'
 import { goalPlans } from '../../lib/energy.ts'
 import { fmt } from '../../lib/format.ts'
 import type { MacroTargets, Profile } from '../../lib/types.ts'
@@ -115,11 +115,11 @@ export function Onboarding() {
                 ] as [keyof MacroTargets, string, string][]
               ).map(([k, label, unit]) => (
                 <Field key={k} label={label}>
-                  <NumInput value={macros[k]} decimal={false} suffix={unit} onChange={(v) => setManual({ ...macros, [k]: Math.round(v ?? 0) })} />
+                  <NumInput value={macros[k]} decimal={false} suffix={unit} onChange={(v) => setManual(editMacro(macros, k, v))} />
                 </Field>
               ))}
               <div className="faint small" style={{ gridColumn: '1 / -1' }}>
-                Les macros font {fmt(kcalFromMacros(macros))} kcal.
+                Change une macro : les kcal suivent. Change les kcal : les glucides s’ajustent.
               </div>
             </div>
           ) : (

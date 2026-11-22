@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Sheet, Field, NumInput, Segmented, Stepper, Toggle } from '../../components/ui.tsx'
 import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
-import { GOALS, kcalFromMacros } from '../../lib/nutrition.ts'
+import { GOALS, editMacro, kcalFromMacros } from '../../lib/nutrition.ts'
 import { activityLevel, activityText, defaultOff, estimateEnergy, goalPlans, measureTdee, MEASURE_NEEDS, splitOnOff } from '../../lib/energy.ts'
 import { latestWeight } from '../../lib/body.ts'
 import { formatShort, todayISO } from '../../lib/date.ts'
@@ -84,36 +84,44 @@ export function ProfileEditor() {
   )
 }
 
+/** Calories et macros liées (voir editMacro) : une macro change les kcal, les kcal changent les glucides. */
 function MacroFields({ value, onChange }: { value: MacroTargets; onChange: (m: MacroTargets) => void }) {
   const fromMacros = kcalFromMacros(value)
   const diff = value.kcal - fromMacros
+  const field = (key: keyof MacroTargets, label: string, suffix: string) => (
+    <Field label={label}>
+      <NumInput value={value[key]} decimal={false} suffix={suffix} onChange={(v) => onChange(editMacro(value, key, v))} />
+    </Field>
+  )
   return (
     <div className="stack" style={{ gap: 10 }}>
       <div className="grid-2">
-        <Field label="Calories">
-          <NumInput value={value.kcal} decimal={false} suffix="kcal" onChange={(v) => onChange({ ...value, kcal: Math.round(v ?? 0) })} />
-        </Field>
-        <Field label="Protéines">
-          <NumInput value={value.protein} decimal={false} suffix="g" onChange={(v) => onChange({ ...value, protein: Math.round(v ?? 0) })} />
-        </Field>
-        <Field label="Glucides">
-          <NumInput value={value.carbs} decimal={false} suffix="g" onChange={(v) => onChange({ ...value, carbs: Math.round(v ?? 0) })} />
-        </Field>
-        <Field label="Lipides">
-          <NumInput value={value.fat} decimal={false} suffix="g" onChange={(v) => onChange({ ...value, fat: Math.round(v ?? 0) })} />
-        </Field>
+        {field('kcal', 'Calories', 'kcal')}
+        {field('protein', 'Protéines', 'g')}
+        {field('carbs', 'Glucides', 'g')}
+        {field('fat', 'Lipides', 'g')}
       </div>
-      <div className="row-between small">
-        <span className="muted">
-          Macros = <b className="num">{fmt(fromMacros)} kcal</b>
-          {Math.abs(diff) > 40 && <span style={{ color: 'var(--warn)' }}> (écart {diff > 0 ? '+' : ''}{fmt(diff)})</span>}
-        </span>
-        {Math.abs(diff) > 0 && (
-          <button className="link-btn" onClick={() => onChange({ ...value, kcal: fromMacros })}>
-            Aligner les kcal
-          </button>
-        )}
-      </div>
+      {Math.abs(diff) > 5 ? (
+        // Objectifs enregistrés avant (ou kcal sous le minimum des protéines + lipides) : on propose de recoller.
+        <div className="row-between small" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ color: 'var(--warn)' }}>
+            Macros = {fmt(fromMacros)} kcal (écart {diff > 0 ? '+' : ''}
+            {fmt(diff)})
+          </span>
+          <span className="row" style={{ gap: 12 }}>
+            {value.kcal - value.protein * 4 - value.fat * 9 >= 0 && (
+              <button className="link-btn" onClick={() => onChange(editMacro(value, 'kcal', value.kcal))}>
+                Ajuster les glucides
+              </button>
+            )}
+            <button className="link-btn" onClick={() => onChange({ ...value, kcal: fromMacros })}>
+              Kcal = macros
+            </button>
+          </span>
+        </div>
+      ) : (
+        <div className="faint tiny">Change une macro : les kcal suivent. Change les kcal : les glucides s’ajustent, protéines et lipides gardés.</div>
+      )}
     </div>
   )
 }
