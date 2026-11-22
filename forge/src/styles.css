@@ -668,6 +668,33 @@ textarea.input {
   font-weight: 700;
 }
 
+.field .stepper {
+  height: 48px;
+  width: 100%;
+  justify-content: space-between;
+  border-radius: 14px;
+}
+
+.field .stepper button {
+  width: 46px;
+  height: 46px;
+}
+
+.plan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.plan-row.current {
+  border-color: rgba(255, 107, 44, 0.45);
+  background: var(--accent-soft);
+}
+
 /* ---------- Barre d'onglets ---------- */
 
 .tabbar {
@@ -1240,6 +1267,60 @@ textarea.input {
   font-weight: 600;
 }
 
+.set-input.tone-up::placeholder {
+  color: var(--ok);
+  opacity: 0.85;
+}
+
+.set-input.tone-down::placeholder {
+  color: var(--warn);
+  opacity: 0.85;
+}
+
+.set-input.tone-same::placeholder {
+  color: var(--text-2);
+}
+
+.advice {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.advice.up {
+  border-color: rgba(61, 220, 151, 0.35);
+  background: var(--ok-soft);
+}
+
+.advice.down {
+  border-color: rgba(255, 210, 63, 0.35);
+  background: rgba(255, 210, 63, 0.08);
+}
+
+.advice-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+
+.advice.up .advice-line svg {
+  color: var(--ok);
+}
+
+.advice.down .advice-line svg {
+  color: var(--warn);
+}
+
+.advice-why {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
 .set-input:focus {
   border-color: var(--accent);
 }
@@ -1522,6 +1603,17 @@ textarea.input {
   border-color: rgba(255, 107, 44, 0.35);
   background: var(--accent-soft);
   color: var(--text);
+}
+
+.callout.warn {
+  border-color: rgba(255, 210, 63, 0.4);
+  background: rgba(255, 210, 63, 0.1);
+  color: var(--text);
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .steps-list {

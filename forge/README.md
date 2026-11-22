@@ -6,14 +6,22 @@ App web installable sur iPhone (PWA) : elle s'ouvre en plein écran depuis l'éc
 
 | Module | Ce que ça fait |
 | --- | --- |
-| **Séance** | Programmes (Push, Pull…), séance en direct avec **tes perfs de la dernière fois sur chaque série**, chrono de repos auto (bip, vibration, −15 / +15 s), échauffement / dégressive / échec, supersets, cardio, exercice de remplacement si la machine est prise, notes. Récap de fin : tonnage, records battus, comparaison avec la dernière fois. |
-| **Diète** | Calories et macros **restantes** (objectifs différents jour d'entraînement / repos possibles), 4 repas, base d'aliments courants intégrée, recherche et **scan code-barres** Open Food Facts, ajout rapide, aliments et recettes perso, favoris, copie du repas de la veille. |
+| **Séance** | Programmes (Push, Pull…), séance en direct avec **tes perfs de la dernière fois sur chaque série** et **l'objectif du jour** (charge conseillée : voir plus bas), chrono de repos auto (bip, vibration, −15 / +15 s), échauffement / dégressive / échec, supersets, cardio, exercice de remplacement si la machine est prise, notes. Récap de fin : tonnage, records battus, comparaison avec la dernière fois. |
+| **Diète** | Calories et macros **restantes** (objectifs différents jour d'entraînement / repos possibles), **calculateur** sèche / maintien / prise de masse (dépense estimée avec tes pas et tes séances, puis **mesurée** après 2-3 semaines de pesées et de diète), 4 repas, base d'aliments courants intégrée, recherche et **scan code-barres** Open Food Facts, ajout rapide, aliments et recettes perso, favoris, copie du repas de la veille. |
 | **Pas** | Pas du jour et 7 derniers jours, envoyés par un **Raccourci iOS** depuis Santé (iPhone + Apple Watch), ou saisis à la main. |
 | **Ressenti du jour** | Sommeil (durée + qualité), énergie, motivation, satiété, digestion, eau et note : les échelles du « Suivi journalier » du coach. |
 | **Suivi** | Courbe par exercice (charge, volume, 1RM estimé), tonnage et séries par muscle sur 7 jours, historique. Pesée quotidienne avec **moyenne de la semaine**, bilan hebdo (mensurations, photos face/profil/dos), avant / après. |
 | **Google Sheets** | Tout part dans **ton** Google Sheet (onglets Jours, Repas, Séances, Détail séries, Pas, Bilans) puis le script remplit **le sheet du coach** (Suivi journalier + Entraînement). |
 
 Les données vivent sur le téléphone (IndexedDB). Sauvegarde / restauration en JSON dans Profil.
+
+**Charge conseillée.** Pour chaque série, l'app part de la même série la dernière fois (même jour du programme d'abord) et des reps visées par le coach (`10,8,6` = une cible par série, `5-8` = fourchette) :
+
+- cible dépassée (une rep de plus qu'une cible précise, ou le haut de la fourchette) → charge du palier suivant, si l'estimation (1RM d'Epley) dit que les reps visées restent faisables ;
+- cible atteinte ou presque → même charge, une rep de plus ;
+- nettement sous la cible (3 reps ou plus) → charge allégée, calculée pour retrouver la cible.
+
+Le palier se déduit des charges que tu as déjà utilisées (1,25 kg sur les petits haltères, 2,5 kg à la smith, au moins 2,5 % de la charge à la presse) ; après 4 semaines sans l'exercice, l'app repart des mêmes charges. Pendant la séance, si une série est nettement plus dure que prévu, la suivante revient à ta charge habituelle. L'objectif s'affiche en grisé dans les cases (vert = hausse, jaune = baisse) : ✓ le valide tel quel, ou tape ce que tu as vraiment fait.
 
 ---
 
@@ -60,7 +68,18 @@ Le script est réglé pour le sheet du coach (`COACH_MAPPING` dans `Code.gs`) :
 
 - Les lignes « Moyenne », les formules et les colonnes du coach (Nutrition Phase…) ne sont jamais touchées ; une case n'est écrite que si l'app a une valeur.
 - La semaine se retrouve grâce à « Semaine N » (colonne B du suivi journalier) : la séance du 23 novembre va dans le bloc « Semaine 8 ». Une semaine absente de l'onglet Entraînement (après la 12e) est signalée dans l'app.
-- Un exercice hors programme n'est pas ajouté chez le coach (la colonne Exercise est la sienne) : l'app le signale, et il reste dans ton propre sheet.
+
+**Quand tu ne fais pas exactement le programme :**
+
+| Situation | Ce qui est écrit chez le coach |
+| --- | --- |
+| Exercice **remplacé** (menu ⋯ → Remplacer, machine prise…) | La perf va sur la ligne de l'exercice prévu, avec « Remplacé par … » dans Douleurs/ Notes. « Progressé ? » reste vide : ce n'est pas comparable. |
+| Exercice **en plus** | Aucune ligne n'est ajoutée chez le coach (la colonne Exercise est la sienne). Il part dans la note du jour (Suivi journalier, colonne AC) : « Hors programme : Curl marteau (14kg x 12) ». |
+| Exercice **sauté** | Sa ligne reste vide. Une note saisie sur l'exercice (« pas fait, épaule ») va dans Douleurs/ Notes. |
+| Séance **décalée** (lundi fait mardi, jeudi fait vendredi…) | Elle reste sur son jour (LUNDI…), dans la semaine où ce jour tombe le plus près : la séance du jeudi faite le vendredi, premier jour de la semaine suivante chez le coach, reste dans sa semaine. |
+| Même séance **deux fois** dans la semaine | La plus récente est gardée. |
+| **Séance libre** | Écrite sur le jour qui partage le plus d'exercices ; sinon tout part dans la note du jour. |
+| Semaine **pas encore créée** par le coach | Rien n'est écrit (la semaine d'avant n'est pas écrasée) ; l'app le signale. |
 - L'onglet **Checkins** (questionnaire de la semaine) reste à remplir à la main. Les photos du bilan s'envoient depuis l'app (Suivi → Bilan → « Envoyer les photos au coach », via WhatsApp ou Messages).
 
 Mise en route :

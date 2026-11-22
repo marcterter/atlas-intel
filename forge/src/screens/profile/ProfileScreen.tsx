@@ -91,7 +91,18 @@ export function ProfileScreen() {
 
       <div className="stack">
         <div className="card flush list">
-          <Row icon="user" title="Mon profil" meta={`${GOALS[profile.goal].label} · ${ACTIVITY[profile.activity].label}`} onClick={() => ui.push(<ProfileEditor />)} />
+          <Row
+            icon="user"
+            title="Mon profil"
+            meta={[
+              GOALS[profile.goal].label,
+              profile.stepsPerDay ? `${fmt(profile.stepsPerDay)} pas/j` : ACTIVITY[profile.activity].label,
+              profile.sessionsPerWeek != null ? `${profile.sessionsPerWeek} séance${profile.sessionsPerWeek > 1 ? 's' : ''}/sem` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            onClick={() => ui.push(<ProfileEditor />)}
+          />
           <Row
             icon="target"
             title="Objectifs du jour"

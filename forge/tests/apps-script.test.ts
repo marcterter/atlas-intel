@@ -495,8 +495,8 @@ test('Coach : séance écrite dans le bloc de la semaine en cours, sur la ligne 
   assert.equal(entr.get(16, c + 6), 'pas le temps', 'exercice sauté : seule la note est écrite')
   assert.equal(entr.get(16, c + 3), '')
   assert.equal(entr.get(10, c), '3', 'séries prévues par le coach intactes')
-  assert.equal(r.coach.ok, false)
-  assert.match(r.coach.message, /Pull-over poulie.*pas dans le programme/)
+  assert.equal(r.coach.ok, true, 'un exercice en plus n’est pas une erreur')
+  assert.match(r.coach.info, /hors programme.*Pull-over poulie/)
   assert.ok(entr.writes.every((w) => Number(w.split(',')[1]) >= c && Number(w.split(',')[1]) <= c + 6), 'rien d’écrit hors du bloc semaine 8 (ni dans la colonne B du coach)')
   assert.equal(entr.get(10, blockCol(1) + 3), '52,5kg x 11 ; 47,4kg x 11 ; 47,5kgx8', 'semaine 1 intacte')
 })
@@ -525,5 +525,99 @@ test('Coach : semaine absente de l’onglet Entraînement signalée', () => {
   const r = post({ action: 'push', sessions: [upperA('2026-11-23')] })
   assert.equal(r.coach.ok, false)
   assert.match(r.coach.message, /Semaine 8 absente/)
+  assert.equal(entr.writes.length, 0)
+})
+
+// ---------------------------------------------------------------- écarts au programme
+
+test('Coach : exercice remplacé → perf sur la ligne prévue, « Remplacé par … » en note, sans « Progressé »', () => {
+  const { ss, entr } = coachSheet()
+  const { post } = load({ coach: ss })
+  const r = post({
+    action: 'push',
+    sessions: [
+      upperA('2026-11-23', {
+        exercices: [
+          { nom: 'Développé couché haltères', remplace: 'Développé couché à la smith', perf: '24kg x 10 ; 22kg x 10', progres: 'OUI', note: 'smith prise' },
+          { nom: 'Tirage horizontal poulie', remplace: 'Tirage horizontal machine', perf: '50kg x 10', progres: '', note: '' },
+        ],
+      }),
+    ],
+  })
+  assert.equal(r.coach.ok, true, JSON.stringify(r.coach))
+  const c = blockCol(8)
+  assert.equal(entr.get(10, c + 3), '24kg x 10 ; 22kg x 10')
+  assert.equal(entr.get(10, c + 5), '', 'progression non comparable à la ligne du coach')
+  assert.equal(entr.get(10, c + 6), 'Remplacé par Développé couché haltères · smith prise')
+  assert.equal(entr.get(11, c + 3), '50kg x 10')
+  assert.equal(entr.get(11, c + 5), '', 'pas de « Nouvel exo » non plus')
+  assert.equal(entr.get(11, c + 6), 'Remplacé par Tirage horizontal poulie')
+})
+
+test('Coach : exercices hors programme ajoutés à la note du jour (Suivi journalier), sans doublon au renvoi', () => {
+  const { ss, suivi, entr } = coachSheet()
+  const { post } = load({ coach: ss })
+  const session = upperA('2026-11-23', {
+    exercices: [
+      { nom: 'Développé couché à la smith', perf: '55kg x 10', progres: 'OUI' },
+      { nom: 'Pull-over poulie', perf: '30kg x 12 ; 25kg x 12', progres: '' },
+      { nom: 'Curl marteau', perf: '14kg x 12', progres: '' },
+    ],
+  })
+  const row = 11 + 8 * 7 + 3 // lundi 23 nov.
+  const r = post({ action: 'push', days: [day('2026-11-23', { notes: 'Bonne séance' })], sessions: [session] })
+  assert.equal(r.coach.ok, true, JSON.stringify(r.coach))
+  assert.equal(suivi.get(row, COL.AC), 'Bonne séance · Hors programme : Pull-over poulie (30kg x 12 ; 25kg x 12), Curl marteau (14kg x 12)')
+  assert.match(r.coach.info, /Pull-over poulie, Curl marteau/)
+  post({ action: 'push', days: [day('2026-11-23', { notes: '' })], sessions: [session] })
+  assert.equal(suivi.get(row, COL.AC), 'Hors programme : Pull-over poulie (30kg x 12 ; 25kg x 12), Curl marteau (14kg x 12)', 'réécrit, pas ajouté une 2e fois')
+  assert.equal(entr.get(10, blockCol(8) + 3), '55kg x 10', 'l’exercice prévu est bien écrit')
+  assert.ok(!entr.rows.some((line) => line.some((v) => String(v).includes('Pull-over'))), 'aucune ligne ajoutée chez le coach')
+})
+
+test('Coach : séance décalée → reste sur son jour, dans la semaine la plus proche', () => {
+  const { ss, entr } = coachSheet()
+  const { post } = load({ coach: ss })
+  // Séance du JEUDI faite le vendredi 27 nov. (1er jour de la semaine 9 chez le coach) → semaine 8.
+  post({ action: 'push', sessions: [{ id: 'w-jeudi', date: '2026-11-27', nom: 'Upper B', jourCoach: 'JEUDI', exercices: [{ nom: 'Développé incliné à la smith', perf: '57,5kg x 9', progres: 'OUI' }] }] })
+  assert.equal(entr.get(35, blockCol(8) + 3), '57,5kg x 9')
+  assert.equal(entr.get(35, blockCol(9) + 3), '')
+  // Séance du VENDREDI faite la veille (jeudi 26, encore semaine 8) → semaine 9.
+  post({ action: 'push', sessions: [{ id: 'w-vendredi', date: '2026-11-26', nom: 'Lower B', jourCoach: 'VENDREDI', exercices: [{ nom: 'Adductor machine', perf: '65kg x 8', progres: 'OUI' }] }] })
+  assert.equal(entr.get(47, blockCol(9) + 3), '65kg x 8')
+  assert.equal(entr.get(47, blockCol(8) + 3), '')
+  // Séance du LUNDI faite le mercredi → même semaine, bandeau LUNDI.
+  post({ action: 'push', sessions: [upperA('2026-11-25')] })
+  assert.equal(entr.get(10, blockCol(8) + 3), '55kg x 10 ; 50kg x 11 ; 50kg x 9')
+})
+
+test('Coach : même séance deux fois dans la semaine → la plus récente gagne', () => {
+  const { ss, entr } = coachSheet()
+  const { post } = load({ coach: ss })
+  const a = upperA('2026-11-23', { id: 'w-a', exercices: [{ nom: 'Développé couché à la smith', perf: '55kg x 10', progres: 'OUI' }] })
+  const b = upperA('2026-11-25', { id: 'w-b', exercices: [{ nom: 'Développé couché à la smith', perf: '57,5kg x 8', progres: 'OUI' }] })
+  post({ action: 'push', sessions: [b, a] })
+  assert.equal(entr.get(10, blockCol(8) + 3), '57,5kg x 8')
+})
+
+test('Coach : séance libre sans exercice du programme → tout dans la note du jour', () => {
+  const { ss, suivi, entr } = coachSheet()
+  const { post } = load({ coach: ss })
+  const r = post({
+    action: 'push',
+    days: [day('2026-11-22', { notes: '' })],
+    sessions: [{ id: 'w-libre', date: '2026-11-22', nom: 'Séance libre', exercices: [{ nom: 'Tractions', perf: 'PDC x 10 ; PDC x 8', progres: '' }] }],
+  })
+  assert.equal(r.coach.ok, true, JSON.stringify(r.coach))
+  assert.equal(suivi.get(11 + 8 * 7 + 2, COL.AC), 'Hors programme : Tractions (PDC x 10 ; PDC x 8)')
+  assert.equal(entr.writes.length, 0)
+})
+
+test('Coach : semaine pas encore créée par le coach → signalée, la semaine d’avant n’est pas écrasée', () => {
+  const { ss, entr } = coachSheet({ weeks: 8 })
+  const { post } = load({ coach: ss })
+  const r = post({ action: 'push', sessions: [upperA('2026-11-30')] }) // lundi 30 nov. = semaine 9
+  assert.equal(r.coach.ok, false)
+  assert.match(r.coach.message, /Semaine 9 absente/)
   assert.equal(entr.writes.length, 0)
 })

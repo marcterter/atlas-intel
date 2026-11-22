@@ -23,6 +23,7 @@ import {
   updateSet,
 } from '../../lib/sessionOps.ts'
 import { lastNoteFor, previousSets, sessionTonnage, sessionWorkSets, setLabel } from '../../lib/training.ts'
+import { adviseExercise, type Trend } from '../../lib/progression.ts'
 import { fmtDuration, fmtKg, fmtTimer, fmtTonnage, parseNum } from '../../lib/format.ts'
 import { keepScreenOn, haptic, unlockAudio } from '../../lib/device.ts'
 import { relativeDay } from '../../lib/date.ts'
@@ -202,6 +203,9 @@ const ExerciseBlock = memo(function ExerciseBlock({
   const exo = findExercise(ex.exerciseId, custom)
   const prev = useMemo(() => previousSets(history, ex.exerciseId, startedAt, coachDay), [history, ex.exerciseId, startedAt, coachDay])
   const lastNote = useMemo(() => lastNoteFor(history, ex.exerciseId, startedAt), [history, ex.exerciseId, startedAt])
+  // Objectif du jour (charge conseillée), recalculé à chaque série validée.
+  const advice = useMemo(() => adviseExercise(ex, history, custom, startedAt, coachDay), [ex, history, custom, startedAt, coachDay])
+  const allDone = ex.sets.length > 0 && ex.sets.every((x) => x.done)
   const [shakeId, setShakeId] = useState<string | null>(null)
   const [showNote, setShowNote] = useState(!!ex.note)
   const kind = exo.kind
@@ -307,6 +311,17 @@ const ExerciseBlock = memo(function ExerciseBlock({
         </button>
       </div>
 
+      {advice && !allDone && (
+        <div className={`advice ${advice.trend}`}>
+          <div className="advice-line">
+            <Icon name={advice.trend === 'up' ? 'arrow-up' : advice.trend === 'down' ? 'arrow-down' : 'target'} size={14} stroke={2.6} />
+            <b>Objectif</b>
+            <span className="num">{advice.summary}</span>
+          </div>
+          <div className="advice-why">{advice.why}</div>
+        </div>
+      )}
+
       {lastNote && (
         <div className="small" style={{ marginTop: 8, color: 'var(--text-2)', fontStyle: 'italic' }}>
           <Icon name="note" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />
@@ -325,10 +340,13 @@ const ExerciseBlock = memo(function ExerciseBlock({
         if (st.type !== 'echauffement') normalIdx++
         const p = prev[i]
         const before = nearestFilled(ex.sets, i)
+        const adv = advice?.sets[i] ?? null
+        // Les cases vides affichent l'objectif du jour (sinon la dernière fois) : ✓ le valide tel quel.
         const ph = (field: 'weight' | 'reps' | 'seconds' | 'km') => {
-          const v = p?.[field] ?? before?.[field]
+          const v = adv && field !== 'km' ? adv[field] : (p?.[field] ?? before?.[field])
           return v != null ? fmtKg(field === 'seconds' && kind === 'cardio' ? Math.round(v / 60) : v) : ''
         }
+        const tone: Trend | undefined = adv && !st.done ? adv.trend : undefined
         return (
           <div key={st.id} className={`set-row ${kind === 'cardio' ? 'cardio' : ''} ${st.done ? 'done' : ''} ${shakeId === st.id ? 'shake' : ''}`}>
             <button className={`set-num ${TYPE_CLASS[st.type]}`} onClick={() => setMenu(st)} aria-label="Type de série">
@@ -346,12 +364,12 @@ const ExerciseBlock = memo(function ExerciseBlock({
             </button>
             {kind === 'weight' || kind === 'bodyweight' ? (
               <>
-                <SetField value={st.weight} placeholder={ph('weight')} decimal onChange={(v) => updateActive((s) => updateSet(s, ex.uid, st.id, { weight: v }))} />
-                <SetField value={st.reps} placeholder={ph('reps')} onChange={(v) => updateActive((s) => updateSet(s, ex.uid, st.id, { reps: v == null ? null : Math.round(v) }))} />
+                <SetField value={st.weight} placeholder={ph('weight')} tone={tone} decimal onChange={(v) => updateActive((s) => updateSet(s, ex.uid, st.id, { weight: v }))} />
+                <SetField value={st.reps} placeholder={ph('reps')} tone={tone === 'down' ? undefined : tone && 'same'} onChange={(v) => updateActive((s) => updateSet(s, ex.uid, st.id, { reps: v == null ? null : Math.round(v) }))} />
               </>
             ) : kind === 'duration' ? (
               <>
-                <SetField value={st.seconds} placeholder={ph('seconds')} onChange={(v) => updateActive((s) => updateSet(s, ex.uid, st.id, { seconds: v == null ? null : Math.round(v) }))} />
+                <SetField value={st.seconds} placeholder={ph('seconds')} tone={tone} onChange={(v) => updateActive((s) => updateSet(s, ex.uid, st.id, { seconds: v == null ? null : Math.round(v) }))} />
                 <span />
               </>
             ) : (
@@ -399,7 +417,20 @@ const ExerciseBlock = memo(function ExerciseBlock({
   )
 })
 
-function SetField({ value, placeholder, decimal, onChange }: { value: number | null; placeholder: string; decimal?: boolean; onChange: (v: number | null) => void }) {
+function SetField({
+  value,
+  placeholder,
+  decimal,
+  tone,
+  onChange,
+}: {
+  value: number | null
+  placeholder: string
+  decimal?: boolean
+  /** Couleur de l'objectif affiché en grisé : hausse, maintien ou baisse de charge. */
+  tone?: Trend
+  onChange: (v: number | null) => void
+}) {
   const [raw, setRaw] = useState(value != null ? String(value).replace('.', ',') : '')
   const [focused, setFocused] = useState(false)
   useEffect(() => {
@@ -408,7 +439,7 @@ function SetField({ value, placeholder, decimal, onChange }: { value: number | n
   }, [value, focused])
   return (
     <input
-      className="set-input"
+      className={`set-input ${tone ? `tone-${tone}` : ''}`}
       inputMode={decimal ? 'decimal' : 'numeric'}
       value={raw}
       placeholder={placeholder}

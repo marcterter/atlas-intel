@@ -84,7 +84,7 @@ const COACH_MAPPING = {
 
 // =========================================================
 
-const VERSION = 3;
+const VERSION = 4;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
@@ -254,25 +254,29 @@ function push_(body) {
   let coach = null;
   if (COACH_SHEET_URL && COACH_MAPPING) {
     const parts = [];
+    const infos = [];
     let ok = true;
     let cells = 0;
-    [
-      function () { return writeCoachDays_(days); },
-      function () { return writeCoachTraining_(sessions.filter(function (s) { return s && !s.deleted; })); },
-    ].forEach(function (fn) {
+    const run = function (fn) {
       try {
         const r = fn();
         ok = ok && r.ok;
         cells += r.cells || 0;
         if (r.message) parts.push(r.message);
+        if (r.info) infos.push(r.info);
+        return r;
       } catch (err) {
         ok = false;
         parts.push(String((err && err.message) || err));
+        return null;
       }
-    });
-    coach = { ok: ok, message: parts.join(' · '), cells: cells };
+    };
+    // L'entraînement d'abord : ses exercices hors programme vont dans les notes du jour.
+    const training = run(function () { return writeCoachTraining_(sessions.filter(function (s) { return s && !s.deleted; })); });
+    run(function () { return writeCoachDays_(days, (training && training.extras) || {}); });
+    coach = { ok: ok, message: parts.join(' · '), info: infos.join(' · '), cells: cells };
   }
-  return { ok: true, written: { days: days.length, sessions: sessions.length, bilans: bilans.length }, coach: coach };
+  return { ok: true, version: VERSION, written: { days: days.length, sessions: sessions.length, bilans: bilans.length }, coach: coach };
 }
 
 // ---------------------------------------------------------------- sheet du coach : journées
@@ -305,7 +309,7 @@ function sheetByName_(ss, name) {
   return null;
 }
 
-function writeCoachDays_(days) {
+function writeCoachDays_(days, extras) {
   const cfg = COACH_MAPPING && COACH_MAPPING.jours;
   if (!COACH_SHEET_URL || !cfg || !days.length) return { ok: true, message: '', cells: 0 };
   const sh = sheetByName_(coachSs_(), cfg.onglet);
@@ -319,8 +323,11 @@ function writeCoachDays_(days) {
       missing.push(d.date);
       return;
     }
+    // Exercices hors programme du jour : ajoutés à la note du jour (pas de ligne créée chez le coach).
+    const more = extras && extras[d.date];
+    const values = more && more.length ? Object.assign({}, d, { notes: [d.notes, 'Hors programme : ' + more.join(', ')].filter(Boolean).join(' · ') }) : d;
     Object.keys(cfg.colonnes || {}).forEach(function (k) {
-      const v = formatCoachValue_(k, d[k]);
+      const v = formatCoachValue_(k, values[k]);
       if (v == null || v === '') return;
       sh.getRange(row, colIndex_(cfg.colonnes[k])).setValue(v);
       cells++;
@@ -627,53 +634,124 @@ function bandDate_(start, label, index) {
   return null;
 }
 
-/** Écrit les séances de l'app dans l'onglet Entraînement (bloc de la semaine, bandeau du jour). */
+/**
+ * Écrit les séances de l'app dans l'onglet Entraînement (bloc de la semaine, bandeau du jour).
+ * Écarts au programme :
+ *  - exercice remplacé dans l'app → perf sur la ligne de l'exercice prévu + « Remplacé par … » en note ;
+ *  - exercice en plus (absent du jour) → aucune ligne ajoutée chez le coach : il part dans les notes
+ *    du jour (Suivi journalier), renvoyées dans `extras` ;
+ *  - exercice sauté → ligne laissée vide (ou la note saisie dans l'app) ;
+ *  - séance décalée → elle reste sur le jour prévu (LUNDI…) de la semaine la plus proche.
+ */
 function writeCoachTraining_(sessions) {
   const cfg = COACH_MAPPING && COACH_MAPPING.entrainement;
-  if (!COACH_SHEET_URL || !cfg) return { ok: true, message: '', cells: 0 };
-  const todo = sessions.filter(function (s) {
-    return (s.exercices || []).some(function (e) { return e.perf || e.note; });
-  });
-  if (!todo.length) return { ok: true, message: '', cells: 0 };
+  const out = { ok: true, message: '', cells: 0, extras: {}, info: '' };
+  if (!COACH_SHEET_URL || !cfg) return out;
+  // Ordre chronologique : si une séance est faite deux fois dans la semaine, la dernière gagne.
+  const todo = sessions
+    .filter(function (s) {
+      return (s.exercices || []).some(function (e) { return e.perf || e.note; });
+    })
+    .sort(function (a, b) {
+      return String(a.date + (a.debut || '')) < String(b.date + (b.debut || '')) ? -1 : 1;
+    });
+  if (!todo.length) return out;
   const st = trainingStructure_();
   const sh = st.sheet;
-  let cells = 0;
   const problems = [];
+  const offPlan = [];
   const put = function (row, col, value) {
     sh.getRange(row + 1, col + 1).setValue(value);
-    cells++;
+    out.cells++;
+  };
+  const extra = function (s, ex) {
+    if (!ex.perf) return;
+    (out.extras[s.date] = out.extras[s.date] || []).push(ex.nom + ' (' + ex.perf + ')');
+    offPlan.push(ex.nom);
   };
   todo.forEach(function (s) {
-    const wk = weekOfDate_(s.date);
-    let block = wk ? st.blocks.filter(function (b) { return b.semaine === wk.semaine; })[0] || null : null;
-    if (!block && st.blocks.length === 1) block = st.blocks[0]; // un seul tableau, réécrit chaque semaine
-    if (!block) {
-      problems.push((wk ? 'Semaine ' + wk.semaine : s.date) + ' absente de l’onglet Entraînement');
+    const place = placeSession_(st, s);
+    if (place.error) {
+      problems.push(place.error);
       return;
     }
-    const band = pickBand_(block, s);
-    if (!band) {
-      problems.push('« ' + s.nom + ' » : aucun jour correspondant dans la semaine ' + block.semaine);
+    if (!place.band) {
+      // Séance sans aucun exercice du programme : tout part dans les notes du jour.
+      (s.exercices || []).forEach(function (ex) { extra(s, ex); });
       return;
     }
+    const band = place.band;
     (s.exercices || []).forEach(function (ex) {
       if (!ex.perf && !ex.note) return;
-      const target = band.exercises.filter(function (e) { return sameExercise_(e.nom, ex.nom); })[0];
+      let target = findInBand_(band, ex.nom);
+      const replaced = !target && ex.remplace ? findInBand_(band, ex.remplace) : null;
+      if (replaced) target = replaced;
       if (!target) {
-        problems.push('« ' + ex.nom + ' » n’est pas dans le programme du ' + band.label.toLowerCase());
+        extra(s, ex);
         return;
       }
       if (ex.perf) put(target.row, band.cols.perf, ex.perf);
-      let progres = ex.progres || '';
-      if (!progres && ex.perf && isNewExercise_(st.blocks, block, target.row)) progres = 'Nouvel exo';
+      // Progression : comparée à la même ligne les semaines passées, donc pas pour un exercice remplacé.
+      let progres = replaced ? '' : ex.progres || '';
+      if (!replaced && !progres && ex.perf && isNewExercise_(st.blocks, place.block, target.row)) progres = 'Nouvel exo';
       if (progres && band.cols.progres >= 0) put(target.row, band.cols.progres, progres);
-      if (ex.note) {
-        if (band.cols.notes >= 0) put(target.row, band.cols.notes, ex.note);
-        else if (!ex.perf) put(target.row, band.cols.perf, ex.note);
+      const note = [replaced ? 'Remplacé par ' + ex.nom : '', ex.note || ''].filter(Boolean).join(' · ');
+      if (note) {
+        if (band.cols.notes >= 0) put(target.row, band.cols.notes, note);
+        else if (!ex.perf) put(target.row, band.cols.perf, note);
       }
     });
   });
-  return { ok: problems.length === 0, message: problems.join(' · '), cells: cells };
+  out.ok = problems.length === 0;
+  out.message = problems.join(' · ');
+  if (offPlan.length) out.info = 'hors programme, mis dans les notes du jour : ' + offPlan.join(', ');
+  return out;
+}
+
+/**
+ * Bloc (semaine) et bandeau (jour) où écrire une séance. Une séance liée à un jour du coach va dans
+ * la semaine où ce jour tombe le plus près de la date réelle : la séance du JEUDI faite le vendredi
+ * (premier jour de la semaine suivante chez le coach) reste dans sa semaine. Une séance libre va
+ * dans la semaine de sa date. `band` est null si aucun exercice ne correspond au programme.
+ */
+function placeSession_(st, s) {
+  const wk = weekOfDate_(s.date);
+  const blockOf = function (n) {
+    return st.blocks.filter(function (b) { return b.semaine === n; })[0] || null;
+  };
+  if (!wk) {
+    if (st.blocks.length === 1) return { block: st.blocks[0], band: pickBand_(st.blocks[0], s) }; // un seul tableau, réécrit chaque semaine
+    return { error: s.date + ' : semaine introuvable dans le suivi journalier' };
+  }
+  let block = blockOf(wk.semaine);
+  if (!block && st.blocks.length === 1) block = st.blocks[0];
+  if (s.jourCoach) {
+    let best = null;
+    [wk.semaine, wk.semaine - 1, wk.semaine + 1].forEach(function (n) {
+      const b = blockOf(n);
+      const band = b ? exactBand_(b, s.jourCoach) : null;
+      if (!band) return;
+      const when = bandDate_(weekStart_(n), band.label, b.bands.indexOf(band));
+      const gap = when ? Math.abs(dayDiff_(when, s.date)) : n === wk.semaine ? 0 : 99;
+      if (n !== wk.semaine && gap > 3) return; // semaine voisine : seulement pour un décalage de 3 jours max
+      if (!best || gap < best.gap) best = { block: b, band: band, gap: gap };
+    });
+    if (best) return { block: best.block, band: best.band };
+  }
+  if (!block) return { error: 'Semaine ' + wk.semaine + ' absente de l’onglet Entraînement' };
+  return { block: block, band: pickBand_(block, s) };
+}
+
+function exactBand_(block, label) {
+  return block.bands.filter(function (b) { return b.cols && norm_(b.label) === norm_(label); })[0] || null;
+}
+
+function findInBand_(band, nom) {
+  return band.exercises.filter(function (e) { return sameExercise_(e.nom, nom); })[0] || null;
+}
+
+function dayDiff_(a, b) {
+  return Math.round((toDate_(a).getTime() - toDate_(b).getTime()) / 86400000);
 }
 
 /** Aucune performance sur cette ligne dans les semaines précédentes → « Nouvel exo ». */
@@ -689,7 +767,7 @@ function isNewExercise_(blocks, block, row) {
 function pickBand_(block, s) {
   const bands = block.bands.filter(function (b) { return b.cols; });
   if (s.jourCoach) {
-    const exact = bands.filter(function (b) { return norm_(b.label) === norm_(s.jourCoach); })[0];
+    const exact = exactBand_(block, s.jourCoach);
     if (exact) return exact;
   }
   let best = null;

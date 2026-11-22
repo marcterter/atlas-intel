@@ -3,7 +3,8 @@ import { Field, NumInput, Toggle } from '../../components/ui.tsx'
 import { Icon } from '../../components/Icon.tsx'
 import { ProfileFields } from '../profile/ProfileForms.tsx'
 import { useStore } from '../../store/store.ts'
-import { kcalFromMacros, suggestTargets } from '../../lib/nutrition.ts'
+import { kcalFromMacros, suggestTargets, tdee } from '../../lib/nutrition.ts'
+import { goalPlans } from '../../lib/energy.ts'
 import { fmt } from '../../lib/format.ts'
 import type { MacroTargets, Profile } from '../../lib/types.ts'
 
@@ -15,6 +16,7 @@ export function Onboarding() {
   const [weight, setWeight] = useState<number | null>(null)
   const [coachMacros, setCoachMacros] = useState(false)
   const suggested = useMemo(() => suggestTargets(profile, weight ?? 75), [profile, weight])
+  const plans = useMemo(() => goalPlans(tdee(profile, weight ?? 75), weight ?? 75), [profile, weight])
   const [manual, setManual] = useState<MacroTargets | null>(null)
   const [steps, setSteps] = useState<number | null>(10000)
   const [templates, setTemplates] = useState(false)
@@ -136,6 +138,9 @@ export function Onboarding() {
                 <span>
                   <b style={{ color: 'var(--fat)' }}>L</b> {macros.fat} g
                 </span>
+              </div>
+              <div className="tiny faint" style={{ marginTop: 10 }}>
+                {plans.map((p) => `${p.label} ${fmt(p.targets.kcal)}`).join(' · ')} kcal. Tu pourras changer d’objectif dans Profil → Objectifs du jour.
               </div>
               {!weight && <div className="faint small" style={{ marginTop: 8 }}>Calculé pour 75 kg : indique ton poids à l’étape précédente pour affiner.</div>}
             </div>

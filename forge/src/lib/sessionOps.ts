@@ -4,6 +4,7 @@ import type { Exercise, Routine, Session, SessionExercise, SetEntry } from './ty
 import { uid } from './id.ts'
 import { todayISO } from './date.ts'
 import { previousSets } from './training.ts'
+import { adviseExercise } from './progression.ts'
 
 export function blankSet(from?: Partial<SetEntry>): SetEntry {
   return {
@@ -95,8 +96,9 @@ export function updateExercise(s: Session, exUid: string, patch: Partial<Session
 }
 
 /**
- * Valide / dévalide une série. Si les champs sont vides, reprend les valeurs de la dernière fois
- * (même numéro de série). Renvoie null si la série ne peut pas être validée (rien à enregistrer).
+ * Valide / dévalide une série. Si les champs sont vides, reprend l'objectif du jour (charge conseillée),
+ * sinon les valeurs de la dernière fois (même numéro de série). Renvoie null si la série ne peut pas
+ * être validée (rien à enregistrer).
  */
 export function toggleSetDone(
   s: Session,
@@ -115,7 +117,8 @@ export function toggleSetDone(
   const kind = findExercise(ex.exerciseId, custom).kind
   const prev = previousSets(history, ex.exerciseId, s.startedAt, s.coachDay)
   const before = nearestFilled(ex.sets, idx)
-  const ref = prev[idx] ?? before ?? prev[prev.length - 1]
+  const advice = adviseExercise(ex, history, custom, s.startedAt, s.coachDay)?.sets[idx]
+  const ref = advice ?? prev[idx] ?? before ?? prev[prev.length - 1]
   const patch: Partial<SetEntry> = { done: true, doneAt: now }
   if (kind === 'weight') {
     patch.weight = st.weight ?? ref?.weight ?? null
@@ -123,7 +126,7 @@ export function toggleSetDone(
     if (patch.weight == null || !patch.reps) return null
   } else if (kind === 'bodyweight') {
     patch.reps = st.reps ?? ref?.reps ?? null
-    patch.weight = st.weight ?? null
+    patch.weight = st.weight ?? ref?.weight ?? null // lest affiché en grisé = lest validé
     if (!patch.reps) return null
   } else if (kind === 'duration') {
     patch.seconds = st.seconds ?? ref?.seconds ?? null

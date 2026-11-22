@@ -54,7 +54,7 @@ export function defaultData(): AppData {
     checkins: [],
     daylogs: {},
     dayType: {},
-    sync: { url: '', token: '', coachUrl: '', enabled: false, lastPushAt: null, lastPullAt: null, lastError: null },
+    sync: { url: '', token: '', coachUrl: '', enabled: false, lastPushAt: null, lastPullAt: null, lastError: null, scriptVersion: null },
     dirty: { days: {}, sessions: {}, checkins: {} },
   }
 }

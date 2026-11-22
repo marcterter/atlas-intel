@@ -10,8 +10,13 @@ export interface Profile {
   sex: Sex
   birthYear: number
   heightCm: number
+  /** Ancien choix d'activité : utilisé seulement si les pas ne sont pas connus. */
   activity: Activity
   goal: Goal
+  /** Pas par jour en moyenne (déclaré ; l'app prend ta vraie moyenne dès qu'elle en a assez). */
+  stepsPerDay?: number | null
+  /** Séances de sport par semaine. */
+  sessionsPerWeek?: number | null
 }
 
 export interface MacroTargets {
@@ -266,6 +271,8 @@ export interface SyncConfig {
   lastPushAt: number | null
   lastPullAt: number | null
   lastError: string | null
+  /** Version du script Apps Script installé (renvoyée par le script), pour signaler une mise à jour. */
+  scriptVersion?: number | null
 }
 
 /** Éléments modifiés depuis la dernière synchro (valeur = compteur de révision). */

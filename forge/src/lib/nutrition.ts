@@ -43,20 +43,37 @@ export function bmr(p: Pick<Profile, 'sex' | 'heightCm' | 'birthYear'>, weightKg
   return p.sex === 'H' ? base + 5 : base - 161
 }
 
+/**
+ * Coefficient d'activité. Avec les pas : 1,2 (journée assise, ~3 000 pas) + les pas au-delà
+ * (+0,025 par tranche de 1 000, plafonné à +0,4) + les séances (+0,03 chacune par semaine, max +0,21).
+ * Ex. : 15 000 pas et 4 séances → 1,62. Sans les pas : l'ancien choix d'activité.
+ */
+export function activityFactor(steps: number | null | undefined, sessionsPerWeek: number | null | undefined, legacy: Activity): number {
+  if (steps == null || !(steps > 0)) return ACTIVITY[legacy].factor
+  const walk = Math.min(0.4, Math.max(0, (steps - 3000) * 0.000025))
+  const training = Math.min(0.21, Math.max(0, (sessionsPerWeek ?? 0) * 0.03))
+  return Math.round((1.2 + walk + training) * 1000) / 1000
+}
+
+/** Dépense estimée (kcal/j, arrondie : même valeur partout dans l'app). */
 export function tdee(p: Profile, weightKg: number, today = new Date()): number {
-  return bmr(p, weightKg, today) * ACTIVITY[p.activity].factor
+  return Math.round(bmr(p, weightKg, today) * activityFactor(p.stepsPerDay, p.sessionsPerWeek, p.activity))
 }
 
 const round = (n: number, step: number) => Math.round(n / step) * step
 
-/** Objectifs suggérés : kcal selon l'objectif, protéines g/kg, lipides ~0,9 g/kg (≥ 22 % des kcal), glucides = le reste. */
-export function suggestTargets(p: Profile, weightKg: number, today = new Date()): MacroTargets {
-  const goal = GOALS[p.goal]
-  const kcal = round(tdee(p, weightKg, today) * goal.kcalFactor, 10)
-  const protein = round(weightKg * goal.proteinPerKg, 5)
+/** Macros pour un total de kcal : protéines g/kg selon l'objectif, lipides ~0,9 g/kg (≥ 22 % des kcal), glucides = le reste. */
+export function macrosFor(kcalRaw: number, goal: Goal, weightKg: number): MacroTargets {
+  const kcal = round(kcalRaw, 10)
+  const protein = round(weightKg * GOALS[goal].proteinPerKg, 5)
   const fat = round(Math.max(weightKg * 0.9, (kcal * 0.22) / 9), 5)
   const carbs = Math.max(0, round((kcal - protein * 4 - fat * 9) / 4, 5))
   return { kcal, protein, carbs, fat }
+}
+
+/** Objectifs suggérés depuis le profil (dépense estimée × facteur de l'objectif). */
+export function suggestTargets(p: Profile, weightKg: number, today = new Date()): MacroTargets {
+  return macrosFor(tdee(p, weightKg, today) * GOALS[p.goal].kcalFactor, p.goal, weightKg)
 }
 
 /** Kcal issues des macros (4/4/9). */

@@ -6,13 +6,14 @@ import { ProgramImport } from './ProgramImport.tsx'
 import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
 import { randomToken } from '../../lib/id.ts'
-import { dirtyCount, ping, syncNow } from '../../lib/sync.ts'
+import { dirtyCount, ping, scriptOutdated, syncNow, SCRIPT_VERSION } from '../../lib/sync.ts'
 import { timeAgo } from '../../lib/format.ts'
 
 export function SyncSetup() {
   const sync = useStore((s) => s.sync)
   const setSync = useStore((s) => s.setSync)
   const pending = useStore((s) => dirtyCount(s))
+  const outdated = useStore((s) => scriptOutdated(s))
   const [url, setUrl] = useState(sync.url)
   const [token] = useState(() => sync.token || randomToken())
   useEffect(() => {
@@ -33,7 +34,7 @@ export function SyncSetup() {
     setResult(r)
     setTesting(false)
     if (r.ok) {
-      setSync({ url: cleanUrl, token, enabled: true, lastError: null })
+      setSync({ url: cleanUrl, token, enabled: true, lastError: null, scriptVersion: r.version ?? null })
       const s = await syncNow()
       ui.toast(s.message, s.ok ? 'ok' : 'err')
     }
@@ -54,6 +55,13 @@ export function SyncSetup() {
         <div className="callout accent">
           Tes séances, ta diète, tes pas et tes pesées sont envoyés dans un Google Sheet à toi. Le script recopie ensuite les chiffres dans le sheet de ton coach.
         </div>
+
+        {sync.enabled && outdated && (
+          <button className="callout warn pressable" style={{ textAlign: 'left' }} onClick={() => ui.push(<SheetGuide token={token} />)}>
+            <b>Nouvelle version du script ({SCRIPT_VERSION})</b> : exercices remplacés, exercices en plus et séances décalées bien recopiés chez ton coach.
+            Recopie le script depuis le guide, colle-le à la place de l’ancien, puis Déployer → Gérer les déploiements → ✏️ → Nouvelle version.
+          </button>
+        )}
 
         <button className="card pressable" onClick={() => ui.push(<SheetGuide token={token} />)}>
           <div className="row">

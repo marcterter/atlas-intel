@@ -11,6 +11,13 @@ import type { DirtyState, ISODate, Session, StepsDay } from './types.ts'
 
 const r1 = (n: number) => Math.round(n * 10) / 10
 
+/** Version de apps-script/Code.gs livrée avec cette version de l'app. */
+export const SCRIPT_VERSION = 4
+
+export function scriptOutdated(s: Pick<State, 'sync'>): boolean {
+  return s.sync.scriptVersion != null && s.sync.scriptVersion < SCRIPT_VERSION
+}
+
 export interface SyncResult {
   ok: boolean
   pushed: number
@@ -113,6 +120,8 @@ export function buildSession(s: State, x: Session) {
         resume: work.map((st) => setLabel(st, exo.kind)).join(', '),
         perf: formatPerf(ex.sets, exo.kind),
         progres: progressLabel(ex, exo.kind, s.sessions.filter((y) => y.id !== x.id), x.startedAt, x.coachDay),
+        // Exercice prévu par le coach, si celui-ci l'a remplacé (machine prise…) : le script écrit sur sa ligne.
+        remplace: ex.replacedFrom ? findExercise(ex.replacedFrom, s.customExercises).name : '',
         rir: ex.rir ?? '',
         note: ex.note ?? '',
         series: work.map((st, i) => ({
@@ -130,7 +139,13 @@ export function buildSession(s: State, x: Session) {
 }
 
 export function buildPayload(s: State, snap: DirtyState) {
-  const days = Object.keys(snap.days).sort().map((d) => buildDay(s, d))
+  // Le jour de chaque séance envoyée part aussi : le script y note les exercices hors programme.
+  const dates = new Set(Object.keys(snap.days))
+  for (const id of Object.keys(snap.sessions)) {
+    const x = s.sessions.find((y) => y.id === id)
+    if (x && !x.imported) dates.add(x.date)
+  }
+  const days = [...dates].sort().map((d) => buildDay(s, d))
   const sessions = Object.keys(snap.sessions)
     .filter((id) => !s.sessions.find((y) => y.id === id)?.imported)
     .map((id) => {
@@ -200,12 +215,14 @@ export function describeCoach(c: CoachInfo | null | undefined): string {
   return parts.join(' · ')
 }
 
-export async function ping(url: string, token: string): Promise<{ ok: boolean; message: string; coach?: CoachInfo | null }> {
+export async function ping(url: string, token: string): Promise<{ ok: boolean; message: string; coach?: CoachInfo | null; version?: number }> {
   try {
     const r = await getAction(url, { action: 'ping', token })
     if (r.ok) {
       const coach = (r.coach as CoachInfo | null | undefined) ?? null
-      return { ok: true, coach, message: `Connecté à « ${String(r.sheet ?? '')} » · ${describeCoach(coach)}` }
+      const version = Number(r.version) || 0
+      const old = version < SCRIPT_VERSION ? ' · script à mettre à jour (voir le guide)' : ''
+      return { ok: true, coach, version, message: `Connecté à « ${String(r.sheet ?? '')} » · ${describeCoach(coach)}${old}` }
     }
     return { ok: false, message: String(r.error ?? 'Erreur inconnue') }
   } catch (e) {
@@ -273,10 +290,14 @@ async function doSync({ pullOnly }: { pullOnly?: boolean }): Promise<SyncResult>
     const r = await post(url, { action: 'push', token, app: 'forge', version: 1, ...payload })
     if (!r.ok) throw new Error(String(r.error ?? 'Erreur'))
     useStore.getState().clearDirty(snap)
-    const coach = r.coach as { ok?: boolean; message?: string } | undefined
+    const coach = r.coach as { ok?: boolean; message?: string; info?: string } | undefined
     const warn = coach && coach.ok === false ? ` (coach : ${coach.message ?? 'erreur'})` : ''
-    useStore.getState().setSync({ lastPushAt: Date.now(), lastError: warn ? warn.trim() : null })
-    return { ok: true, pushed: count, pulledSteps, message: `Synchronisé${warn}` }
+    const info = coach?.info ? ` · ${coach.info}` : ''
+    // Les scripts d'avant la version 4 ne renvoient pas leur version à l'envoi.
+    const scriptVersion = Number(r.version) || 0
+    useStore.getState().setSync({ lastPushAt: Date.now(), lastError: warn ? warn.trim() : null, scriptVersion })
+    const old = scriptVersion < SCRIPT_VERSION ? ' · script à mettre à jour' : ''
+    return { ok: true, pushed: count, pulledSteps, message: `Synchronisé${warn}${info}${old}` }
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Envoi impossible'
     useStore.getState().setSync({ lastError: message })
