@@ -11,6 +11,7 @@ import { StepsSheet } from './StepsSheet.tsx'
 import { SyncChip } from '../profile/SyncChip.tsx'
 import { DayLogCard } from './DayLog.tsx'
 import { DayTypeSwitch, useDayLabel } from '../diet/DayType.tsx'
+import { WeeklyReviewCard } from './WeeklyReview.tsx'
 import { useStore } from '../../store/store.ts'
 import { dayTargets } from '../../store/selectors.ts'
 import { ui, useUI } from '../../store/ui.ts'
@@ -136,6 +137,8 @@ export function TodayScreen() {
         )}
 
         <ActiveSessionBanner />
+
+        {date === today && <WeeklyReviewCard />}
 
         <button className="card pressable" onClick={() => ui.setTab('diet')}>
           <div className="card-head">

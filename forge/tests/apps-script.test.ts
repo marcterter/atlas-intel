@@ -192,6 +192,10 @@ function suiviJournalier(weeks = 9) {
     sh.set(r0 + 7, COL.T, `=AVERAGE(T${r0}:T${r0 + 6})`)
   }
   sh.set(15, COL.G, 73.8) // une valeur déjà saisie à la main (6 octobre)
+  sh.set(8, 5, 'Nutrition Phase')
+  sh.set(9, 5, '*Coach qui remplira*')
+  sh.set(11, 5, 'Sèche') // phase notée par le coach en semaine 1 et 2
+  sh.set(19, 5, 'Sèche')
   return sh
 }
 
@@ -466,6 +470,7 @@ test('Coach : lecture du programme, de l’historique et des objectifs', () => {
   assert.deepEqual(s1[0].exercices[5], { nom: 'Curl pupitre unilatéral avec haltères', perf: '12kg x 10 ; 12kg x 7', notes: 'regressé a cause du doigt' })
   assert.equal(p.historique.find((h: { semaine: number; jour: string }) => h.semaine === 2 && h.jour === 'LUNDI').date, '2026-10-12')
   assert.deepEqual(p.objectifs, { on: { kcal: 2640, protein: 215, carbs: 310, fat: 60, fiber: 30 }, off: { kcal: 2140, protein: 200, carbs: 200, fat: 60, fiber: 30 }, pas: 15000 })
+  assert.equal(p.phase, 'Sèche', 'phase nutrition notée par le coach')
 })
 
 const upperA = (date: string, extra: Record<string, unknown> = {}) => ({

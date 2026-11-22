@@ -2,7 +2,7 @@
 import { normalize } from '../data/exercises.ts'
 import { e1rm, previousSets } from './training.ts'
 import { uid } from './id.ts'
-import type { Equipment, Exercise, ExerciseKind, ISODate, Muscle, Routine, Session, SessionExercise, SetEntry } from './types.ts'
+import type { Equipment, Exercise, ExerciseKind, Goal, ISODate, Muscle, Routine, Session, SessionExercise, SetEntry } from './types.ts'
 
 const num = (v: number) => String(Math.round(v * 100) / 100).replace('.', ',')
 
@@ -113,6 +113,18 @@ export interface CoachProgram {
   /** Semaines déjà remplies dans le sheet du coach. */
   historique: { semaine: number; jour: string; date: ISODate | null; exercices: { nom: string; perf: string; notes?: string }[] }[]
   objectifs?: CoachTargets | null
+  /** « Nutrition Phase » notée par le coach dans le suivi journalier (Sèche, Maintien…). */
+  phase?: string | null
+}
+
+/** Phase du coach → objectif de l'app (null si non reconnue). */
+export function phaseToGoal(phase: string | null | undefined): Goal | null {
+  const p = normalize(phase ?? '')
+  if (!p) return null
+  if (/seche|cut|deficit|perte/.test(p)) return 'seche'
+  if (/prise|pdm|masse|bulk|surplus/.test(p)) return 'prise'
+  if (/maintien|maintenance|normo|reverse|diet break|equilibre/.test(p)) return 'maintien'
+  return null
 }
 
 export interface ImportPlan {

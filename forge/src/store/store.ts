@@ -12,6 +12,7 @@ import type {
   MealId,
   Profile,
   Recipe,
+  ReviewDecision,
   Routine,
   Session,
   Settings,
@@ -53,6 +54,7 @@ export function defaultData(): AppData {
     steps: [],
     checkins: [],
     daylogs: {},
+    reviews: {},
     dayType: {},
     sync: { url: '', token: '', coachUrl: '', enabled: false, lastPushAt: null, lastPullAt: null, lastError: null, scriptVersion: null },
     dirty: { days: {}, sessions: {}, checkins: {} },
@@ -78,6 +80,7 @@ export function migrate(raw: unknown): AppData {
     foods: r.foods ?? {},
     dayType: r.dayType ?? {},
     daylogs: r.daylogs ?? {},
+    reviews: r.reviews ?? {},
   }
 }
 
@@ -134,6 +137,8 @@ export interface Actions {
   applyImport: (plan: ImportPlan, removeRoutineIds?: string[]) => void
   setDayLog: (date: ISODate, patch: Partial<Omit<DayLog, 'date' | 'at'>>) => void
   addWater: (date: ISODate, liters: number) => void
+  /** Bilan du lundi : appliquer les objectifs proposés, garder les siens, ou simplement « vu ». */
+  decideReview: (monday: ISODate, decision: Omit<ReviewDecision, 'at'>, next?: Targets | null) => void
   saveCheckIn: (c: CheckIn) => void
   deleteCheckIn: (id: string) => void
 
@@ -365,6 +370,11 @@ export const useStore = create<State>()((set, get) => ({
     const cur = get().daylogs[date]?.waterL ?? 0
     get().setDayLog(date, { waterL: Math.max(0, Math.round((cur + liters) * 100) / 100) })
   },
+  decideReview: (monday, decision, next) =>
+    set((s) => ({
+      reviews: { ...s.reviews, [monday]: { ...decision, at: Date.now() } },
+      ...(decision.decision === 'applied' && next ? { targets: next } : {}),
+    })),
   saveCheckIn: (c) =>
     set((s) => {
       const exists = s.checkins.some((x) => x.id === c.id)

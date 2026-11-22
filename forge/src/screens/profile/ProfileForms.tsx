@@ -5,7 +5,8 @@ import { ui } from '../../store/ui.ts'
 import { GOALS, kcalFromMacros } from '../../lib/nutrition.ts'
 import { activityLevel, activityText, defaultOff, estimateEnergy, goalPlans, measureTdee, MEASURE_NEEDS, splitOnOff } from '../../lib/energy.ts'
 import { latestWeight } from '../../lib/body.ts'
-import { todayISO } from '../../lib/date.ts'
+import { formatShort, todayISO } from '../../lib/date.ts'
+import { plannedWeekdays } from '../../store/selectors.ts'
 import { fmt, fmtKg, fmtSigned } from '../../lib/format.ts'
 import type { Goal, MacroTargets, Profile, Targets } from '../../lib/types.ts'
 
@@ -176,10 +177,21 @@ function Calculator({ goal, split, onUse }: { goal: Goal; split: boolean; onUse:
                 <b>{p.label}</b>
                 <span className="num bold">{fmt(p.targets.kcal)} kcal</span>
               </div>
-              <div className="tiny faint">
-                {p.split ? `ON ${fmt(p.split.on.kcal)} · OFF ${fmt(p.split.off.kcal)} · ` : `P ${p.targets.protein} · G ${p.targets.carbs} · L ${p.targets.fat} · `}
-                {p.goal === 'maintien' ? 'poids stable' : `${fmtSigned(p.kgPerWeek, 2)} kg/sem`}
-              </div>
+              {p.split ? (
+                <div className="tiny faint">
+                  <div>
+                    <b className="on-tag">ON</b> {fmt(p.split.on.kcal)} · P {p.split.on.protein} · G {p.split.on.carbs} · L {p.split.on.fat}
+                  </div>
+                  <div>
+                    <b className="off-tag">OFF</b> {fmt(p.split.off.kcal)} · P {p.split.off.protein} · G {p.split.off.carbs} · L {p.split.off.fat}
+                  </div>
+                  <div>{p.goal === 'maintien' ? 'poids stable' : `${fmtSigned(p.kgPerWeek, 2)} kg/sem`}</div>
+                </div>
+              ) : (
+                <div className="tiny faint">
+                  P {p.targets.protein} · G {p.targets.carbs} · L {p.targets.fat} · {p.goal === 'maintien' ? 'poids stable' : `${fmtSigned(p.kgPerWeek, 2)} kg/sem`}
+                </div>
+              )}
             </div>
             <button className="btn soft small" onClick={() => (p.split ? onUse(p.split.on, p.split.off, p.goal) : onUse(p.targets, null, p.goal))}>
               Utiliser
@@ -202,6 +214,38 @@ function Calculator({ goal, split, onUse }: { goal: Goal; split: boolean; onUse:
   )
 }
 
+/** Derniers bilans du lundi : poids moyen, variation, ajustement appliqué ou non. */
+function ReviewHistory() {
+  const reviews = useStore((s) => s.reviews)
+  const list = Object.entries(reviews)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .slice(0, 6)
+  if (!list.length) return null
+  const label = { applied: 'appliqué', kept: 'gardé mes macros', seen: 'vu' } as const
+  return (
+    <>
+      <div className="section-label">Bilans du lundi</div>
+      <div className="card flush list">
+        {list.map(([monday, r]) => (
+          <div className="list-item" key={monday} style={{ minHeight: 0, padding: '10px 16px' }}>
+            <div className="grow">
+              <div className="small bold">{formatShort(monday)}</div>
+              <div className="tiny faint">
+                {r.avg != null ? `${fmtKg(Math.round(r.avg * 10) / 10)} kg` : 'pas assez de pesées'}
+                {r.deltaKg != null ? ` (${fmtSigned(r.deltaKg, 1)})` : ''}
+              </div>
+            </div>
+            <div className="small num" style={{ textAlign: 'right' }}>
+              {r.deltaKcal ? `${r.deltaKcal > 0 ? '+' : '−'}${fmt(Math.abs(r.deltaKcal))} kcal` : 'on garde'}
+              <div className="tiny faint">{r.deltaKcal ? label[r.decision] : ''}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 /** `withOff` : ouvert depuis l'interrupteur ON / OFF, avec un Jour OFF proposé s'il n'existe pas encore. */
 export function TargetsEditor({ withOff = false }: { withOff?: boolean }) {
   const targets = useStore((s) => s.targets)
@@ -210,6 +254,8 @@ export function TargetsEditor({ withOff = false }: { withOff?: boolean }) {
   const updateProfile = useStore((s) => s.updateProfile)
   const [draft, setDraft] = useState<Targets>(() => (withOff && !targets.rest ? { ...targets, rest: defaultOff(targets.base) } : targets))
   const [goal, setGoal] = useState<Goal>(profile.goal)
+  // Jours ON dans la semaine : ceux du programme du coach, sinon les séances indiquées dans le profil.
+  const onDays = useStore((s) => Math.min(7, Math.max(1, plannedWeekdays(s.routines).size || s.profile.sessionsPerWeek || 4)))
 
   return (
     <Sheet
@@ -252,8 +298,12 @@ export function TargetsEditor({ withOff = false }: { withOff?: boolean }) {
           <>
             <div className="section-label">Jour OFF · repos</div>
             <MacroFields value={draft.rest} onChange={(rest) => setDraft({ ...draft, rest })} />
+            <div className="callout small">
+              Moyenne de la semaine ({onDays} ON · {7 - onDays} OFF) : <b className="num">{fmt((onDays * draft.base.kcal + (7 - onDays) * draft.rest.kcal) / 7)} kcal</b> par jour
+            </div>
           </>
         )}
+        <ReviewHistory />
         <div className="section-label">Autres objectifs</div>
         <div className="grid-2">
           <Field label="Pas par jour">

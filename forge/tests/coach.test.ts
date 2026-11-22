@@ -150,3 +150,14 @@ test('journée envoyée au sheet : ressenti, cardio séparé, pas de 0 kcal quan
   assert.equal(d.kcal, null, 'aucun aliment noté : le sheet du coach reste vide')
   assert.equal(d.pas, null)
 })
+
+test('phase nutrition du coach → objectif de l’app', async () => {
+  const { phaseToGoal } = await import('../src/lib/coach.ts')
+  assert.equal(phaseToGoal('Sèche'), 'seche')
+  assert.equal(phaseToGoal(' Prise de masse '), 'prise')
+  assert.equal(phaseToGoal('PDM'), 'prise')
+  assert.equal(phaseToGoal('Maintien'), 'maintien')
+  assert.equal(phaseToGoal('Reverse diet'), 'maintien')
+  assert.equal(phaseToGoal('???'), null)
+  assert.equal(phaseToGoal(null), null)
+})

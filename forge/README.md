@@ -15,6 +15,8 @@ App web installable sur iPhone (PWA) : elle s'ouvre en plein écran depuis l'éc
 
 Les données vivent sur le téléphone (IndexedDB). Sauvegarde / restauration en JSON dans Profil.
 
+**Bilan du lundi.** Chaque semaine, l'app compare ton poids moyen de la semaine passée (lundi → dimanche, au moins 3 pesées) à celui d'avant, selon ton objectif (la phase notée par ton coach à l'import : sèche = perdre 0,4 à 1 % du poids par semaine, maintien = ±0,35 %, prise de masse = jusqu'à +0,5 %). Hors de la cible, elle propose ±100 à 200 kcal par jour, pris sur les glucides, les jours ON comme OFF ; si tes apports notés étaient loin de tes objectifs, elle te le dit au lieu de toucher aux macros. Tu appliques ou tu gardes tes macros d'un geste ; l'historique est dans Profil → Objectifs du jour.
+
 **Charge conseillée.** Pour chaque série, l'app part de la même série la dernière fois (même jour du programme d'abord) et des reps visées par le coach (`10,8,6` = une cible par série, `5-8` = fourchette) :
 
 - cible dépassée (une rep de plus qu'une cible précise, ou le haut de la fourchette) → charge du palier suivant, si l'estimation (1RM d'Epley) dit que les reps visées restent faisables ;

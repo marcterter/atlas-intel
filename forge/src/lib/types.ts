@@ -275,6 +275,15 @@ export interface SyncConfig {
   scriptVersion?: number | null
 }
 
+export interface ReviewDecision {
+  decision: 'applied' | 'kept' | 'seen'
+  deltaKcal: number
+  /** Poids moyen de la semaine et variation, pour l'historique. */
+  avg: number | null
+  deltaKg: number | null
+  at: number
+}
+
 /** Éléments modifiés depuis la dernière synchro (valeur = compteur de révision). */
 export interface DirtyState {
   days: Record<ISODate, number>
@@ -308,6 +317,8 @@ export interface AppData {
   steps: StepsDay[]
   checkins: CheckIn[]
   daylogs: Record<ISODate, DayLog>
+  /** Bilans du lundi déjà tranchés (clé : le lundi). */
+  reviews: Record<ISODate, ReviewDecision>
   /** Jour forcé en "entraînement" (true) ou "repos" (false) pour les objectifs. */
   dayType: Record<ISODate, boolean>
   sync: SyncConfig

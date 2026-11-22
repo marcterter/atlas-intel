@@ -53,6 +53,8 @@ const COACH_MAPPING = {
     onglet: 'Suivi journalier',
     colonneDate: 'C',
     colonneSemaine: 'B',
+    // « Nutrition Phase » remplie par le coach (Sèche…) : reprise comme objectif dans l'app.
+    colonnePhase: 'E',
     premiereLigne: 11,
     colonnes: {
       poids: 'G',
@@ -84,7 +86,7 @@ const COACH_MAPPING = {
 
 // =========================================================
 
-const VERSION = 4;
+const VERSION = 5;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
@@ -575,7 +577,31 @@ function readCoachProgram_() {
   } catch (err) {
     objectifs = null;
   }
-  return { semaine: current.semaine, semaineActuelle: wk ? wk.semaine : null, seances: seances, historique: historique, objectifs: objectifs };
+  let phase = null;
+  try {
+    phase = readCoachPhase_();
+  } catch (err) {
+    phase = null;
+  }
+  return { semaine: current.semaine, semaineActuelle: wk ? wk.semaine : null, seances: seances, historique: historique, objectifs: objectifs, phase: phase };
+}
+
+/** Dernière « Nutrition Phase » notée par le coach (Sèche, Maintien…) jusqu'à aujourd'hui. */
+function readCoachPhase_() {
+  const cfg = COACH_MAPPING && COACH_MAPPING.jours;
+  if (!cfg || !cfg.colonnePhase) return null;
+  const sh = sheetByName_(coachSs_(), cfg.onglet);
+  if (!sh) return null;
+  const first = Number(cfg.premiereLigne || 2);
+  const todayRow = coachDayRow_(sh, cfg, todayIso_());
+  const last = todayRow > 0 ? todayRow : sh.getLastRow();
+  if (last < first) return null;
+  const vals = sh.getRange(first, colIndex_(cfg.colonnePhase), last - first + 1, 1).getDisplayValues();
+  for (let i = vals.length - 1; i >= 0; i--) {
+    const v = String(vals[i][0] || '').trim();
+    if (v && v.charAt(0) !== '*') return v;
+  }
+  return null;
 }
 
 /** Objectifs de l'onglet Nutrition : « Jour ON » / « Jour off » (ligne « Macro Cible ») et « Pas ». */

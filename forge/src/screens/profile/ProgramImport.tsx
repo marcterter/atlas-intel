@@ -5,7 +5,8 @@ import { MUSCLE_LABEL, TEMPLATE_ROUTINES, normalize } from '../../data/exercises
 import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
 import { fetchProgram } from '../../lib/sync.ts'
-import { planImport, type CoachProgram } from '../../lib/coach.ts'
+import { phaseToGoal, planImport, type CoachProgram } from '../../lib/coach.ts'
+import { GOALS } from '../../lib/nutrition.ts'
 import { fmt } from '../../lib/format.ts'
 import type { MacroTargets, Targets } from '../../lib/types.ts'
 
@@ -25,6 +26,8 @@ export function ProgramImport() {
   const defaultRest = useStore((s) => s.settings.defaultRestSec)
   const applyImport = useStore((s) => s.applyImport)
   const setTargets = useStore((s) => s.setTargets)
+  const goal = useStore((s) => s.profile.goal)
+  const updateProfile = useStore((s) => s.updateProfile)
   const [removeTemplates, setRemoveTemplates] = useState(true)
   const [useTargets, setUseTargets] = useState(true)
 
@@ -50,6 +53,7 @@ export function ProgramImport() {
     return { base: on, rest: toMacros(program?.objectifs?.off), steps: program?.objectifs?.pas ?? targets.steps, fiber: Math.round(program?.objectifs?.on?.fiber ?? targets.fiber) }
   }, [program, targets])
   const weeks = program ? [...new Set(program.historique.map((h) => h.semaine))].sort((a, b) => a - b) : []
+  const coachGoal = phaseToGoal(program?.phase)
 
   return (
     <Sheet
@@ -62,6 +66,8 @@ export function ProgramImport() {
             onClick={() => {
               applyImport(plan, removeTemplates ? templates.map((r) => r.id) : [])
               if (useTargets && coachTargets) setTargets(coachTargets)
+              // La phase du coach (Sèche…) devient ton objectif : le bilan du lundi s'en sert.
+              if (useTargets && coachGoal && coachGoal !== goal) updateProfile({ goal: coachGoal })
               ui.pop()
               ui.toast(`${plan.routines.length} séances importées`, 'ok')
             }}
@@ -105,6 +111,13 @@ export function ProgramImport() {
                       )}
                       <br />
                       Pas : {fmt(coachTargets.steps)} · fibres {coachTargets.fiber} g
+                      {program.phase && (
+                        <>
+                          <br />
+                          Phase : {program.phase}
+                          {coachGoal && coachGoal !== goal ? ` → ton objectif passe de ${GOALS[goal].label} à ${GOALS[coachGoal].label}` : ''}
+                        </>
+                      )}
                     </div>
                   </div>
                   <Toggle on={useTargets} onChange={setUseTargets} label="Utiliser les objectifs du coach" />

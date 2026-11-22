@@ -680,6 +680,42 @@ textarea.input {
   height: 46px;
 }
 
+.on-tag,
+.off-tag {
+  display: inline-block;
+  min-width: 28px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.on-tag {
+  color: var(--accent);
+}
+
+/* Bilan du lundi */
+.card.review.ajuste {
+  border-color: rgba(255, 107, 44, 0.4);
+}
+
+.card.review.ok {
+  border-color: rgba(61, 220, 151, 0.35);
+}
+
+.review-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.review-next {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
 /* Interrupteur Jour ON / Jour OFF */
 .daytype {
   display: inline-flex;

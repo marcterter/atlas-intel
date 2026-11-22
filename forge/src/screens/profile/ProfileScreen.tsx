@@ -106,7 +106,11 @@ export function ProfileScreen() {
           <Row
             icon="target"
             title="Objectifs du jour"
-            meta={`${fmt(targets.base.kcal)} kcal · P ${targets.base.protein} · G ${targets.base.carbs} · L ${targets.base.fat} · ${fmt(targets.steps)} pas`}
+            meta={
+              targets.rest
+                ? `ON ${fmt(targets.base.kcal)} · OFF ${fmt(targets.rest.kcal)} kcal · ${fmt(targets.steps)} pas`
+                : `${fmt(targets.base.kcal)} kcal · P ${targets.base.protein} · G ${targets.base.carbs} · L ${targets.base.fat} · ${fmt(targets.steps)} pas`
+            }
             onClick={() => ui.push(<TargetsEditor />)}
           />
         </div>

@@ -12,7 +12,7 @@ import type { DirtyState, ISODate, Session, StepsDay } from './types.ts'
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 /** Version de apps-script/Code.gs livrée avec cette version de l'app. */
-export const SCRIPT_VERSION = 4
+export const SCRIPT_VERSION = 5
 
 export function scriptOutdated(s: Pick<State, 'sync'>): boolean {
   return s.sync.scriptVersion != null && s.sync.scriptVersion < SCRIPT_VERSION
@@ -241,6 +241,7 @@ export async function fetchProgram(): Promise<CoachProgram> {
     seances: (r.seances as CoachProgram['seances']) ?? [],
     historique: (r.historique as CoachProgram['historique']) ?? [],
     objectifs: (r.objectifs as CoachProgram['objectifs']) ?? null,
+    phase: typeof r.phase === 'string' ? r.phase : null,
   }
 }
 
