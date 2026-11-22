@@ -2,7 +2,9 @@ import { Bar, Ring } from '../../components/ui.tsx'
 import { fmt } from '../../lib/format.ts'
 import type { MacroTargets, Nutrients } from '../../lib/types.ts'
 
-export function MacroDots({ n }: { n: Nutrients }) {
+/** Pastilles P / G / L, plus les fibres (en vert) : toujours pour un repas, sinon dès qu'il y en a. */
+export function MacroDots({ n, fiber = false }: { n: Nutrients; fiber?: boolean }) {
+  const showFiber = fiber || (n.fiber ?? 0) >= 0.5
   return (
     <span className="macro-dots">
       <span>
@@ -17,6 +19,12 @@ export function MacroDots({ n }: { n: Nutrients }) {
         <i style={{ background: 'var(--fat)' }} />
         {fmt(n.fat)}
       </span>
+      {showFiber && (
+        <span title="Fibres">
+          <i style={{ background: 'var(--fiber)' }} />
+          {fmt(n.fiber ?? 0)}
+        </span>
+      )}
     </span>
   )
 }

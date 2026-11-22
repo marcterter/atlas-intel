@@ -127,7 +127,7 @@ export function DietScreen() {
                   {items.length > 0 ? (
                     <div className="row small" style={{ gap: 10, marginTop: 2 }}>
                       <b className="num">{fmt(sub.kcal)} kcal</b>
-                      <MacroDots n={sub} />
+                      <MacroDots n={sub} fiber />
                     </div>
                   ) : (
                     <div className="faint small">Rien pour l’instant</div>
