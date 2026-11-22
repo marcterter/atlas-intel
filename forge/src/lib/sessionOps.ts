@@ -37,8 +37,9 @@ export function sessionFromRoutine(routine: Routine | null, name: string, now = 
     date: todayISO(),
     startedAt: now,
     endedAt: null,
+    coachDay: routine?.coachDay ?? null,
     exercises: (routine?.items ?? []).map((it) =>
-      newExercise(it.exerciseId, it.sets, it.restSec, { repsTarget: it.reps, superset: it.superset, note: '' }),
+      newExercise(it.exerciseId, it.sets, it.restSec, { repsTarget: it.reps, superset: it.superset, note: '', rir: it.rir }),
     ),
   }
 }

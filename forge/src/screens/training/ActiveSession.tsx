@@ -294,7 +294,8 @@ const ExerciseBlock = memo(function ExerciseBlock({
           <div className="ex-name">{exo.name}</div>
           <div className="faint small">
             {MUSCLE_LABEL[exo.muscle]}
-            {ex.repsTarget ? ` · objectif ${ex.repsTarget}` : ''} · repos {fmtTimer(ex.restSec)}
+            {ex.repsTarget ? ` · objectif ${ex.repsTarget}` : ''}
+            {ex.rir ? ` · RIR ${ex.rir}` : ''} · repos {fmtTimer(ex.restSec)}
             {ex.replacedFrom ? ` · remplace ${findExercise(ex.replacedFrom, custom).name}` : ''}
           </div>
         </button>

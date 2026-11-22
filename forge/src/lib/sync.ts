@@ -4,6 +4,7 @@ import { dayTargets, isTrainingDay } from '../store/selectors.ts'
 import { findExercise, MUSCLE_LABEL } from '../data/exercises.ts'
 import { dayTotals, MEAL_LABEL } from './nutrition.ts'
 import { sessionDurationMs, sessionTonnage, sessionWorkSets, setLabel } from './training.ts'
+import { formatPerf, progressLabel, type CoachProgram } from './coach.ts'
 import { weekAverage } from './body.ts'
 import { addDays, todayISO } from './date.ts'
 import type { DirtyState, ISODate, Session, StepsDay } from './types.ts'
@@ -23,20 +24,47 @@ export function isConfigured(s: Pick<State, 'sync'>): boolean {
 
 export function buildDay(s: State, date: ISODate) {
   const n = dayTotals(s.entries, date)
+  const hasFood = s.entries.some((e) => e.date === date)
   const t = dayTargets(s, date)
   const w = s.weighins.find((x) => x.date === date)
   const wk = weekAverage(s.weighins, date)
   const st = s.steps.find((x) => x.date === date)
-  const sessions = s.sessions.filter((x) => x.date === date)
+  const sessions = s.sessions.filter((x) => x.date === date && !x.imported)
+  const log = s.daylogs[date]
+  // Séances de musculation (nom) et cardio (minutes) séparés, comme dans le sheet du coach.
+  const training = sessions.filter((x) => x.exercises.some((e) => findExercise(e.exerciseId, s.customExercises).kind !== 'cardio'))
+  let cardioSec = 0
+  const cardioNames: string[] = []
+  for (const x of sessions)
+    for (const e of x.exercises) {
+      const exo = findExercise(e.exerciseId, s.customExercises)
+      if (exo.kind !== 'cardio') continue
+      const sec = e.sets.filter((st2) => st2.done).reduce((a, st2) => a + (st2.seconds ?? 0), 0)
+      if (sec > 0) {
+        cardioSec += sec
+        cardioNames.push(`${Math.round(sec / 60)} min ${exo.name.toLowerCase()}`)
+      }
+    }
   return {
     date,
     poids: w ? w.kg : null,
     poidsMoyenSemaine: wk.avg != null ? Math.round(wk.avg * 100) / 100 : null,
-    kcal: Math.round(n.kcal),
-    proteines: r1(n.protein),
-    glucides: r1(n.carbs),
-    lipides: r1(n.fat),
-    fibres: r1(n.fiber ?? 0),
+    sommeil: log?.sleepH ?? null,
+    qualiteSommeil: log?.sleepQ ?? null,
+    energie: log?.energy ?? null,
+    motivation: log?.motivation ?? null,
+    satiete: log?.satiety ?? null,
+    digestion: log?.digestion ?? null,
+    eau: log?.waterL ?? null,
+    notes: log?.note?.trim() ?? '',
+    entrainement: training.map((x) => x.name).join(' + '),
+    cardio: cardioSec ? Math.round(cardioSec / 60) : null,
+    cardioDetail: cardioNames.join(', '),
+    kcal: hasFood ? Math.round(n.kcal) : null,
+    proteines: hasFood ? r1(n.protein) : null,
+    glucides: hasFood ? r1(n.carbs) : null,
+    lipides: hasFood ? r1(n.fat) : null,
+    fibres: hasFood ? r1(n.fiber ?? 0) : null,
     objectifKcal: t.kcal,
     objectifProteines: t.protein,
     objectifGlucides: t.carbs,
@@ -45,8 +73,8 @@ export function buildDay(s: State, date: ISODate) {
     pasMaj: st ? st.at : null,
     objectifPas: s.targets.steps,
     seance: sessions.map((x) => x.name).join(' + '),
-    tonnage: Math.round(sessions.reduce((a, x) => a + sessionTonnage(x, s.customExercises), 0)),
-    dureeSeanceMin: Math.round(sessions.reduce((a, x) => a + sessionDurationMs(x), 0) / 60000),
+    tonnage: sessions.length ? Math.round(sessions.reduce((a, x) => a + sessionTonnage(x, s.customExercises), 0)) : null,
+    dureeSeanceMin: sessions.length ? Math.round(sessions.reduce((a, x) => a + sessionDurationMs(x), 0) / 60000) : null,
     typeJour: isTrainingDay(s, date) ? 'entrainement' : 'repos',
     repas: s.entries
       .filter((e) => e.date === date)
@@ -75,6 +103,7 @@ export function buildSession(s: State, x: Session) {
     tonnage: Math.round(sessionTonnage(x, s.customExercises)),
     series: sessionWorkSets(x),
     note: x.note ?? '',
+    jourCoach: x.coachDay ?? '',
     exercices: x.exercises.map((ex) => {
       const exo = findExercise(ex.exerciseId, s.customExercises)
       const work = ex.sets.filter((st) => st.done)
@@ -82,6 +111,9 @@ export function buildSession(s: State, x: Session) {
         nom: exo.name,
         groupe: MUSCLE_LABEL[exo.muscle],
         resume: work.map((st) => setLabel(st, exo.kind)).join(', '),
+        perf: formatPerf(ex.sets, exo.kind),
+        progres: progressLabel(ex, exo.kind, s.sessions.filter((y) => y.id !== x.id), x.startedAt),
+        rir: ex.rir ?? '',
         note: ex.note ?? '',
         series: work.map((st, i) => ({
           n: i + 1,
@@ -99,14 +131,16 @@ export function buildSession(s: State, x: Session) {
 
 export function buildPayload(s: State, snap: DirtyState) {
   const days = Object.keys(snap.days).sort().map((d) => buildDay(s, d))
-  const sessions = Object.keys(snap.sessions).map((id) => {
-    const x = s.sessions.find((y) => y.id === id)
-    return x ? buildSession(s, x) : { id, deleted: true }
-  })
+  const sessions = Object.keys(snap.sessions)
+    .filter((id) => !s.sessions.find((y) => y.id === id)?.imported)
+    .map((id) => {
+      const x = s.sessions.find((y) => y.id === id)
+      return x ? buildSession(s, x) : { id, deleted: true }
+    })
   const bilans = Object.keys(snap.checkins).map((id) => {
     const c = s.checkins.find((y) => y.id === id)
     if (!c) return { id, deleted: true }
-    return { id: c.id, date: c.date, mensurations: c.measures, ressenti: c.ratings, note: c.note ?? '', photos: Object.keys(c.photos).length }
+    return { id: c.id, date: c.date, mensurations: c.measures, note: c.note ?? '', photos: Object.keys(c.photos).length }
   })
   return { days, sessions, bilans }
 }
@@ -147,14 +181,44 @@ function parseResponse(text: string): Record<string, unknown> {
   }
 }
 
-export async function ping(url: string, token: string): Promise<{ ok: boolean; message: string }> {
+export interface CoachInfo {
+  ok: boolean
+  nom?: string
+  suivi?: boolean
+  semaines?: number[]
+  message?: string
+  entrainementErreur?: string
+}
+
+export function describeCoach(c: CoachInfo | null | undefined): string {
+  if (!c) return 'sheet du coach non renseigné dans le script'
+  if (!c.ok) return c.message ?? 'sheet du coach inaccessible'
+  const parts = [`coach : « ${c.nom ?? ''} »`]
+  parts.push(c.suivi ? 'Suivi journalier ✓' : 'onglet Suivi journalier introuvable')
+  if (c.entrainementErreur) parts.push(c.entrainementErreur)
+  else parts.push(c.semaines?.length ? `Entraînement : semaine${c.semaines.length > 1 ? 's' : ''} ${c.semaines.join(', ')}` : 'aucun bloc « Semaine N » dans Entraînement')
+  return parts.join(' · ')
+}
+
+export async function ping(url: string, token: string): Promise<{ ok: boolean; message: string; coach?: CoachInfo | null }> {
   try {
     const r = await getAction(url, { action: 'ping', token })
-    if (r.ok) return { ok: true, message: `Connecté au sheet « ${String(r.sheet ?? '')} »${r.coach ? ' · sheet du coach relié' : ''}` }
+    if (r.ok) {
+      const coach = (r.coach as CoachInfo | null | undefined) ?? null
+      return { ok: true, coach, message: `Connecté à « ${String(r.sheet ?? '')} » · ${describeCoach(coach)}` }
+    }
     return { ok: false, message: String(r.error ?? 'Erreur inconnue') }
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : 'Connexion impossible' }
   }
+}
+
+/** Lit le programme (onglet Entraînement) du sheet du coach. */
+export async function fetchProgram(): Promise<CoachProgram> {
+  const { url, token } = useStore.getState().sync
+  const r = await getAction(url, { action: 'programme', token })
+  if (!r.ok) throw new Error(String(r.error ?? 'Lecture du programme impossible'))
+  return { semaine: Number(r.semaine) || 0, debut: (r.debut as string) ?? null, seances: (r.seances as CoachProgram['seances']) ?? [] }
 }
 
 let running: Promise<SyncResult> | null = null

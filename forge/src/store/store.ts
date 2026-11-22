@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type {
   AppData,
   CheckIn,
+  DayLog,
   DirtyState,
   Exercise,
   Food,
@@ -24,6 +25,7 @@ import { TEMPLATE_ROUTINES } from '../data/exercises.ts'
 import { mergeSteps } from '../lib/body.ts'
 import { finalizeSession, sessionFromRoutine, sessionHasWork } from '../lib/sessionOps.ts'
 import { clearData, loadData, requestPersistence, saveData } from './persist.ts'
+import type { ImportPlan } from '../lib/coach.ts'
 
 export function defaultData(): AppData {
   return {
@@ -50,8 +52,9 @@ export function defaultData(): AppData {
     weighins: [],
     steps: [],
     checkins: [],
+    daylogs: {},
     dayType: {},
-    sync: { url: '', token: '', enabled: false, lastPushAt: null, lastPullAt: null, lastError: null },
+    sync: { url: '', token: '', coachUrl: '', enabled: false, lastPushAt: null, lastPullAt: null, lastError: null },
     dirty: { days: {}, sessions: {}, checkins: {} },
   }
 }
@@ -74,6 +77,7 @@ export function migrate(raw: unknown): AppData {
     dirty: { ...d.dirty, ...(r.dirty ?? {}) },
     foods: r.foods ?? {},
     dayType: r.dayType ?? {},
+    daylogs: r.daylogs ?? {},
   }
 }
 
@@ -127,6 +131,9 @@ export interface Actions {
   setWeighIn: (date: ISODate, kg: number | null) => void
   setSteps: (date: ISODate, steps: number | null, source?: StepsDay['source']) => void
   mergeRemoteSteps: (list: StepsDay[]) => void
+  applyImport: (plan: ImportPlan, removeRoutineIds?: string[]) => void
+  setDayLog: (date: ISODate, patch: Partial<Omit<DayLog, 'date' | 'at'>>) => void
+  addWater: (date: ISODate, liters: number) => void
   saveCheckIn: (c: CheckIn) => void
   deleteCheckIn: (id: string) => void
 
@@ -335,6 +342,26 @@ export const useStore = create<State>()((set, get) => ({
       const merged = mergeSteps(s.steps, list)
       return { steps: merged }
     }),
+  applyImport: (plan, removeRoutineIds = []) =>
+    set((s) => {
+      const incoming = new Map(plan.routines.map((r) => [r.id, r]))
+      const routines = s.routines.filter((r) => !removeRoutineIds.includes(r.id)).map((r) => incoming.get(r.id) ?? r)
+      for (const r of plan.routines) if (!s.routines.some((x) => x.id === r.id)) routines.push(r)
+      return {
+        customExercises: [...s.customExercises, ...plan.newExercises],
+        routines,
+        sessions: [...s.sessions, ...plan.history].sort((a, b) => a.startedAt - b.startedAt),
+      }
+    }),
+  setDayLog: (date, patch) =>
+    set((s) => {
+      const cur: DayLog = s.daylogs[date] ?? { date, sleepH: null, sleepQ: null, energy: null, motivation: null, satiety: null, digestion: null, waterL: null, note: '', at: 0 }
+      return { daylogs: { ...s.daylogs, [date]: { ...cur, ...patch, date, at: Date.now() } }, dirty: touchDays(s.dirty, date) }
+    }),
+  addWater: (date, liters) => {
+    const cur = get().daylogs[date]?.waterL ?? 0
+    get().setDayLog(date, { waterL: Math.max(0, Math.round((cur + liters) * 100) / 100) })
+  },
   saveCheckIn: (c) =>
     set((s) => {
       const exists = s.checkins.some((x) => x.id === c.id)

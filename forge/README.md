@@ -9,8 +9,9 @@ App web installable sur iPhone (PWA) : elle s'ouvre en plein écran depuis l'éc
 | **Séance** | Programmes (Push, Pull…), séance en direct avec **tes perfs de la dernière fois sur chaque série**, chrono de repos auto (bip, vibration, −15 / +15 s), échauffement / dégressive / échec, supersets, cardio, exercice de remplacement si la machine est prise, notes. Récap de fin : tonnage, records battus, comparaison avec la dernière fois. |
 | **Diète** | Calories et macros **restantes** (objectifs différents jour d'entraînement / repos possibles), 4 repas, base d'aliments courants intégrée, recherche et **scan code-barres** Open Food Facts, ajout rapide, aliments et recettes perso, favoris, copie du repas de la veille. |
 | **Pas** | Pas du jour et 7 derniers jours, envoyés par un **Raccourci iOS** depuis Santé (iPhone + Apple Watch), ou saisis à la main. |
-| **Suivi** | Courbe par exercice (charge, volume, 1RM estimé), tonnage et séries par muscle sur 7 jours, historique. Pesée quotidienne avec **moyenne de la semaine**, bilan hebdo (mensurations, photos face/profil/dos, ressenti), avant / après. |
-| **Google Sheets** | Tout part dans **ton** Google Sheet (onglets Jours, Repas, Séances, Détail séries, Pas, Bilans) puis le script recopie les chiffres dans **le sheet du coach**. |
+| **Ressenti du jour** | Sommeil (durée + qualité), énergie, motivation, satiété, digestion, eau et note : les échelles du « Suivi journalier » du coach. |
+| **Suivi** | Courbe par exercice (charge, volume, 1RM estimé), tonnage et séries par muscle sur 7 jours, historique. Pesée quotidienne avec **moyenne de la semaine**, bilan hebdo (mensurations, photos face/profil/dos), avant / après. |
+| **Google Sheets** | Tout part dans **ton** Google Sheet (onglets Jours, Repas, Séances, Détail séries, Pas, Bilans) puis le script remplit **le sheet du coach** (Suivi journalier + Entraînement). |
 
 Les données vivent sur le téléphone (IndexedDB). Sauvegarde / restauration en JSON dans Profil.
 
@@ -33,10 +34,9 @@ Ouvre l'URL dans **Safari** → bouton **Partager** → **Sur l'écran d'accueil
 ## 3. Relier Google Sheets (une fois, idéalement sur ordinateur)
 
 1. Crée un Google Sheet vide (`sheets.new`), par ex. **Forge – Suivi**.
-2. **Extensions → Apps Script**, efface le code et colle [`apps-script/Code.gs`](apps-script/Code.gs) (aussi copiable depuis l'app : Profil → Google Sheets → Guide).
-3. Remplace `COLLE_TON_JETON_ICI` par le jeton affiché dans l'app (Profil → Google Sheets).
-4. **Déployer → Nouveau déploiement → Application Web** — Exécuter en tant que : **Moi** — Accès : **Tout le monde** → autorise.
-5. Copie l'URL `…/exec` dans l'app → **Tester et relier**.
+2. **Extensions → Apps Script**, efface le code et colle le script copié depuis l'app (Profil → Google Sheets → Guide → Copier le script) : il contient déjà ton jeton et le lien du sheet du coach. Sinon, colle [`apps-script/Code.gs`](apps-script/Code.gs) et remplace `COLLE_TON_JETON_ICI` par ton jeton.
+3. **Déployer → Nouveau déploiement → Application Web** — Exécuter en tant que : **Moi** — Accès : **Tout le monde** → autorise.
+4. Copie l'URL `…/exec` dans l'app → **Tester et relier**. L'app affiche ce qu'elle a trouvé chez le coach (Suivi journalier ✓, semaines de l'onglet Entraînement).
 
 L'app envoie ensuite automatiquement : au démarrage, au retour dans l'app et quelques secondes après chaque modification (jamais pendant une séance en cours). Hors ligne, les modifications attendent le retour du réseau.
 
@@ -50,16 +50,26 @@ Puis 2 ou 3 automatisations **Heure de la journée** (13 h, 19 h, 22 h 30) en «
 
 ## 5. Le sheet du coach
 
-Dans `Code.gs` :
+Le script est réglé pour le sheet du coach (`COACH_MAPPING` dans `Code.gs`) :
 
-- `COACH_SHEET_URL` : l'URL du sheet du coach (il doit te l'avoir partagé **en modification**) ;
-- `COACH_MAPPING` : où écrire chaque chiffre. Deux dispositions sont gérées :
-  - **une ligne par jour** (dates dans une colonne) — exemple A dans le script ;
-  - **une colonne par jour** (un onglet par semaine, dates sur une ligne) — exemple B.
-- Le script n'écrit que dans les cellules configurées : formules et commentaires du coach ne sont pas touchés. Une date introuvable est signalée dans l'app.
-- La fonction `diagnosticCoach()` (à lancer depuis l'éditeur) affiche la structure du sheet du coach pour régler la correspondance.
+| Onglet du coach | Ce que l'app remplit |
+| --- | --- |
+| **Suivi journalier** (une ligne par jour, dates en colonne C dès la ligne 11) | G poids · H sommeil (h, « 1 à 3 » si nuit courte) · I qualité du sommeil · K pas · L cardio (min) · M séance · O énergie · P motivation · Q satiété · R digestion · T calories · U/V/W protéines/glucides/lipides · X fibres · Y eau · AC notes |
+| **Entraînement** (blocs « Semaine N », bandeaux LUNDI / MARDI…) | « POIDS X REPS » au format `55kg x 10 ; 50kg x 11` et « Progressé en POIDS/ CHARGE ? » (OUI / Maintenu / Regressé, calculé sur le meilleur 1RM estimé vs la fois précédente) |
 
-Après modification : Déployer → Gérer les déploiements → ✏️ → *Nouvelle version*, puis dans l'app **Profil → Google Sheets → Tout renvoyer** pour remplir l'historique.
+- Les lignes « Moyenne », les formules et les colonnes du coach (Nutrition Phase…) ne sont jamais touchées ; une case n'est écrite que si l'app a une valeur.
+- La semaine se retrouve grâce à « Semaine N » (colonne B du suivi journalier). Si l'onglet Entraînement n'a qu'un seul bloc, il est réécrit chaque semaine ; sinon une semaine absente est signalée dans l'app.
+- Un exercice ajouté en séance (absent du programme) est écrit sur la première ligne vide du jour.
+- L'onglet **Checkins** (questionnaire de la semaine) reste à remplir à la main. Les photos du bilan s'envoient depuis l'app (Suivi → Bilan → « Envoyer les photos au coach », via WhatsApp ou Messages).
+
+Mise en route :
+
+1. Dans l'app, **Profil → Google Sheets** : colle le lien du sheet du coach (il doit te l'avoir partagé en modification).
+2. Guide → **Copier le script** : il contient déjà ton jeton et ce lien. Colle-le dans Apps Script, déploie (voir 3).
+3. **Importer le programme du coach** : les séances (Upper A = lundi, Lower A = mardi…) sont créées avec les noms exacts des exercices, et les charges de la dernière semaine remplie deviennent ton historique (colonne « Précédent »).
+4. Chaque jour : pesée, **Ressenti du jour** (sommeil, énergie, motivation, satiété, digestion, eau, note), diète, séance. Tout part tout seul.
+
+La fonction `diagnosticCoach()` (à lancer depuis l'éditeur Apps Script) affiche ce que le script a repéré : ligne du jour, numéro de semaine, blocs et jours de l'onglet Entraînement.
 
 ---
 
@@ -69,7 +79,7 @@ Après modification : Déployer → Gérer les déploiements → ✏️ → *Nou
 cd forge
 npm install
 npm run dev        # serveur local
-npm test           # tests (calculs + script Apps Script simulé)
+npm test           # tests : calculs, scan, import du programme, script Apps Script sur une réplique du sheet du coach
 npm run typecheck
 npm run build      # sortie dans dist/
 ```

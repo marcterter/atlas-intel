@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Sheet, Field, Spinner, Toggle, confirmDialog } from '../../components/ui.tsx'
 import { Icon } from '../../components/Icon.tsx'
 import { SheetGuide, ShortcutGuide } from './Guides.tsx'
+import { ProgramImport } from './ProgramImport.tsx'
 import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
 import { randomToken } from '../../lib/id.ts'
@@ -23,6 +24,7 @@ export function SyncSetup() {
 
   const cleanUrl = url.trim()
   const urlOk = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(cleanUrl)
+  const coachOk = !sync.coachUrl || /^https:\/\/docs\.google\.com\/spreadsheets\/d\/[\w-]+/.test(sync.coachUrl.trim())
 
   const test = async () => {
     setTesting(true)
@@ -66,7 +68,20 @@ export function SyncSetup() {
           </div>
         </button>
 
-        <Field label="1. Ton jeton secret (à coller dans le script)" hint="Il empêche quiconque d’écrire dans ton sheet.">
+        <Field label="Lien du sheet de ton coach" hint="Google Sheets → Partager → Copier le lien. Il est inséré dans le script que tu copies depuis le guide.">
+          <input
+            className="input mono"
+            value={sync.coachUrl}
+            onChange={(e) => setSync({ coachUrl: e.target.value.trim() })}
+            placeholder="https://docs.google.com/spreadsheets/d/…"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+        </Field>
+        {!coachOk && <div className="small danger">Le lien doit commencer par https://docs.google.com/spreadsheets/d/…</div>}
+
+        <Field label="1. Ton jeton secret (déjà inclus dans le script copié)" hint="Il empêche quiconque d’écrire dans ton sheet.">
           <div className="row">
             <input className="input mono grow" value={token} readOnly onFocus={(e) => e.currentTarget.select()} />
             <button className="icon-btn filled" onClick={() => copy(token)} aria-label="Copier le jeton">
@@ -92,6 +107,21 @@ export function SyncSetup() {
           {testing ? <Spinner /> : <Icon name="link" size={20} />} Tester et relier
         </button>
         {result && <div className={`callout ${result.ok ? '' : ''}`} style={{ borderColor: result.ok ? 'var(--ok)' : 'var(--danger)' }}>{result.message}</div>}
+
+        {sync.enabled && (
+          <button className="card pressable" onClick={() => ui.push(<ProgramImport />)}>
+            <div className="row">
+              <div className="icon-tile">
+                <Icon name="dumbbell" size={20} />
+              </div>
+              <div className="grow">
+                <div className="bold">Importer le programme du coach</div>
+                <div className="faint small">Séances et exercices de l’onglet Entraînement, avec tes dernières charges</div>
+              </div>
+              <Icon name="chevron-right" size={18} style={{ color: 'var(--text-3)' }} />
+            </div>
+          </button>
+        )}
 
         {sync.enabled && (
           <div className="card stack">
@@ -122,11 +152,12 @@ export function SyncSetup() {
                   if (!(await confirmDialog({ title: 'Tout renvoyer ?', message: 'Toutes tes journées et séances seront réécrites dans le sheet (utile après avoir changé la configuration du coach).', confirm: 'Renvoyer' }))) return
                   const s = useStore.getState()
                   const days: Record<string, number> = {}
-                  for (const d of new Set([...s.entries.map((e) => e.date), ...s.weighins.map((w) => w.date), ...s.steps.map((x) => x.date), ...s.sessions.map((x) => x.date)])) days[d] = 1
+                  const real = s.sessions.filter((x) => !x.imported)
+                  for (const d of new Set([...s.entries.map((e) => e.date), ...s.weighins.map((w) => w.date), ...s.steps.map((x) => x.date), ...real.map((x) => x.date), ...Object.keys(s.daylogs)])) days[d] = 1
                   useStore.setState({
                     dirty: {
                       days,
-                      sessions: Object.fromEntries(s.sessions.map((x) => [x.id, 1])),
+                      sessions: Object.fromEntries(real.map((x) => [x.id, 1])),
                       checkins: Object.fromEntries(s.checkins.map((x) => [x.id, 1])),
                     },
                   })

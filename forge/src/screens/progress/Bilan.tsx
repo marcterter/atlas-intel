@@ -11,7 +11,7 @@ import { weekAverage, weeklyAverages } from '../../lib/body.ts'
 import { fmtKg, fmtSigned } from '../../lib/format.ts'
 import { uid } from '../../lib/id.ts'
 import { compressImage } from '../../lib/device.ts'
-import type { CheckIn, MeasureKey, PhotoPose, RatingKey } from '../../lib/types.ts'
+import type { CheckIn, MeasureKey, PhotoPose } from '../../lib/types.ts'
 
 export const MEASURES: { key: MeasureKey; label: string }[] = [
   { key: 'taille', label: 'Tour de taille' },
@@ -26,13 +26,6 @@ const POSES: { key: PhotoPose; label: string }[] = [
   { key: 'face', label: 'Face' },
   { key: 'profil', label: 'Profil' },
   { key: 'dos', label: 'Dos' },
-]
-const RATINGS: { key: RatingKey; label: string }[] = [
-  { key: 'energie', label: 'Énergie' },
-  { key: 'sommeil', label: 'Sommeil' },
-  { key: 'faim', label: 'Faim' },
-  { key: 'stress', label: 'Stress' },
-  { key: 'digestion', label: 'Digestion' },
 ]
 
 export function usePhotoUrl(id: string | undefined): string | null {
@@ -93,6 +86,27 @@ function PhotoSlot({ id, label, onPick, onClear }: { id?: string; label: string;
       )}
     </div>
   )
+}
+
+/** Ouvre la feuille de partage iOS (WhatsApp, Messages…) avec les photos du bilan. */
+async function sharePhotos(c: CheckIn) {
+  const files: File[] = []
+  for (const p of POSES) {
+    const id = c.photos[p.key]
+    if (!id) continue
+    const blob = await getPhoto(id)
+    if (blob) files.push(new File([blob], `bilan-${c.date}-${p.key}.jpg`, { type: 'image/jpeg' }))
+  }
+  if (!files.length) return
+  try {
+    if (navigator.canShare?.({ files })) {
+      await navigator.share({ files, title: `Photos du bilan · ${c.date}` })
+      return
+    }
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') return
+  }
+  ui.toast('Partage non disponible sur ce navigateur', 'err')
 }
 
 export function CheckInEditor({ checkinId }: { checkinId?: string }) {
@@ -185,27 +199,11 @@ export function CheckInEditor({ checkinId }: { checkinId?: string }) {
           ))}
         </div>
         <div className="faint tiny">Même lumière, même heure, même tenue d’une semaine à l’autre. Les photos restent sur ton téléphone.</div>
-        <div className="section-label">Ressenti de la semaine (1 à 5)</div>
-        <div className="stack" style={{ gap: 10 }}>
-          {RATINGS.map((r) => (
-            <div key={r.key}>
-              <div className="small bold" style={{ marginBottom: 6 }}>
-                {r.label}
-              </div>
-              <div className="rating">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button
-                    key={n}
-                    className={draft.ratings[r.key] === n ? 'on' : ''}
-                    onClick={() => setDraft((d) => ({ ...d, ratings: { ...d.ratings, [r.key]: d.ratings[r.key] === n ? undefined : n } }))}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        {Object.keys(draft.photos).length > 0 && (
+          <button className="btn soft block" onClick={() => void sharePhotos(draft)}>
+            <Icon name="upload" size={18} /> Envoyer les photos au coach
+          </button>
+        )}
         <Field label="Commentaire pour le coach">
           <textarea className="input" value={draft.note ?? ''} onChange={(e) => setDraft({ ...draft, note: e.target.value })} placeholder="Écarts, difficultés, victoires de la semaine…" />
         </Field>

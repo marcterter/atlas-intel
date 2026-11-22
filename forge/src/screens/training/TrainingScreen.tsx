@@ -88,7 +88,9 @@ export function TrainingScreen() {
               return (
                 <div className="list-item" key={r.id}>
                   <button className="grow" style={{ textAlign: 'left' }} onClick={() => ui.push(<RoutineEditor routineId={r.id} />)}>
-                    <div className="title">{r.name}</div>
+                    <div className="title">
+                      {r.name} {r.coachDay && <span className="badge" style={{ marginLeft: 4 }}>{r.coachDay.toLowerCase()}</span>}
+                    </div>
                     <div className="meta">
                       {r.items.length} exercice{r.items.length > 1 ? 's' : ''}
                       {last ? ` · ${relativeDay(last)}` : ' · jamais faite'}

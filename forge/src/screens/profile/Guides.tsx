@@ -16,8 +16,17 @@ async function copy(text: string, what = 'Copié') {
 
 const SCRIPT_URL = './forge-sheet-script.txt'
 
+/** Insère le jeton et le lien du sheet du coach dans le script, pour qu'il soit prêt à coller. */
+export function personalizeScript(script: string, token: string, coachUrl: string): string {
+  const safe = (v: string) => v.replace(/['\\\n\r]/g, '')
+  let out = script.replace("const TOKEN = 'COLLE_TON_JETON_ICI';", `const TOKEN = '${safe(token)}';`)
+  if (coachUrl.trim()) out = out.replace("const COACH_SHEET_URL = '';", `const COACH_SHEET_URL = '${safe(coachUrl.trim())}';`)
+  return out
+}
+
 /** Guide : créer le Google Sheet et déployer le script Apps Script. */
 export function SheetGuide({ token }: { token: string }) {
+  const coachUrl = useStore((s) => s.sync.coachUrl)
   const [script, setScript] = useState<string | null>(null)
   useEffect(() => {
     fetch(SCRIPT_URL)
@@ -40,7 +49,7 @@ export function SheetGuide({ token }: { token: string }) {
           <li>
             Dans ce sheet : menu <b>Extensions → Apps Script</b>. Efface le code présent et colle le script Forge.
             <div className="row" style={{ marginTop: 8 }}>
-              <button className="btn small" disabled={!script} onClick={() => script && copy(script, 'Script copié')}>
+              <button className="btn small" disabled={!script} onClick={() => script && copy(personalizeScript(script, token, coachUrl), 'Script copié (jeton inclus)')}>
                 <Icon name="copy" size={16} /> Copier le script
               </button>
               <a className="btn soft small" href={absoluteScriptUrl} target="_blank" rel="noreferrer">
@@ -52,7 +61,7 @@ export function SheetGuide({ token }: { token: string }) {
             </div>
           </li>
           <li>
-            Tout en haut du script, remplace <span className="mono">COLLE_TON_JETON_ICI</span> par ton jeton :
+            Le script copié contient déjà ton jeton{coachUrl ? ' et le lien du sheet de ton coach' : ''}. Si tu l’as ouvert par le lien, remplace <span className="mono">COLLE_TON_JETON_ICI</span> par ton jeton :
             <div className="row" style={{ marginTop: 8 }}>
               <span className="mono grow callout" style={{ padding: '8px 10px' }}>
                 {token}
@@ -63,7 +72,11 @@ export function SheetGuide({ token }: { token: string }) {
             </div>
           </li>
           <li>
-            Facultatif pour l’instant : colle l’URL du sheet de ton coach dans <span className="mono">COACH_SHEET_URL</span>. La correspondance avec ses colonnes se règle dans <span className="mono">COACH_MAPPING</span> (voir le README).
+            {coachUrl ? (
+              <>Le script est réglé pour le sheet de ton coach : onglets « Suivi journalier » (une ligne par jour) et « Entraînement » (blocs Semaine N).</>
+            ) : (
+              <>Renseigne d’abord le lien du sheet de ton coach (écran précédent) avant de copier le script : il sera inséré automatiquement.</>
+            )}
           </li>
           <li>
             Clique sur 💾 <b>Enregistrer</b>, puis <b>Déployer → Nouveau déploiement</b>. Type : <b>Application Web</b>. Exécuter en tant que : <b>Moi</b>. Qui a accès : <b>Tout le monde</b>. Puis <b>Déployer</b>.

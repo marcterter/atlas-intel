@@ -1,16 +1,21 @@
 /**
  * FORGE — pont entre l'app et Google Sheets
  * ------------------------------------------------------------
- * Ce script reçoit les données de l'app Forge (séances, diète, pesées, bilans)
+ * Ce script reçoit les données de l'app Forge (séances, diète, pesées, ressenti, bilans)
  * et les pas envoyés par le Raccourci iOS, les range dans CE Google Sheet,
- * puis recopie les chiffres utiles dans le sheet de ton coach.
+ * puis remplit le sheet de ton coach :
+ *   - onglet « Suivi journalier » : une ligne par jour (poids, sommeil, pas, cardio,
+ *     séance, ressenti, calories, macros, eau, notes) ;
+ *   - onglet « Entraînement » : charges × reps de chaque exercice, dans le bloc
+ *     « Semaine N » et le bandeau du jour (LUNDI, MARDI…), + « Progressé ? ».
+ * Les lignes « Moyenne », les formules et les cases du coach ne sont jamais touchées.
  *
  * Installation (une seule fois) :
- *  1. Dans ton Google Sheet : Extensions > Apps Script, colle tout ce fichier.
- *  2. Remplace COLLE_TON_JETON_ICI par le jeton affiché dans l'app (Profil > Google Sheets).
- *  3. Enregistrer, puis Déployer > Nouveau déploiement > Application Web :
+ *  1. Dans ton Google Sheet : Extensions > Apps Script, colle tout ce fichier
+ *     (le bouton « Copier le script » de l'app le pré-remplit avec ton jeton et le lien du coach).
+ *  2. Enregistrer, puis Déployer > Nouveau déploiement > Application Web :
  *       Exécuter en tant que : Moi — Qui a accès : Tout le monde.
- *  4. Copie l'URL qui finit par /exec dans l'app et touche « Tester et relier ».
+ *  3. Copie l'URL qui finit par /exec dans l'app et touche « Tester et relier ».
  *
  * Après une modification du script : Déployer > Gérer les déploiements > ✏️ >
  * Version : « Nouvelle version » (l'URL ne change pas).
@@ -21,55 +26,71 @@
 /** Jeton secret : le même que dans l'app. */
 const TOKEN = 'COLLE_TON_JETON_ICI';
 
-/** URL du Google Sheet de ton coach (il doit te l'avoir partagé en modification). Laisse vide pour l'instant. */
+/** Lien du Google Sheet de ton coach (il doit te l'avoir partagé en modification). Vide = désactivé. */
 const COACH_SHEET_URL = '';
 
 /**
- * Correspondance avec le sheet du coach. null = désactivé.
- * Indicateurs disponibles pour une journée :
- *   poids, poidsMoyenSemaine, kcal, proteines, glucides, lipides, fibres, pas,
- *   seance, tonnage, dureeSeanceMin, typeJour, objectifKcal, objectifProteines,
- *   objectifGlucides, objectifLipides, objectifPas
- * Pour un bilan : taille, hanches, poitrine, bras, cuisse, mollet, cou,
- *   energie, sommeil, faim, stress, digestion, note
+ * Où écrire chaque chiffre dans le sheet du coach.
  *
- * Exemple A — une ligne par jour, la date en colonne A :
- *   const COACH_MAPPING = {
- *     jours: {
- *       onglet: 'Suivi', disposition: 'lignes', colonneDate: 'A', premiereLigne: 2,
- *       colonnes: { poids: 'B', pas: 'C', kcal: 'D', proteines: 'E', glucides: 'F', lipides: 'G', seance: 'H' },
- *       creerSiAbsent: true,
- *     },
- *   };
+ * jours : une ligne par jour, dates dans `colonneDate` à partir de `premiereLigne`.
+ *   Indicateurs disponibles : poids, sommeil, qualiteSommeil, pas, cardio (minutes),
+ *   entrainement (nom de la séance), energie, motivation, satiete, digestion,
+ *   kcal, proteines, glucides, lipides, fibres, eau, notes, poidsMoyenSemaine.
+ *   `colonneSemaine` : colonne où sont écrits « Semaine 1 », « Semaine 2 »… (sert à
+ *   retrouver le bon bloc de l'onglet Entraînement).
  *
- * Exemple B — un onglet par semaine, une colonne par jour, une ligne par mesure :
- *   const COACH_MAPPING = {
- *     jours: {
- *       onglet: '*', disposition: 'colonnes', ligneDate: 3,
- *       lignes: { poids: 5, pas: 6, kcal: 7, proteines: 8, glucides: 9, lipides: 10, seance: 12 },
- *     },
- *     bilans: {
- *       onglet: 'Bilans', disposition: 'lignes', colonneDate: 'A', premiereLigne: 2, correspondance: 'semaine',
- *       colonnes: { poidsMoyenSemaine: 'B', taille: 'C', hanches: 'D', bras: 'E', cuisse: 'F', note: 'K' },
- *     },
- *   };
+ * entrainement : onglet des performances. Le script y repère seul les blocs
+ *   « Semaine N », les bandeaux de jour (LUNDI…) et les colonnes par leurs titres
+ *   (« Exercise », « POIDS X REPS », « RIR », « Progressé en POIDS/ CHARGE ? »).
  */
-const COACH_MAPPING = null;
+const COACH_MAPPING = {
+  jours: {
+    onglet: 'Suivi journalier',
+    colonneDate: 'C',
+    colonneSemaine: 'B',
+    premiereLigne: 11,
+    colonnes: {
+      poids: 'G',
+      sommeil: 'H',
+      qualiteSommeil: 'I',
+      pas: 'K',
+      cardio: 'L',
+      entrainement: 'M',
+      energie: 'O',
+      motivation: 'P',
+      satiete: 'Q',
+      digestion: 'R',
+      kcal: 'T',
+      proteines: 'U',
+      glucides: 'V',
+      lipides: 'W',
+      fibres: 'X',
+      eau: 'Y',
+      notes: 'AC',
+    },
+  },
+  entrainement: {
+    onglet: 'Entraînement',
+  },
+};
 
 // =========================================================
 
-const VERSION = 1;
+const VERSION = 2;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
-  jours: ['Date', 'Poids (kg)', 'Poids moy. semaine', 'Kcal', 'Protéines (g)', 'Glucides (g)', 'Lipides (g)', 'Fibres (g)', 'Objectif kcal', 'Objectif P', 'Objectif G', 'Objectif L', 'Pas', 'Objectif pas', 'Séance', 'Tonnage (kg)', 'Durée séance (min)', 'Type de jour', 'Mis à jour'],
-  seances: ['ID', 'Date', 'Séance', 'Durée (min)', 'Tonnage (kg)', 'Séries', 'Exercice', 'Groupe', 'Séries réalisées', 'Note exercice', 'Note séance'],
+  jours: ['Date', 'Poids (kg)', 'Poids moy. semaine', 'Sommeil (h)', 'Qualité sommeil', 'Énergie', 'Motivation', 'Satiété', 'Digestion', 'Eau (L)', 'Kcal', 'Protéines (g)', 'Glucides (g)', 'Lipides (g)', 'Fibres (g)', 'Objectif kcal', 'Objectif P', 'Objectif G', 'Objectif L', 'Pas', 'Objectif pas', 'Séance', 'Cardio (min)', 'Tonnage (kg)', 'Durée séance (min)', 'Type de jour', 'Notes', 'Mis à jour'],
+  seances: ['ID', 'Date', 'Séance', 'Durée (min)', 'Tonnage (kg)', 'Séries', 'Exercice', 'Groupe', 'Séries réalisées', 'Progressé ?', 'Note exercice', 'Note séance'],
   series: ['ID', 'Date', 'Séance', 'Exercice', 'N°', 'Type', 'Charge (kg)', 'Reps', 'Durée (s)', 'Km'],
   repas: ['Date', 'Repas', 'Aliment', 'Marque', 'Quantité (g/ml)', 'Portion', 'Kcal', 'Protéines (g)', 'Glucides (g)', 'Lipides (g)'],
   pas: ['Date', 'Pas', 'Source', 'Reçu le', 'Horodatage'],
-  bilans: ['ID', 'Date', 'Taille', 'Hanches', 'Poitrine', 'Bras', 'Cuisse', 'Mollet', 'Cou', 'Énergie', 'Sommeil', 'Faim', 'Stress', 'Digestion', 'Photos', 'Commentaire'],
+  bilans: ['ID', 'Date', 'Taille', 'Hanches', 'Poitrine', 'Bras', 'Cuisse', 'Mollet', 'Cou', 'Photos', 'Commentaire'],
 };
 const TAB_NAMES = { jours: 'Jours', seances: 'Séances', series: 'Détail séries', repas: 'Repas', pas: 'Pas', bilans: 'Bilans' };
+
+const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const MONTHS = { janv: 1, janvier: 1, fevr: 2, fevrier: 2, mars: 3, avr: 4, avril: 4, mai: 5, juin: 6, juil: 7, juillet: 7, aout: 8, sept: 9, septembre: 9, oct: 10, octobre: 10, nov: 11, novembre: 11, dec: 12, decembre: 12 };
 
 // ---------------------------------------------------------------- points d'entrée
 
@@ -88,15 +109,17 @@ function doPost(e) {
 }
 
 function handle_(e, body) {
+  resetCaches_();
   const p = Object.assign({}, (e && e.parameter) || {}, body || {});
   if (!TOKEN || TOKEN === 'COLLE_TON_JETON_ICI') return json_({ ok: false, error: 'Colle ton jeton dans la constante TOKEN du script, puis redéploie.' });
   if (String(p.token || '') !== TOKEN) return json_({ ok: false, error: 'Jeton invalide : vérifie qu’il est identique dans l’app et dans le script.' });
   const action = String(p.action || 'ping');
   try {
-    if (action === 'ping') return json_({ ok: true, version: VERSION, sheet: ss_().getName(), coach: !!(COACH_SHEET_URL && COACH_MAPPING) });
+    if (action === 'ping') return json_({ ok: true, version: VERSION, sheet: ss_().getName(), coach: coachSummary_() });
     if (action === 'steps') return json_({ ok: true, steps: readSteps_(p.since) });
     if (action === 'pas' || action === 'steps_in') return json_(withLock_(function () { return receiveSteps_(p); }));
     if (action === 'push') return json_(withLock_(function () { return push_(body || {}); }));
+    if (action === 'programme') return json_(Object.assign({ ok: true }, readCoachProgram_()));
     return json_({ ok: false, error: 'Action inconnue : ' + action });
   } catch (err) {
     return json_({ ok: false, error: String((err && err.message) || err) });
@@ -179,9 +202,10 @@ function push_(body) {
     }
     d.pas = pas;
     upsert_(tab_('jours'), 1, d.date, [
-      toDate_(d.date), num_(d.poids), num_(d.poidsMoyenSemaine), num_(d.kcal), num_(d.proteines), num_(d.glucides), num_(d.lipides), num_(d.fibres),
+      toDate_(d.date), num_(d.poids), num_(d.poidsMoyenSemaine), num_(d.sommeil), num_(d.qualiteSommeil), num_(d.energie), num_(d.motivation),
+      num_(d.satiete), num_(d.digestion), num_(d.eau), num_(d.kcal), num_(d.proteines), num_(d.glucides), num_(d.lipides), num_(d.fibres),
       num_(d.objectifKcal), num_(d.objectifProteines), num_(d.objectifGlucides), num_(d.objectifLipides),
-      num_(pas), num_(d.objectifPas), d.seance || '', num_(d.tonnage), num_(d.dureeSeanceMin), d.typeJour || '', new Date(),
+      num_(pas), num_(d.objectifPas), d.entrainement || d.seance || '', num_(d.cardio), num_(d.tonnage), num_(d.dureeSeanceMin), d.typeJour || '', d.notes || '', new Date(),
     ]);
     const meals = (d.repas || []).map(function (m) {
       return [toDate_(d.date), m.repas || '', m.aliment || '', m.marque || '', num_(m.quantite), m.portion || '', num_(m.kcal), num_(m.proteines), num_(m.glucides), num_(m.lipides)];
@@ -197,7 +221,7 @@ function push_(body) {
       return;
     }
     const exRows = (s.exercices || []).map(function (ex, i) {
-      return [s.id, toDate_(s.date), s.nom || '', num_(s.dureeMin), num_(s.tonnage), num_(s.series), ex.nom || '', ex.groupe || '', ex.resume || '', ex.note || '', i === 0 ? s.note || '' : ''];
+      return [s.id, toDate_(s.date), s.nom || '', num_(s.dureeMin), num_(s.tonnage), num_(s.series), ex.nom || '', ex.groupe || '', ex.resume || '', ex.progres || '', ex.note || '', i === 0 ? s.note || '' : ''];
     });
     replaceRows_(tab_('seances'), 1, s.id, exRows);
     const setRows = [];
@@ -216,132 +240,416 @@ function push_(body) {
       return;
     }
     const m = b.mensurations || {};
-    const r = b.ressenti || {};
-    upsert_(tab_('bilans'), 1, b.id, [b.id, toDate_(b.date), num_(m.taille), num_(m.hanches), num_(m.poitrine), num_(m.bras), num_(m.cuisse), num_(m.mollet), num_(m.cou), num_(r.energie), num_(r.sommeil), num_(r.faim), num_(r.stress), num_(r.digestion), num_(b.photos), b.note || '']);
+    upsert_(tab_('bilans'), 1, b.id, [b.id, toDate_(b.date), num_(m.taille), num_(m.hanches), num_(m.poitrine), num_(m.bras), num_(m.cuisse), num_(m.mollet), num_(m.cou), num_(b.photos), b.note || '']);
   });
 
   let coach = null;
   if (COACH_SHEET_URL && COACH_MAPPING) {
-    try {
-      const a = writeCoachDays_(days);
-      const b = writeCoachBilans_(bilans.filter(function (x) { return !x.deleted; }), days);
-      coach = { ok: a.ok && b.ok, message: [a.message, b.message].filter(String).join(' · '), cells: (a.cells || 0) + (b.cells || 0) };
-    } catch (err) {
-      coach = { ok: false, message: String((err && err.message) || err) };
-    }
+    const parts = [];
+    let ok = true;
+    let cells = 0;
+    [
+      function () { return writeCoachDays_(days); },
+      function () { return writeCoachTraining_(sessions.filter(function (s) { return s && !s.deleted; })); },
+    ].forEach(function (fn) {
+      try {
+        const r = fn();
+        ok = ok && r.ok;
+        cells += r.cells || 0;
+        if (r.message) parts.push(r.message);
+      } catch (err) {
+        ok = false;
+        parts.push(String((err && err.message) || err));
+      }
+    });
+    coach = { ok: ok, message: parts.join(' · '), cells: cells };
   }
   return { ok: true, written: { days: days.length, sessions: sessions.length, bilans: bilans.length }, coach: coach };
 }
 
-// ---------------------------------------------------------------- sheet du coach
+// ---------------------------------------------------------------- sheet du coach : journées
+
+let coachSsCache_ = null;
+
+function resetCaches_() {
+  coachSsCache_ = null;
+  trainingCache_ = null;
+  Object.keys(dayRowCache_).forEach(function (k) {
+    delete dayRowCache_[k];
+  });
+}
 
 function coachSs_() {
-  return SpreadsheetApp.openByUrl(COACH_SHEET_URL);
+  if (!coachSsCache_) coachSsCache_ = SpreadsheetApp.openByUrl(COACH_SHEET_URL);
+  return coachSsCache_;
+}
+
+/** Onglet par son nom, sans tenir compte des accents ni des majuscules. */
+function sheetByName_(ss, name) {
+  const exact = ss.getSheetByName(name);
+  if (exact) return exact;
+  const target = norm_(name);
+  const all = ss.getSheets();
+  for (let i = 0; i < all.length; i++) if (norm_(all[i].getName()) === target) return all[i];
+  return null;
 }
 
 function writeCoachDays_(days) {
   const cfg = COACH_MAPPING && COACH_MAPPING.jours;
   if (!COACH_SHEET_URL || !cfg || !days.length) return { ok: true, message: '', cells: 0 };
-  const ss = coachSs_();
+  const sh = sheetByName_(coachSs_(), cfg.onglet);
+  if (!sh) throw new Error('Onglet « ' + cfg.onglet + ' » introuvable dans le sheet du coach');
   let cells = 0;
   const missing = [];
   days.forEach(function (d) {
     if (!isoOk_(d.date)) return;
-    const n = writeCoachRecord_(ss, cfg, d.date, d);
-    if (n < 0) missing.push(d.date);
-    else cells += n;
-  });
-  return { ok: missing.length === 0, message: missing.length ? 'date(s) absente(s) du sheet du coach : ' + missing.join(', ') : '', cells: cells };
-}
-
-function writeCoachBilans_(bilans, days) {
-  const cfg = COACH_MAPPING && COACH_MAPPING.bilans;
-  if (!COACH_SHEET_URL || !cfg || !bilans.length) return { ok: true, message: '', cells: 0 };
-  const ss = coachSs_();
-  let cells = 0;
-  const missing = [];
-  bilans.forEach(function (b) {
-    const day = (days || []).filter(function (d) { return d.date === b.date; })[0] || {};
-    const values = Object.assign({ poidsMoyenSemaine: day.poidsMoyenSemaine, note: b.note }, b.mensurations || {}, b.ressenti || {});
-    const n = writeCoachRecord_(ss, cfg, b.date, values);
-    if (n < 0) missing.push(b.date);
-    else cells += n;
-  });
-  return { ok: missing.length === 0, message: missing.length ? 'bilan(s) sans ligne chez le coach : ' + missing.join(', ') : '', cells: cells };
-}
-
-/** Écrit les valeurs d'un enregistrement daté. Renvoie le nombre de cellules écrites, ou -1 si la date est introuvable. */
-function writeCoachRecord_(ss, cfg, date, values) {
-  const weekly = cfg.correspondance === 'semaine';
-  const sheets = cfg.onglet === '*' ? ss.getSheets() : [ss.getSheetByName(cfg.onglet)];
-  if (!sheets[0]) throw new Error('Onglet « ' + cfg.onglet + ' » introuvable dans le sheet du coach');
-  let written = 0;
-
-  if (cfg.disposition === 'colonnes') {
-    const dateRow = Number(cfg.ligneDate);
-    for (let i = 0; i < sheets.length; i++) {
-      const sh = sheets[i];
-      const lastCol = sh.getLastColumn();
-      if (lastCol < 1 || sh.getLastRow() < dateRow) continue;
-      const header = sh.getRange(dateRow, 1, 1, lastCol).getValues()[0];
-      const col = findDateIndex_(header, date, weekly);
-      if (col < 0) continue;
-      Object.keys(cfg.lignes || {}).forEach(function (k) {
-        const v = values[k];
-        if (v == null || v === '') return;
-        sh.getRange(Number(cfg.lignes[k]), col + 1).setValue(v);
-        written++;
-      });
-      return written;
-    }
-    return -1;
-  }
-
-  // disposition "lignes" (par défaut)
-  const dateCol = colIndex_(cfg.colonneDate || 'A');
-  const first = Number(cfg.premiereLigne || 2);
-  for (let i = 0; i < sheets.length; i++) {
-    const sh = sheets[i];
-    const last = sh.getLastRow();
-    let row = -1;
-    if (last >= first) {
-      const col = sh.getRange(first, dateCol, last - first + 1, 1).getValues().map(function (r) { return r[0]; });
-      const idx = findDateIndex_(col, date, weekly);
-      if (idx >= 0) row = first + idx;
-    }
+    const row = coachDayRow_(sh, cfg, d.date);
     if (row < 0) {
-      if (!cfg.creerSiAbsent || i < sheets.length - 1 || weekly) continue;
-      row = Math.max(last + 1, first);
-      sh.getRange(row, dateCol).setValue(toDate_(date));
+      missing.push(d.date);
+      return;
     }
     Object.keys(cfg.colonnes || {}).forEach(function (k) {
-      const v = values[k];
+      const v = formatCoachValue_(k, d[k]);
       if (v == null || v === '') return;
       sh.getRange(row, colIndex_(cfg.colonnes[k])).setValue(v);
-      written++;
+      cells++;
     });
-    return written;
-  }
-  return -1;
+  });
+  return { ok: missing.length === 0, message: missing.length ? 'date(s) absente(s) du suivi journalier : ' + missing.join(', ') : '', cells: cells };
 }
 
-/** Cherche une date dans une liste de cellules (dates Google, "22/11/2026", "22/11", "2026-11-22"…). */
-function findDateIndex_(cells, date, weekly) {
-  const target = toDate_(date).getTime();
-  const year = Number(date.slice(0, 4));
-  for (let i = 0; i < cells.length; i++) {
-    const d = parseCellDate_(cells[i], year);
-    if (!d) continue;
-    const t = toDate_(d).getTime();
-    if (!weekly && t === target) return i;
-    if (weekly && target >= t && target < t + 7 * 86400000) return i;
+const dayRowCache_ = {};
+
+/** Ligne de la date dans l'onglet du coach (-1 si absente). Ignore les lignes « Moyenne ». */
+function coachDayRow_(sh, cfg, date) {
+  const key = sh.getName();
+  if (!dayRowCache_[key]) {
+    const first = Number(cfg.premiereLigne || 2);
+    const last = sh.getLastRow();
+    const map = {};
+    if (last >= first) {
+      const col = colIndex_(cfg.colonneDate || 'A');
+      const vals = sh.getRange(first, col, last - first + 1, 1).getValues();
+      const shown = sh.getRange(first, col, last - first + 1, 1).getDisplayValues();
+      // Les dates sans année (« octobre 6 ») prennent l'année de la date reçue la plus proche.
+      for (let i = 0; i < vals.length; i++) {
+        const d = parseCellDate_(vals[i][0], Number(date.slice(0, 4))) || parseCellDate_(shown[i][0], Number(date.slice(0, 4)));
+        if (d && !map[d]) map[d] = first + i;
+      }
+    }
+    dayRowCache_[key] = map;
   }
-  return -1;
+  const row = dayRowCache_[key][date];
+  return row ? row : -1;
+}
+
+/** Valeurs mises au format des listes déroulantes du coach. */
+function formatCoachValue_(key, v) {
+  if (v == null || v === '') return '';
+  if (key === 'sommeil' || key === 'qualiteSommeil') {
+    const n = Number(v);
+    if (!isFinite(n)) return '';
+    if (n <= 3) return '1 à 3';
+    return Math.round(n * 2) / 2;
+  }
+  if (key === 'kcal' || key === 'proteines' || key === 'glucides' || key === 'lipides' || key === 'fibres' || key === 'pas' || key === 'cardio') {
+    const n = Number(v);
+    return isFinite(n) ? Math.round(n) : '';
+  }
+  if (key === 'energie' || key === 'motivation' || key === 'satiete' || key === 'digestion') {
+    const n = Number(v);
+    return isFinite(n) ? Math.round(n) : '';
+  }
+  if (key === 'eau' || key === 'poids' || key === 'poidsMoyenSemaine') {
+    const n = Number(v);
+    return isFinite(n) ? Math.round(n * 100) / 100 : '';
+  }
+  return v;
+}
+
+/** Numéro de semaine (« Semaine N » de la colonne B) et date de début de cette semaine. */
+function weekOfDate_(date) {
+  const cfg = COACH_MAPPING && COACH_MAPPING.jours;
+  if (!cfg || !cfg.colonneSemaine) return null;
+  const sh = sheetByName_(coachSs_(), cfg.onglet);
+  if (!sh) return null;
+  const row = coachDayRow_(sh, cfg, date);
+  if (row < 0) return null;
+  const first = Number(cfg.premiereLigne || 2);
+  const labels = sh.getRange(first, colIndex_(cfg.colonneSemaine), row - first + 1, 1).getDisplayValues();
+  for (let i = labels.length - 1; i >= 0; i--) {
+    const t = String(labels[i][0] || '');
+    const m = t.match(/semaine\s*(\d+)/i);
+    if (m) {
+      const startRow = first + i;
+      const startVal = sh.getRange(startRow, colIndex_(cfg.colonneDate)).getValues()[0][0];
+      const startShown = sh.getRange(startRow, colIndex_(cfg.colonneDate)).getDisplayValues()[0][0];
+      return { semaine: Number(m[1]), debut: parseCellDate_(startVal, Number(date.slice(0, 4))) || parseCellDate_(startShown, Number(date.slice(0, 4))) };
+    }
+    if (/moyenne/i.test(t)) return null;
+  }
+  return null;
+}
+
+/** Date de début de la semaine N (via la colonne « Semaine »), pour dater l'historique importé. */
+function weekStart_(n) {
+  const cfg = COACH_MAPPING && COACH_MAPPING.jours;
+  if (!cfg || !cfg.colonneSemaine) return null;
+  const sh = sheetByName_(coachSs_(), cfg.onglet);
+  if (!sh) return null;
+  const first = Number(cfg.premiereLigne || 2);
+  const last = sh.getLastRow();
+  if (last < first) return null;
+  const labels = sh.getRange(first, colIndex_(cfg.colonneSemaine), last - first + 1, 1).getDisplayValues();
+  const year = Number(todayIso_().slice(0, 4));
+  for (let i = 0; i < labels.length; i++) {
+    const m = String(labels[i][0] || '').match(/semaine\s*(\d+)/i);
+    if (m && Number(m[1]) === n) {
+      const r = first + i;
+      const c = colIndex_(cfg.colonneDate);
+      return parseCellDate_(sh.getRange(r, c).getValues()[0][0], year) || parseCellDate_(sh.getRange(r, c).getDisplayValues()[0][0], year);
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- sheet du coach : entraînement
+
+let trainingCache_ = null;
+
+/** Lit l'onglet Entraînement : blocs « Semaine N » > bandeaux de jour > lignes d'exercices. */
+function trainingStructure_() {
+  if (trainingCache_) return trainingCache_;
+  const cfg = COACH_MAPPING && COACH_MAPPING.entrainement;
+  if (!cfg) return null;
+  const sh = sheetByName_(coachSs_(), cfg.onglet);
+  if (!sh) throw new Error('Onglet « ' + cfg.onglet + ' » introuvable dans le sheet du coach');
+  const range = sh.getDataRange();
+  const values = range.getDisplayValues();
+  let rules = null;
+  try {
+    rules = range.getDataValidations();
+  } catch (err) {
+    rules = null;
+  }
+  trainingCache_ = { sheet: sh, blocks: parseTraining_(values, rules) };
+  return trainingCache_;
+}
+
+/** Découpe une grille de valeurs (texte) en blocs de semaines. Index 0-based. */
+function parseTraining_(values, rules) {
+  const rows = values.length;
+  const cols = rows ? values[0].length : 0;
+  const titles = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const m = String(values[r][c] || '').trim().match(/^semaine\s*(\d+)$/i);
+      if (m) titles.push({ n: Number(m[1]), r: r, c: c });
+    }
+  }
+  return titles.map(function (t) {
+    let rowEnd = rows - 1;
+    let colEnd = cols - 1;
+    titles.forEach(function (o) {
+      if (o === t) return;
+      if (o.r === t.r && o.c > t.c) colEnd = Math.min(colEnd, o.c - 1);
+      if (o.c === t.c && o.r > t.r) rowEnd = Math.min(rowEnd, o.r - 1);
+    });
+    return parseBlock_(values, rules, t, rowEnd, colEnd);
+  });
+}
+
+const DAY_RE = /^(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)$/i;
+const SESSION_RE = /^(s[ée]ance|jour|day|workout)\s*\d+$/i;
+
+function parseBlock_(values, rules, t, rowEnd, colEnd) {
+  const block = { semaine: t.n, row: t.r, col: t.c, bands: [] };
+  let band = null;
+  let cols = null;
+  for (let r = t.r + 1; r <= rowEnd; r++) {
+    const row = values[r] || [];
+    let isBand = false;
+    for (let c = t.c; c <= colEnd; c++) {
+      const v = String(row[c] || '').trim();
+      if (DAY_RE.test(v) || SESSION_RE.test(v)) {
+        band = { label: v.toUpperCase(), exercises: [], free: [], cols: null };
+        block.bands.push(band);
+        isBand = true;
+        break;
+      }
+    }
+    if (isBand) continue;
+    let perfCol = -1;
+    for (let c = t.c; c <= colEnd; c++) if (/poids\s*x\s*reps/i.test(String(row[c] || ''))) perfCol = c;
+    if (perfCol >= 0) {
+      cols = { perf: perfCol, ex: t.c, rir: -1, cible: -1, progres: -1 };
+      for (let c = t.c; c <= colEnd; c++) {
+        const v = String(row[c] || '').trim();
+        if (/^exerci/i.test(v)) cols.ex = c;
+        else if (/^rir$/i.test(v)) cols.rir = c;
+        else if (/\(rir\)/i.test(v)) cols.cible = c;
+        else if (/progress/i.test(v)) cols.progres = c;
+      }
+      if (band) band.cols = cols;
+      continue;
+    }
+    if (!band || !(band.cols || cols)) continue;
+    if (!band.cols) band.cols = cols;
+    const name = String(row[band.cols.ex] || '').trim();
+    if (name) {
+      band.exercises.push({
+        row: r,
+        nom: name,
+        rir: band.cols.cible >= 0 ? String(row[band.cols.cible] || '').trim() : '',
+        perf: String(row[band.cols.perf] || '').trim(),
+      });
+    } else if (!rules || band.cols.progres < 0 || (rules[r] && rules[r][band.cols.progres])) {
+      // Ligne vide du tableau (elle porte la liste déroulante « Progressé ? ») : utilisable pour un exercice ajouté.
+      band.free.push(r);
+    }
+  }
+  return block;
+}
+
+/** Programme du coach (pour l'import dans l'app) : dernière semaine remplie + exercices par jour. */
+function readCoachProgram_() {
+  if (!COACH_SHEET_URL) throw new Error('Renseigne COACH_SHEET_URL dans le script.');
+  const st = trainingStructure_();
+  const withEx = st.blocks.filter(function (b) {
+    return b.bands.some(function (x) { return x.exercises.length; });
+  });
+  if (!withEx.length) throw new Error('Aucun bloc « Semaine N » avec des exercices dans l’onglet Entraînement.');
+  const withPerf = withEx.filter(function (b) {
+    return b.bands.some(function (x) { return x.exercises.some(function (e) { return e.perf; }); });
+  });
+  const block = (withPerf.length ? withPerf : withEx).reduce(function (a, b) { return b.semaine > a.semaine ? b : a; });
+  const start = weekStart_(block.semaine);
+  return {
+    semaine: block.semaine,
+    debut: start,
+    seances: block.bands
+      .filter(function (b) { return b.exercises.length; })
+      .map(function (b, i) {
+        return {
+          jour: b.label,
+          date: bandDate_(start, b.label, i),
+          exercices: b.exercises.map(function (e) { return { nom: e.nom, rir: e.rir, perf: e.perf }; }),
+        };
+      }),
+  };
+}
+
+/** Date du bandeau dans la semaine : le jour de la semaine correspondant au libellé (LUNDI…). */
+function bandDate_(start, label, index) {
+  if (!start) return null;
+  const d0 = toDate_(start);
+  const wd = WEEKDAYS.indexOf(norm_(label));
+  for (let k = 0; k < 7; k++) {
+    const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + k);
+    if (wd >= 0 ? d.getDay() === wd : k === index) return Utilities.formatDate(d, TZ, 'yyyy-MM-dd');
+  }
+  return null;
+}
+
+/** Écrit les séances de l'app dans l'onglet Entraînement. */
+function writeCoachTraining_(sessions) {
+  const cfg = COACH_MAPPING && COACH_MAPPING.entrainement;
+  if (!COACH_SHEET_URL || !cfg) return { ok: true, message: '', cells: 0 };
+  const todo = sessions.filter(function (s) {
+    return (s.exercices || []).some(function (e) { return e.perf || e.note; });
+  });
+  if (!todo.length) return { ok: true, message: '', cells: 0 };
+  const st = trainingStructure_();
+  const sh = st.sheet;
+  let cells = 0;
+  const problems = [];
+  todo.forEach(function (s) {
+    const wk = weekOfDate_(s.date);
+    let block = null;
+    if (wk) block = st.blocks.filter(function (b) { return b.semaine === wk.semaine; })[0] || null;
+    if (!block && st.blocks.length === 1) block = st.blocks[0]; // un seul tableau, réécrit chaque semaine
+    if (!block) {
+      problems.push((wk ? 'Semaine ' + wk.semaine : s.date) + ' absente de l’onglet Entraînement');
+      return;
+    }
+    const band = pickBand_(block, s);
+    if (!band) {
+      problems.push('« ' + s.nom + ' » : aucun jour correspondant dans la semaine ' + block.semaine);
+      return;
+    }
+    (s.exercices || []).forEach(function (ex) {
+      const text = ex.perf ? (ex.note ? ex.perf + ' (' + ex.note + ')' : ex.perf) : ex.note || '';
+      if (!text) return;
+      let target = band.exercises.filter(function (e) { return sameExercise_(e.nom, ex.nom); })[0];
+      if (!target) {
+        const free = band.free.shift();
+        if (free == null) {
+          problems.push('« ' + ex.nom + ' » : plus de ligne libre le ' + band.label.toLowerCase());
+          return;
+        }
+        target = { row: free, nom: ex.nom };
+        band.exercises.push(target);
+        sh.getRange(free + 1, band.cols.ex + 1).setValue(ex.nom);
+        cells++;
+      }
+      sh.getRange(target.row + 1, band.cols.perf + 1).setValue(text);
+      cells++;
+      if (band.cols.progres >= 0 && ex.progres) {
+        sh.getRange(target.row + 1, band.cols.progres + 1).setValue(ex.progres);
+        cells++;
+      }
+    });
+  });
+  return { ok: problems.length === 0, message: problems.join(' · '), cells: cells };
+}
+
+/** Bandeau du jour : celui lié à la séance (LUNDI…), sinon celui qui partage le plus d'exercices. */
+function pickBand_(block, s) {
+  const bands = block.bands.filter(function (b) { return b.cols; });
+  if (s.jourCoach) {
+    const exact = bands.filter(function (b) { return norm_(b.label) === norm_(s.jourCoach); })[0];
+    if (exact) return exact;
+  }
+  let best = null;
+  let bestScore = 0;
+  bands.forEach(function (b) {
+    const score = (s.exercices || []).filter(function (ex) {
+      return b.exercises.some(function (e) { return sameExercise_(e.nom, ex.nom); });
+    }).length;
+    if (score > bestScore) {
+      best = b;
+      bestScore = score;
+    }
+  });
+  return best;
+}
+
+function sameExercise_(a, b) {
+  return norm_(a) === norm_(b);
+}
+
+function coachSummary_() {
+  if (!COACH_SHEET_URL || !COACH_MAPPING) return null;
+  try {
+    const ss = coachSs_();
+    const out = { ok: true, nom: ss.getName(), suivi: false, semaines: [] };
+    if (COACH_MAPPING.jours) out.suivi = !!sheetByName_(ss, COACH_MAPPING.jours.onglet);
+    if (COACH_MAPPING.entrainement) {
+      try {
+        out.semaines = trainingStructure_().blocks.map(function (b) { return b.semaine; });
+      } catch (err) {
+        out.entrainementErreur = String((err && err.message) || err);
+      }
+    }
+    return out;
+  } catch (err) {
+    return { ok: false, message: 'Sheet du coach inaccessible : ' + String((err && err.message) || err) };
+  }
 }
 
 function parseCellDate_(v, year) {
   if (v instanceof Date && !isNaN(v)) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
-  const s = String(v || '').trim();
+  const s = norm_(v);
   if (!s) return null;
   let m = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (m) return m[1] + '-' + pad_(m[2]) + '-' + pad_(m[3]);
@@ -351,7 +659,22 @@ function parseCellDate_(v, year) {
     if (y < 100) y += 2000;
     return y + '-' + pad_(m[2]) + '-' + pad_(m[1]);
   }
+  // « octobre 6 », « 6 octobre », « lun. 6 oct. 2026 »
+  m = s.match(/([a-z]+)\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?/);
+  if (m && MONTHS[m[1]]) return (m[3] || year) + '-' + pad_(MONTHS[m[1]]) + '-' + pad_(m[2]);
+  m = s.match(/(\d{1,2})\s+([a-z]+)\.?(?:\s+(\d{4}))?/);
+  if (m && MONTHS[m[2]]) return (m[3] || year) + '-' + pad_(MONTHS[m[2]]) + '-' + pad_(m[1]);
   return null;
+}
+
+function norm_(v) {
+  return String(v == null ? '' : v)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[  ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // ---------------------------------------------------------------- utilitaires sheets
@@ -467,28 +790,28 @@ function colIndex_(letters) {
   return n;
 }
 
-// ---------------------------------------------------------------- outils manuels
+// ---------------------------------------------------------------- outils manuels (depuis l'éditeur)
 
-/** À lancer depuis l'éditeur pour créer les onglets (facultatif : ils se créent tout seuls). */
+/** Crée les onglets de ton sheet (facultatif : ils se créent tout seuls). */
 function setup() {
   Object.keys(TABS).forEach(tab_);
   Logger.log('Onglets prêts dans « %s ».', ss_().getName());
 }
 
-/** Affiche la structure du sheet du coach (onglets + premières lignes) pour régler COACH_MAPPING. */
+/** Vérifie la lecture du sheet du coach : semaines trouvées, jours, exercices. */
 function diagnosticCoach() {
   if (!COACH_SHEET_URL) {
     Logger.log('Renseigne COACH_SHEET_URL d’abord.');
     return;
   }
-  coachSs_().getSheets().forEach(function (sh) {
-    const rows = Math.min(sh.getLastRow(), 12);
-    const cols = Math.min(sh.getLastColumn(), 14);
-    Logger.log('=== Onglet « %s » (%s lignes × %s colonnes)', sh.getName(), sh.getLastRow(), sh.getLastColumn());
-    if (rows && cols) {
-      sh.getRange(1, 1, rows, cols).getDisplayValues().forEach(function (r, i) {
-        Logger.log('%s | %s', i + 1, r.join(' | '));
-      });
-    }
+  Logger.log(JSON.stringify(coachSummary_()));
+  const cfg = COACH_MAPPING.jours;
+  const sh = sheetByName_(coachSs_(), cfg.onglet);
+  if (sh) {
+    const today = todayIso_();
+    Logger.log('Suivi journalier : aujourd’hui (%s) → ligne %s, %s', today, coachDayRow_(sh, cfg, today), JSON.stringify(weekOfDate_(today)));
+  }
+  trainingStructure_().blocks.forEach(function (b) {
+    Logger.log('Semaine %s : %s', b.semaine, b.bands.map(function (x) { return x.label + ' (' + x.exercises.length + ' exercices)'; }).join(', '));
   });
 }

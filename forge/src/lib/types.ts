@@ -83,6 +83,8 @@ export interface RoutineItem {
   restSec: number
   superset: string | null
   note?: string
+  /** RIR (répétitions en réserve) visé, donné par le coach. */
+  rir?: string
 }
 
 export interface Routine {
@@ -91,6 +93,8 @@ export interface Routine {
   items: RoutineItem[]
   createdAt: number
   updatedAt: number
+  /** Jour correspondant dans l'onglet Entraînement du coach (ex : "LUNDI"). */
+  coachDay?: string
 }
 
 export type SetType = 'normal' | 'echauffement' | 'degressive' | 'echec'
@@ -116,6 +120,7 @@ export interface SessionExercise {
   superset: string | null
   note?: string
   replacedFrom?: string
+  rir?: string
 }
 
 export interface Session {
@@ -127,6 +132,9 @@ export interface Session {
   endedAt: number | null
   exercises: SessionExercise[]
   note?: string
+  coachDay?: string | null
+  /** Séance reprise du sheet du coach (historique) : jamais renvoyée vers le sheet. */
+  imported?: boolean
 }
 
 export interface Nutrients {
@@ -223,6 +231,23 @@ export interface CheckIn {
   at: number
 }
 
+/** Suivi quotidien demandé par le coach (échelles du sheet « Suivi journalier »). */
+export interface DayLog {
+  date: ISODate
+  /** Heures de sommeil */
+  sleepH: number | null
+  /** Qualité du sommeil, 1 à 10 */
+  sleepQ: number | null
+  energy: number | null
+  motivation: number | null
+  satiety: number | null
+  /** 0 = pas été aux toilettes, 1-7 = échelle de Bristol */
+  digestion: number | null
+  waterL: number | null
+  note: string
+  at: number
+}
+
 export interface Settings {
   defaultRestSec: number
   sound: boolean
@@ -235,6 +260,8 @@ export interface Settings {
 export interface SyncConfig {
   url: string
   token: string
+  /** Lien du Google Sheet du coach (inséré dans le script copié depuis l'app). */
+  coachUrl: string
   enabled: boolean
   lastPushAt: number | null
   lastPullAt: number | null
@@ -273,6 +300,7 @@ export interface AppData {
   weighins: WeighIn[]
   steps: StepsDay[]
   checkins: CheckIn[]
+  daylogs: Record<ISODate, DayLog>
   /** Jour forcé en "entraînement" (true) ou "repos" (false) pour les objectifs. */
   dayType: Record<ISODate, boolean>
   sync: SyncConfig

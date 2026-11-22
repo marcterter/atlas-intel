@@ -17,7 +17,7 @@ export function Onboarding() {
   const suggested = useMemo(() => suggestTargets(profile, weight ?? 75), [profile, weight])
   const [manual, setManual] = useState<MacroTargets | null>(null)
   const [steps, setSteps] = useState<number | null>(10000)
-  const [templates, setTemplates] = useState(true)
+  const [templates, setTemplates] = useState(false)
   const macros = coachMacros ? (manual ?? suggested) : suggested
 
   const finish = () => {
@@ -146,7 +146,7 @@ export function Onboarding() {
           <div className="row-between card tight">
             <div>
               <div className="bold">Séances d’exemple</div>
-              <div className="faint small">Push / Pull / Legs, à adapter au programme du coach</div>
+              <div className="faint small">Push / Pull / Legs. Inutile si tu importes le programme de ton coach (Profil → Google Sheets)</div>
             </div>
             <Toggle on={templates} onChange={setTemplates} label="Séances d'exemple" />
           </div>

@@ -9,6 +9,7 @@ import { startRoutine } from '../training/TrainingScreen.tsx'
 import { SessionRecap } from '../training/SessionRecap.tsx'
 import { StepsSheet } from './StepsSheet.tsx'
 import { SyncChip } from '../profile/SyncChip.tsx'
+import { DayLogCard } from './DayLog.tsx'
 import { useStore } from '../../store/store.ts'
 import { dayTargets } from '../../store/selectors.ts'
 import { ui, useUI } from '../../store/ui.ts'
@@ -214,6 +215,8 @@ export function TodayScreen() {
             </div>
           </button>
         </div>
+
+        <DayLogCard date={date} />
 
         <div className="card">
           <div className="card-head" style={{ marginBottom: daySessions.length || !active ? 12 : 0 }}>
