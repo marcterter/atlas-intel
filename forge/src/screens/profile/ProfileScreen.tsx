@@ -4,6 +4,7 @@ import { Toggle, confirmDialog, menuDialog } from '../../components/ui.tsx'
 import { ProfileEditor, TargetsEditor } from './ProfileForms.tsx'
 import { SyncSetup } from './SyncSetup.tsx'
 import { ShortcutGuide } from './Guides.tsx'
+import { ConseilsSheet } from '../today/Conseils.tsx'
 import { useStore, exportJSON, parseImport } from '../../store/store.ts'
 import { checkForUpdate } from '../../lib/update.ts'
 import { storageMode } from '../../store/persist.ts'
@@ -12,7 +13,7 @@ import { ACTIVITY, GOALS, ageFrom } from '../../lib/nutrition.ts'
 import { fmt, fmtTimer, timeAgo } from '../../lib/format.ts'
 import { dirtyCount, isConfigured } from '../../lib/sync.ts'
 import { isIOS, isStandalone } from '../../lib/device.ts'
-import { todayISO } from '../../lib/date.ts'
+import { formatShort, todayISO } from '../../lib/date.ts'
 
 function Row({ icon, tile, title, meta, onClick, right }: { icon: string; tile?: string; title: string; meta?: string; onClick?: () => void; right?: React.ReactNode }) {
   const content = (
@@ -42,6 +43,7 @@ export function ProfileScreen() {
   const settings = useStore((s) => s.settings)
   const update = useStore((s) => s.updateSettings)
   const sync = useStore((s) => s.sync)
+  const conseils = useStore((s) => s.conseils)
   const configured = useStore((s) => isConfigured(s))
   const pending = useStore((s) => dirtyCount(s))
   const sessionsCount = useStore((s) => s.sessions.length)
@@ -132,6 +134,13 @@ export function ProfileScreen() {
             onClick={() => ui.push(<SyncSetup />)}
           />
           <Row icon="steps" tile="green" title="Pas automatiques" meta="Raccourci iOS Santé → sheet" onClick={() => ui.push(<ShortcutGuide />)} />
+          <Row
+            icon="bolt"
+            tile="violet"
+            title="Conseils de l’agent IA"
+            meta={conseils ? `Semaine du ${formatShort(conseils.semaine)}` : 'Chaque lundi, une fois l’agent branché'}
+            onClick={() => ui.push(<ConseilsSheet />)}
+          />
         </div>
 
         <div className="section-label">Séances</div>

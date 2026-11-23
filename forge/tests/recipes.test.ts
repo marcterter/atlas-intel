@@ -70,3 +70,15 @@ test('objectifs : calories et macros liées', async () => {
   assert.deepEqual(editMacro(off, 'kcal', 1000), { kcal: 1000, protein: 145, carbs: 0, fat: 65 })
   assert.deepEqual(editMacro(off, 'kcal', null), { kcal: 0, protein: 145, carbs: 0, fat: 65 })
 })
+
+test('kcal des étiquettes vs macros : fibres et valeurs incomplètes', async () => {
+  const { macrosLookIncomplete, unexplainedKcal } = await import('../src/lib/nutrition.ts')
+  // Pâtes complètes 118 g : 408 kcal, P 15,3 · G 75,5 · L 3 · fibres 9,4 → tout s'explique (fibres comprises)
+  assert.ok(Math.abs(unexplainedKcal({ kcal: 408, protein: 15.3, carbs: 75.5, fat: 2.95, fiber: 9.4 })) < 15)
+  assert.equal(macrosLookIncomplete({ kcal: 408, protein: 15.3, carbs: 75.5, fat: 2.95, fiber: 9.4 }), false)
+  // Ajout rapide « 200 kcal » sans macros, produit sans glucides renseignés → à vérifier
+  assert.equal(macrosLookIncomplete({ kcal: 200, protein: 0, carbs: 0, fat: 0, fiber: 0 }), true)
+  assert.equal(macrosLookIncomplete({ kcal: 380, protein: 8, carbs: 0, fat: 2, fiber: 3 }), true)
+  // Petits écarts d'arrondi : rien à signaler
+  assert.equal(macrosLookIncomplete({ kcal: 82, protein: 2.4, carbs: 9.6, fat: 1.2, fiber: 6 }), false)
+})

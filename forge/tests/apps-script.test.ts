@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
+import { createHash } from 'node:crypto'
 
 process.env.TZ = 'Europe/Paris'
 type Cell = unknown
@@ -144,7 +145,14 @@ function load(opts: { coach?: MockSpreadsheet } = {}) {
   if (opts.coach) src = src.replace("const COACH_SHEET_URL = '';", "const COACH_SHEET_URL = 'https://docs.google.com/spreadsheets/d/coach/edit';")
   const ctx = vm.createContext({
     Session: { getScriptTimeZone: () => 'Europe/Paris' },
-    Utilities: { formatDate: (d: Date) => iso(d) },
+    Utilities: {
+      formatDate: (d: Date) => iso(d),
+      DigestAlgorithm: { SHA_256: 'sha256' },
+      Charset: { UTF_8: 'utf8' },
+      // Comme Apps Script : octets signés (-128…127) et base64 « web safe » avec remplissage.
+      computeDigest: (_alg: string, value: string) => [...createHash('sha256').update(value, 'utf8').digest()].map((b) => (b > 127 ? b - 256 : b)),
+      base64EncodeWebSafe: (bytes: number[]) => Buffer.from(bytes.map((b) => b & 255)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
+    },
     SpreadsheetApp: { getActiveSpreadsheet: () => own, openByUrl: () => opts.coach },
     ContentService: { createTextOutput: (s: string) => ({ s, setMimeType() { return this } }), MimeType: { JSON: 'json' } },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
@@ -625,4 +633,41 @@ test('Coach : semaine pas encore créée par le coach → signalée, la semaine 
   assert.equal(r.coach.ok, false)
   assert.match(r.coach.message, /Semaine 9 absente/)
   assert.equal(entr.writes.length, 0)
+})
+
+// ---------------------------------------------------------------- agent IA du lundi
+
+test('Agent IA : jeton dérivé (même calcul que l’app), lecture de la semaine et dépôt des conseils seulement', async () => {
+  const { tokenIa } = await import('../src/lib/agent.ts')
+  const ia = await tokenIa(TOKEN)
+  assert.equal(ia.length, 24)
+  const { get, post, tab } = load()
+  post({
+    action: 'push',
+    days: [day('2026-11-20'), day('2026-11-22')],
+    sessions: [{ id: 'w1', date: '2026-11-21', nom: 'Upper A', dureeMin: 60, tonnage: 5000, series: 2, exercices: [{ nom: 'Développé couché à la smith', groupe: 'Pectoraux', resume: '55 × 10, 50 × 11', perf: '55kg x 10 ; 50kg x 11', progres: 'OUI', series: [] }] }],
+    contexte: { objectif: 'Maintien', objectifs: { on: { kcal: 2620 }, off: { kcal: 2500 } } },
+  })
+  // Le jeton IA lit la semaine…
+  const w = get({ action: 'semaine', token: ia })
+  assert.equal(w.ok, true, JSON.stringify(w))
+  assert.deepEqual(w.jours.map((j: Record<string, unknown>) => j.Date), ['2026-11-20', '2026-11-22'])
+  assert.equal(w.jours[1]['Protéines (g)'], 175.4)
+  assert.equal(w.seances[0]['Séries réalisées'], '55 × 10, 50 × 11')
+  assert.equal(w.repas.length, 2)
+  assert.equal(w.contexte.objectif, 'Maintien')
+  // … mais ne peut rien écrire d'autre
+  assert.equal(post({ action: 'push', token: ia, days: [day('2026-11-23')] }).ok, false)
+  assert.equal(get({ action: 'pas', token: ia, steps: '1000' }).ok, false)
+  assert.equal(get({ action: 'conseils', token: ia }).ok, false, 'lecture des conseils réservée à l’app')
+  assert.equal(get({ action: 'semaine', token: 'n-importe-quoi' }).ok, false)
+  // Dépôt des conseils, relus par l'app (dernière semaine en premier)
+  assert.equal(post({ action: 'conseils_set', token: ia, semaine: '2026-11-16', texte: '## Entraînement\n- Vieux conseil' }).ok, true)
+  assert.equal(post({ action: 'conseils_set', token: ia, semaine: '2026-11-23', texte: '## Diète\n- Ajoute 20 g de protéines au petit-déj' }).ok, true)
+  assert.equal(post({ action: 'conseils_set', token: ia, semaine: '2026-11-23', texte: '## Diète\n- Version corrigée' }).ok, true)
+  assert.equal(tab('Conseils IA').data().length, 2, 'une ligne par semaine')
+  const c = get({ action: 'conseils' })
+  assert.equal(c.conseils.semaine, '2026-11-23')
+  assert.equal(c.conseils.texte, '## Diète\n- Version corrigée')
+  assert.equal(get({ action: 'semaine', token: ia }).conseilsPrecedents.length, 2)
 })

@@ -82,6 +82,20 @@ export function kcalFromMacros(m: Pick<MacroTargets, 'protein' | 'carbs' | 'fat'
 }
 
 /**
+ * Kcal d'un aliment que ses macros n'expliquent pas (étiquette − 4P − 4G − 9L − 2 × fibres) : les fibres
+ * comptent ~2 kcal/g sur les étiquettes européennes ; au-delà, c'est une donnée incomplète (macro manquante).
+ */
+export function unexplainedKcal(n: Nutrients): number {
+  return n.kcal - (n.protein * 4 + n.carbs * 4 + n.fat * 9 + (n.fiber ?? 0) * 2)
+}
+
+/** Aliment dont les macros ne collent pas avec ses kcal (écart > 30 kcal et > 25 %). */
+export function macrosLookIncomplete(n: Nutrients): boolean {
+  const gap = unexplainedKcal(n)
+  return Math.abs(gap) > Math.max(30, n.kcal * 0.25)
+}
+
+/**
  * Calories et macros liées : changer une macro recalcule les kcal ; changer les kcal ajuste les glucides,
  * protéines et lipides gardés (on les fixe en g/kg, les glucides complètent).
  */

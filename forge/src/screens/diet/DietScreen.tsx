@@ -9,7 +9,7 @@ import { RecipeEditor } from './Recipes.tsx'
 import { useStore } from '../../store/store.ts'
 import { dayTargets, getFood } from '../../store/selectors.ts'
 import { ui, useUI } from '../../store/ui.ts'
-import { MEALS, dayTotals, mealForNow, sumNutrients } from '../../lib/nutrition.ts'
+import { MEALS, dayTotals, kcalFromMacros, macrosLookIncomplete, mealForNow, sumNutrients } from '../../lib/nutrition.ts'
 import { addDays, cap, relativeDay, formatLong, todayISO } from '../../lib/date.ts'
 import { fmt } from '../../lib/format.ts'
 import { uid } from '../../lib/id.ts'
@@ -93,6 +93,13 @@ export function DietScreen() {
           <MacroSummary n={totals} t={t} fiberGoal={targets.fiber} />
           <div className="hr" />
           <MacroBars n={totals} t={t} fiberGoal={targets.fiber} />
+          {totals.kcal - kcalFromMacros(totals) > 60 && (
+            // Les kcal des étiquettes comptent aussi les fibres (~2 kcal/g) et parfois des macros manquantes.
+            <div className="faint tiny" style={{ marginTop: 12 }}>
+              Étiquettes {fmt(totals.kcal)} kcal · tes macros en font {fmt(kcalFromMacros(totals))} (+ fibres ≈ {fmt((totals.fiber ?? 0) * 2)} kcal)
+              {dayEntries.some((e) => macrosLookIncomplete(e.n)) ? ', le reste vient d’aliments aux valeurs incomplètes (⚠)' : ''}. Vise surtout tes macros.
+            </div>
+          )}
           <div className="row-between" style={{ marginTop: 14, gap: 10 }}>
             <div style={{ minWidth: 0 }}>
               <div className="bold small">{dayLabel}</div>
@@ -148,6 +155,7 @@ export function DietScreen() {
                     </div>
                     <div className="faint small ellipsis">
                       {[e.brand, e.portionLabel ?? (e.grams ? `${fmt(e.grams)} g` : 'ajout rapide')].filter(Boolean).join(' · ')}
+                      {macrosLookIncomplete(e.n) && <span style={{ color: 'var(--warn)' }}> · ⚠ macros à vérifier</span>}
                     </div>
                   </div>
                   <div className="kcal">{fmt(e.n.kcal)}</div>

@@ -7,6 +7,7 @@ import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
 import { randomToken } from '../../lib/id.ts'
 import { dirtyCount, ping, scriptOutdated, syncNow, SCRIPT_VERSION } from '../../lib/sync.ts'
+import { agentLink } from '../../lib/agent.ts'
 import { timeAgo } from '../../lib/format.ts'
 
 export function SyncSetup() {
@@ -115,6 +116,19 @@ export function SyncSetup() {
           {testing ? <Spinner /> : <Icon name="link" size={20} />} Tester et relier
         </button>
         {result && <div className={`callout ${result.ok ? '' : ''}`} style={{ borderColor: result.ok ? 'var(--ok)' : 'var(--danger)' }}>{result.message}</div>}
+
+        {sync.enabled && (
+          <div className="card stack" style={{ gap: 8 }}>
+            <div className="bold">Agent IA du lundi</div>
+            <div className="faint small">
+              Chaque lundi, Claude lit ta semaine (séances, diète, pas, poids, ressenti) et dépose ses conseils, affichés sur Aujourd’hui. Ce lien lui donne seulement le droit de lire ta semaine et
+              de déposer des conseils, jamais d’écrire dans tes données.
+            </div>
+            <button className="btn soft small" disabled={!urlOk} onClick={async () => copy(await agentLink(cleanUrl, token))}>
+              <Icon name="copy" size={16} /> Copier le lien de l’agent
+            </button>
+          </div>
+        )}
 
         {sync.enabled && (
           <button className="card pressable" onClick={() => ui.push(<ProgramImport />)}>

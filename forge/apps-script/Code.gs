@@ -86,7 +86,7 @@ const COACH_MAPPING = {
 
 // =========================================================
 
-const VERSION = 6;
+const VERSION = 7;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
@@ -96,8 +96,13 @@ const TABS = {
   repas: ['Date', 'Repas', 'Aliment', 'Marque', 'Quantité (g/ml)', 'Portion', 'Kcal', 'Protéines (g)', 'Glucides (g)', 'Lipides (g)'],
   pas: ['Date', 'Pas', 'Source', 'Reçu le', 'Horodatage'],
   bilans: ['ID', 'Date', 'Taille', 'Hanches', 'Poitrine', 'Bras', 'Cuisse', 'Mollet', 'Cou', 'Photos', 'Commentaire'],
+  conseils: ['Semaine du', 'Généré le', 'Conseils'],
+  contexte: ['Clé', 'Mis à jour', 'Contexte (JSON)'],
 };
-const TAB_NAMES = { jours: 'Jours', seances: 'Séances', series: 'Détail séries', repas: 'Repas', pas: 'Pas', bilans: 'Bilans' };
+const TAB_NAMES = { jours: 'Jours', seances: 'Séances', series: 'Détail séries', repas: 'Repas', pas: 'Pas', bilans: 'Bilans', conseils: 'Conseils IA', contexte: 'Contexte' };
+
+/** Actions permises avec le jeton de l'agent IA : lire la semaine, déposer ses conseils. */
+const IA_ACTIONS = ['ping', 'semaine', 'conseils_set'];
 
 const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 const MONTHS = { janv: 1, janvier: 1, fevr: 2, fevrier: 2, mars: 3, avr: 4, avril: 4, mai: 5, juin: 6, juil: 7, juillet: 7, aout: 8, sept: 9, septembre: 9, oct: 10, octobre: 10, nov: 11, novembre: 11, dec: 12, decembre: 12 };
@@ -122,10 +127,16 @@ function handle_(e, body) {
   resetCaches_();
   const p = Object.assign({}, (e && e.parameter) || {}, body || {});
   if (!TOKEN || TOKEN === 'COLLE_TON_JETON_ICI') return json_({ ok: false, error: 'Colle ton jeton dans la constante TOKEN du script, puis redéploie.' });
-  if (String(p.token || '') !== TOKEN) return json_({ ok: false, error: 'Jeton invalide : vérifie qu’il est identique dans l’app et dans le script.' });
+  const token = String(p.token || '');
+  const ia = token !== TOKEN && token !== '' && token === tokenIa_();
+  if (token !== TOKEN && !ia) return json_({ ok: false, error: 'Jeton invalide : vérifie qu’il est identique dans l’app et dans le script.' });
   const action = String(p.action || 'ping');
+  if (ia && IA_ACTIONS.indexOf(action) < 0) return json_({ ok: false, error: 'Action non autorisée pour l’agent IA : ' + action });
   try {
     if (action === 'ping') return json_({ ok: true, version: VERSION, sheet: ss_().getName(), coach: coachSummary_() });
+    if (action === 'semaine') return json_(Object.assign({ ok: true }, exportWeek_(p)));
+    if (action === 'conseils') return json_(Object.assign({ ok: true }, readConseils_()));
+    if (action === 'conseils_set') return json_(withLock_(function () { return saveConseils_(p); }));
     if (action === 'steps') return json_({ ok: true, steps: readSteps_(p.since) });
     if (action === 'pas' || action === 'steps_in') return json_(withLock_(function () { return receiveSteps_(p); }));
     if (action === 'push') return json_(withLock_(function () { return push_(body || {}); }));
@@ -134,6 +145,16 @@ function handle_(e, body) {
   } catch (err) {
     return json_({ ok: false, error: String((err && err.message) || err) });
   }
+}
+
+/**
+ * Jeton de l'agent IA du lundi, dérivé du jeton principal (l'app le calcule de la même façon) : il ne
+ * permet que de lire la semaine et de déposer des conseils, jamais d'écrire dans tes onglets.
+ */
+function tokenIa_() {
+  if (!TOKEN || TOKEN === 'COLLE_TON_JETON_ICI') return '';
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'forge-ia:' + TOKEN, Utilities.Charset.UTF_8);
+  return Utilities.base64EncodeWebSafe(bytes).slice(0, 24);
 }
 
 function json_(obj) {
@@ -243,6 +264,11 @@ function push_(body) {
     replaceRows_(tab_('series'), 1, s.id, setRows);
   });
 
+  // Contexte pour l'agent IA (objectif, cibles ON / OFF, programme) : une seule ligne, remplacée à chaque envoi.
+  if (body.contexte && typeof body.contexte === 'object') {
+    upsert_(tab_('contexte'), 1, 'forge', ['forge', new Date(), JSON.stringify(body.contexte)]);
+  }
+
   bilans.forEach(function (b) {
     if (!b || !b.id) return;
     if (b.deleted) {
@@ -279,6 +305,103 @@ function push_(body) {
     coach = { ok: ok, message: parts.join(' · '), info: infos.join(' · '), cells: cells };
   }
   return { ok: true, version: VERSION, written: { days: days.length, sessions: sessions.length, bilans: bilans.length }, coach: coach };
+}
+
+// ---------------------------------------------------------------- agent IA du lundi
+
+/**
+ * Les dernières semaines pour l'agent IA : journées (diète, pas, poids, sommeil, ressenti, cardio, notes),
+ * séances (exercices, séries, progression), repas des 14 derniers jours, pesées de bilan, contexte envoyé
+ * par l'app, programme de la semaine du coach et conseils précédents.
+ */
+function exportWeek_(p) {
+  const days = Math.min(56, Math.max(7, Number(p.jours) || 28));
+  const since = isoDaysAgo_(days);
+  const conseils = readConseils_();
+  return {
+    version: VERSION,
+    aujourdhui: todayIso_(),
+    depuis: since,
+    contexte: readContexte_(),
+    jours: tabRows_('jours', 0, since),
+    seances: tabRows_('seances', 1, since),
+    repas: tabRows_('repas', 0, isoDaysAgo_(14)),
+    bilans: tabRows_('bilans', 1, isoDaysAgo_(120)),
+    programme: safeProgramme_(),
+    conseilsPrecedents: conseils.precedents.concat(conseils.conseils ? [conseils.conseils] : []).slice(-3),
+  };
+}
+
+function isoDaysAgo_(n) {
+  return Utilities.formatDate(new Date(Date.now() - n * 86400000), TZ, 'yyyy-MM-dd');
+}
+
+/** Lignes d'un onglet depuis une date, en objets { en-tête: valeur } (dates en AAAA-MM-JJ). */
+function tabRows_(key, dateCol, since) {
+  const sh = ss_().getSheetByName(TAB_NAMES[key]);
+  if (!sh) return [];
+  const last = sh.getLastRow();
+  if (last < 2) return [];
+  const head = TABS[key];
+  return sh
+    .getRange(2, 1, last - 1, head.length)
+    .getValues()
+    .filter(function (r) {
+      const d = iso_(r[dateCol]);
+      return d && d >= since;
+    })
+    .map(function (r) {
+      const o = {};
+      head.forEach(function (h, i) {
+        const v = r[i];
+        if (v === '' || v == null) return;
+        o[h] = v instanceof Date ? Utilities.formatDate(v, TZ, i === dateCol ? 'yyyy-MM-dd' : "yyyy-MM-dd'T'HH:mm") : v;
+      });
+      return o;
+    });
+}
+
+function readContexte_() {
+  const sh = ss_().getSheetByName(TAB_NAMES.contexte);
+  if (!sh || sh.getLastRow() < 2) return null;
+  try {
+    return JSON.parse(String(sh.getRange(2, 3, 1, 1).getValues()[0][0] || 'null'));
+  } catch (err) {
+    return null;
+  }
+}
+
+function safeProgramme_() {
+  if (!COACH_SHEET_URL) return null;
+  try {
+    const p = readCoachProgram_();
+    return { semaine: p.semaine, seances: p.seances };
+  } catch (err) {
+    return null;
+  }
+}
+
+/** Conseils de l'agent IA, rangés par semaine (lundi). */
+function saveConseils_(p) {
+  const texte = String(p.texte || '').trim();
+  if (!texte) return { ok: false, error: 'Conseils vides' };
+  const semaine = isoOk_(p.semaine) ? String(p.semaine) : todayIso_();
+  upsert_(tab_('conseils'), 1, semaine, [toDate_(semaine), new Date(), texte.slice(0, 45000)]);
+  return { ok: true, semaine: semaine };
+}
+
+function readConseils_() {
+  const sh = ss_().getSheetByName(TAB_NAMES.conseils);
+  if (!sh || sh.getLastRow() < 2) return { conseils: null, precedents: [] };
+  const rows = sh
+    .getRange(2, 1, sh.getLastRow() - 1, 3)
+    .getValues()
+    .map(function (r) {
+      return { semaine: iso_(r[0]), date: r[1] instanceof Date ? r[1].toISOString() : String(r[1] || ''), texte: String(r[2] || '') };
+    })
+    .filter(function (x) { return x.semaine && x.texte; })
+    .sort(function (a, b) { return a.semaine < b.semaine ? 1 : -1; });
+  return { conseils: rows[0] || null, precedents: rows.slice(1, 3).reverse() };
 }
 
 // ---------------------------------------------------------------- sheet du coach : journées

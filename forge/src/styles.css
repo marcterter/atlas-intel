@@ -692,6 +692,47 @@ textarea.input {
   color: var(--accent);
 }
 
+/* Texte de l'agent IA (Markdown simple) */
+.md {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.md h4 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.md h4:first-child {
+  margin-top: 0;
+}
+
+.md p {
+  margin: 6px 0;
+}
+
+.md ul,
+.md ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.md li {
+  margin: 4px 0;
+}
+
+.md b {
+  color: var(--text);
+}
+
+.card.conseils {
+  border-color: rgba(167, 139, 250, 0.4);
+}
+
 /* Bilan du lundi */
 .card.review.ajuste {
   border-color: rgba(255, 107, 44, 0.4);

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   AppData,
+  AiAdvice,
   CardioEntry,
   CheckIn,
   DayLog,
@@ -57,6 +58,8 @@ export function defaultData(): AppData {
     daylogs: {},
     reviews: {},
     cardio: [],
+    conseils: null,
+    conseilsVus: null,
     dayType: {},
     sync: { url: '', token: '', coachUrl: '', enabled: false, lastPushAt: null, lastPullAt: null, lastError: null, scriptVersion: null },
     dirty: { days: {}, sessions: {}, checkins: {} },
@@ -84,6 +87,8 @@ export function migrate(raw: unknown): AppData {
     daylogs: r.daylogs ?? {},
     reviews: r.reviews ?? {},
     cardio: r.cardio ?? [],
+    conseils: r.conseils ?? null,
+    conseilsVus: r.conseilsVus ?? null,
   }
 }
 
@@ -143,6 +148,8 @@ export interface Actions {
   /** Ajoute ou modifie un cardio noté depuis Aujourd'hui. */
   saveCardio: (c: Omit<CardioEntry, 'id' | 'at'> & { id?: string }) => void
   deleteCardio: (id: string) => void
+  setConseils: (c: AiAdvice) => void
+  markConseilsSeen: () => void
   /** Bilan du lundi : appliquer les objectifs proposés, garder les siens, ou simplement « vu ». */
   decideReview: (monday: ISODate, decision: Omit<ReviewDecision, 'at'>, next?: Targets | null) => void
   saveCheckIn: (c: CheckIn) => void
@@ -384,6 +391,8 @@ export const useStore = create<State>()((set, get) => ({
       const cardio = old ? s.cardio.map((x) => (x.id === old.id ? entry : x)) : [...s.cardio, entry]
       return { cardio, dirty: touchDays(s.dirty, ...(old && old.date !== entry.date ? [old.date, entry.date] : [entry.date])) }
     }),
+  setConseils: (c) => set((s) => (s.conseils?.semaine === c.semaine && s.conseils.texte === c.texte ? {} : { conseils: c })),
+  markConseilsSeen: () => set((s) => ({ conseilsVus: s.conseils?.semaine ?? null })),
   deleteCardio: (id) =>
     set((s) => {
       const old = s.cardio.find((x) => x.id === id)

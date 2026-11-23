@@ -297,6 +297,15 @@ export interface SyncConfig {
   scriptVersion?: number | null
 }
 
+export interface AiAdvice {
+  /** Lundi de la semaine analysée. */
+  semaine: ISODate
+  /** Date de génération (ISO). */
+  date: string
+  /** Texte en Markdown simple (## titres, - puces, **gras**). */
+  texte: string
+}
+
 export interface ReviewDecision {
   decision: 'applied' | 'kept' | 'seen'
   deltaKcal: number
@@ -342,6 +351,10 @@ export interface AppData {
   /** Bilans du lundi déjà tranchés (clé : le lundi). */
   reviews: Record<ISODate, ReviewDecision>
   cardio: CardioEntry[]
+  /** Derniers conseils de l'agent IA du lundi (récupérés depuis le sheet). */
+  conseils: AiAdvice | null
+  /** Semaine (lundi) dont les conseils ont été lus et masqués. */
+  conseilsVus: ISODate | null
   /** Jour forcé en "entraînement" (true) ou "repos" (false) pour les objectifs. */
   dayType: Record<ISODate, boolean>
   sync: SyncConfig
