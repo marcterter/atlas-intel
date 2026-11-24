@@ -32,6 +32,7 @@ import { lastNoteFor, previousSets, sessionTonnage, sessionWorkSets, setLabel } 
 import { adviseExercise, type Trend } from '../../lib/progression.ts'
 import { exerciseAdviceFor } from '../../lib/agent.ts'
 import { assignMakeUps, countForLabel, makeUpOptions } from '../../lib/makeup.ts'
+import { coachChoices, coachMapping, coachPlanFor } from '../../lib/coachMap.ts'
 import { fmtClock, fmtDuration, fmtKg, fmtTimer, fmtTonnage, parseNum } from '../../lib/format.ts'
 import { keepScreenOn, haptic, unlockAudio } from '../../lib/device.ts'
 import { relativeDay, todayISO } from '../../lib/date.ts'
@@ -68,6 +69,9 @@ export function ActiveSession() {
     const kept = new Set(active.exercises.filter((e) => e.pour === null && makeUpOptions(active, e, history, routines, custom).length).map((e) => e.uid))
     return { assigned, kept }
   }, [active, history, routines, custom])
+
+  // Séance à toi comptée pour un jour du programme : la ligne du coach de chaque exercice.
+  const coachLines = useMemo(() => (active && coachPlanFor(active, routines) ? coachMapping(active, routines, custom) : null), [active, routines, custom])
 
   if (!active) return null
 
@@ -182,6 +186,11 @@ export function ActiveSession() {
                 return cf ? countForLabel(cf, findExercise(ex.exerciseId, custom).name) : undefined
               })()}
               keptHere={!!makeUps?.kept.has(ex.uid)}
+              coachLine={(() => {
+                if (!coachLines || ex.pour || makeUps?.assigned.has(ex.uid) || findExercise(ex.exerciseId, custom).kind === 'cardio') return undefined
+                const l = coachLines.get(ex.uid)
+                return l ? (l.exact ? undefined : l.target) : null
+              })()}
             />
           ))}
           <button
@@ -223,6 +232,7 @@ const ExerciseBlock = memo(function ExerciseBlock({
   countDay,
   countLabel,
   keptHere,
+  coachLine,
 }: {
   ex: SessionExercise
   count: number
@@ -236,6 +246,8 @@ const ExerciseBlock = memo(function ExerciseBlock({
   countLabel?: string
   /** Rattrapage possible, mais l'exercice est gardé dans cette séance. */
   keptHere?: boolean
+  /** Séance à toi comptée pour un jour du programme : exercice du coach remplacé (null : hors programme). */
+  coachLine?: string | null
 }) {
   const updateActive = useStore((s) => s.updateActive)
   const startRest = useStore((s) => s.startRest)
@@ -314,6 +326,24 @@ const ExerciseBlock = memo(function ExerciseBlock({
       const { exact: _exact, ...pour } = opts[Number(c.slice(1))]
       updateActive((s) => updateExercise(s, ex.uid, { pour }))
     }
+  }
+
+  // Séance à toi : pour quel exercice du programme du coach compte celui-ci (ou aucun).
+  const coachMenu = async () => {
+    const st = useStore.getState()
+    const cur = st.active
+    if (!cur) return
+    const choices = coachChoices(cur, ex.uid, st.routines, st.customExercises)
+    const current = coachMapping(cur, st.routines, st.customExercises).get(ex.uid)?.targetId
+    const c = await menuDialog('Chez le coach, cet exercice compte pour…', [
+      ...choices.map((t) => ({ id: `t:${t.id}`, label: `${t.name}${t.id === current ? ' ✓' : ''}`, icon: 'swap' })),
+      { id: 'none', label: `Hors programme (note du jour)${current ? '' : ' ✓'}`, icon: 'note' },
+      ...(ex.coachTarget !== undefined ? [{ id: 'auto', label: 'Choix automatique', icon: 'bolt' }] : []),
+    ])
+    if (!c) return
+    if (c === 'none') updateActive((s) => updateExercise(s, ex.uid, { coachTarget: null }))
+    else if (c === 'auto') updateActive((s) => updateExercise(s, ex.uid, { coachTarget: undefined }))
+    else updateActive((s) => updateExercise(s, ex.uid, { coachTarget: c.slice(2) }))
   }
 
   const exMenu = async () => {
@@ -403,6 +433,22 @@ const ExerciseBlock = memo(function ExerciseBlock({
               </>
             ) : (
               'Compté dans cette séance · rattrapage possible'
+            )}
+          </span>
+          <Icon name="chevron-right" size={14} />
+        </button>
+      )}
+
+      {coachLine !== undefined && !(countLabel || keptHere) && (
+        <button className={`makeup-chip ${coachLine ? '' : 'off'}`} onClick={coachMenu}>
+          <Icon name="swap" size={14} />
+          <span className="grow">
+            {coachLine ? (
+              <>
+                Chez le coach : compte pour <b>{coachLine}</b>
+              </>
+            ) : (
+              'Chez le coach : hors programme (note du jour)'
             )}
           </span>
           <Icon name="chevron-right" size={14} />

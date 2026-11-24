@@ -90,6 +90,11 @@ export function TrainingScreen() {
                   <button className="grow" style={{ textAlign: 'left' }} onClick={() => ui.push(<RoutineEditor routineId={r.id} />)}>
                     <div className="title">
                       {r.name} {r.coachDay && <span className="badge" style={{ marginLeft: 4 }}>{r.coachDay.toLowerCase()}</span>}
+                      {!r.coachDay && r.countsFor && (
+                        <span className="badge" style={{ marginLeft: 4 }} title="Compte pour ce jour du programme du coach">
+                          → {r.countsFor.toLowerCase()}
+                        </span>
+                      )}
                     </div>
                     <div className="meta">
                       {r.items.length} exercice{r.items.length > 1 ? 's' : ''}

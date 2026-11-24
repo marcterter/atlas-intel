@@ -27,6 +27,7 @@ import { todayISO } from '../lib/date.ts'
 import { TEMPLATE_ROUTINES } from '../data/exercises.ts'
 import { mergeSteps } from '../lib/body.ts'
 import { finalizeSession, sessionFromRoutine, sessionHasWork } from '../lib/sessionOps.ts'
+import { freezeCoachMapping } from '../lib/coachMap.ts'
 import { freezeMakeUps } from '../lib/makeup.ts'
 import { clearData, loadData, requestPersistence, saveData } from './persist.ts'
 import type { ImportPlan } from '../lib/coach.ts'
@@ -215,6 +216,9 @@ export const useStore = create<State>()((set, get) => ({
       const now = Date.now()
       const copy: Routine = {
         ...r,
+        // La copie d'une séance du coach n'est plus « la » séance du coach : elle compte pour son jour.
+        coachDay: undefined,
+        countsFor: r.coachDay ?? r.countsFor,
         id: uid('r'),
         name: `${r.name} (copie)`,
         items: r.items.map((it) => ({ ...it, uid: uid('i') })),
@@ -252,7 +256,8 @@ export const useStore = create<State>()((set, get) => ({
       return null
     }
     // Rattrapages (bras de l'Upper faits un autre jour…) figés avec la séance.
-    const done = freezeMakeUps(finalizeSession(s.active, endedAt ?? Date.now()), s.sessions, s.routines, s.customExercises)
+    // Séance à toi comptée pour un jour du programme : ses lignes chez le coach, figées aussi.
+    const done = freezeCoachMapping(freezeMakeUps(finalizeSession(s.active, endedAt ?? Date.now()), s.sessions, s.routines, s.customExercises), s.routines, s.customExercises)
     const dayType = { ...s.dayType }
     if (dayType[done.date] === false) delete dayType[done.date]
     set({

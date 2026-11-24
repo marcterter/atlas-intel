@@ -1,6 +1,7 @@
 // Rattrapage : un exercice prévu dans une autre séance du programme, pas fait ce jour-là (les bras de
 // l'Upper faits avant les jambes), compte pour cette séance-là : le script l'écrit sur sa ligne chez le coach.
 import { findExercise } from '../data/exercises.ts'
+import { coachMapping, freezeCoachMapping } from './coachMap.ts'
 import { addDays } from './date.ts'
 import type { CountFor, Exercise, Routine, Session, SessionExercise } from './types.ts'
 
@@ -26,6 +27,8 @@ export function makeUpOptions(s: Session, ex: SessionExercise, history: Session[
   // Prévu aujourd'hui (ou remplaçant un exercice prévu) : pas un rattrapage.
   const own = ownPlan(s, routines)
   if (own?.items.some((it) => it.exerciseId === ex.exerciseId || it.exerciseId === ex.replacedFrom)) return []
+  // Séance à toi comptée pour un jour du programme : un exercice qui prend une ligne de ce jour-là n'est pas un rattrapage.
+  if (coachMapping(s, routines, custom).has(ex.uid)) return []
   const from = addDays(s.date, -6)
   const recent = history
     .filter((h) => h.id !== s.id && h.coachDay && h.coachDay !== s.coachDay && h.date >= from && h.date <= s.date && h.startedAt < s.startedAt)
@@ -84,6 +87,30 @@ export function freezeMakeUps(s: Session, history: Session[], routines: Routine[
   const made = assignMakeUps(s, history, routines, custom)
   if (!made.size) return s
   return { ...s, exercises: s.exercises.map((e) => (e.pour === undefined && made.has(e.uid) ? { ...e, pour: made.get(e.uid) } : e)) }
+}
+
+/**
+ * Une séance vient d'être reliée à un jour du programme (ou détachée) : les séances des 6 jours
+ * suivants peuvent maintenant rattraper ses lignes restées vides (les bras faits mardi pour l'Upper
+ * de lundi), et les rattrapages vers l'ancien jour tombent. Renvoie les séances modifiées.
+ */
+export function refreshLaterMakeUps(linked: Session, oldDay: string | null | undefined, sessions: Session[], routines: Routine[], custom: Exercise[]): Session[] {
+  const until = addDays(linked.date, 6)
+  const all = sessions.map((x) => (x.id === linked.id ? linked : x)).sort((a, b) => a.startedAt - b.startedAt)
+  const changed: Session[] = []
+  for (let i = 0; i < all.length; i++) {
+    const x = all[i]
+    if (x.imported || x.id === linked.id || x.date < linked.date || x.date > until || x.startedAt <= linked.startedAt) continue
+    // Rattrapages vers l'ancien jour de cette séance : à refaire.
+    const stale = (e: SessionExercise) => !!oldDay && oldDay !== linked.coachDay && !!e.pour && e.pour.coachDay === oldDay && e.pour.date === linked.date
+    const cleared: Session = x.exercises.some(stale) ? { ...x, exercises: x.exercises.map((e) => (stale(e) ? { ...e, pour: undefined } : e)) } : x
+    const next = freezeCoachMapping(freezeMakeUps(cleared, all.filter((y) => y.id !== x.id), routines, custom), routines, custom)
+    if (JSON.stringify(next.exercises) !== JSON.stringify(x.exercises)) {
+      all[i] = next
+      changed.push(next)
+    }
+  }
+  return changed
 }
 
 /** « jeu. 26 » */

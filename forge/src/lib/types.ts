@@ -117,8 +117,13 @@ export interface Routine {
   items: RoutineItem[]
   createdAt: number
   updatedAt: number
-  /** Jour correspondant dans l'onglet Entraînement du coach (ex : "LUNDI"). */
+  /** Jour correspondant dans l'onglet Entraînement du coach (ex : "LUNDI") : séance du programme du coach. */
   coachDay?: string
+  /**
+   * Séance à toi comptée pour ce jour du programme du coach (ex : "LUNDI") : chez le coach, ses
+   * exercices remplissent les lignes de ce jour-là (le même exercice, sinon un du même muscle).
+   */
+  countsFor?: string
 }
 
 export type SetType = 'normal' | 'echauffement' | 'degressive' | 'echec'
@@ -162,6 +167,11 @@ export interface SessionExercise {
   rir?: string
   /** Rattrapage choisi (null : compté dans cette séance ; absent : choix automatique). */
   pour?: CountFor | null
+  /**
+   * Séance à toi comptée pour un jour du programme : exercice du coach choisi à la main pour celui-ci
+   * (null : hors programme ; absent : choix automatique).
+   */
+  coachTarget?: string | null
 }
 
 export interface Session {

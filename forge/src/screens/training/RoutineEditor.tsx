@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Sheet, Field, Stepper, confirmDialog, menuDialog } from '../../components/ui.tsx'
+import { Sheet, Field, Segmented, Stepper, confirmDialog, menuDialog } from '../../components/ui.tsx'
+import { shortCoachDay } from '../../lib/coachMap.ts'
 import { Icon } from '../../components/Icon.tsx'
 import { ExercisePicker } from './ExercisePicker.tsx'
 import { findExercise, MUSCLE_LABEL } from '../../data/exercises.ts'
@@ -10,6 +11,7 @@ import { fmtTimer } from '../../lib/format.ts'
 import type { Routine, RoutineItem } from '../../lib/types.ts'
 
 const REST_OPTIONS = [45, 60, 75, 90, 120, 150, 180, 240]
+const WEEK = ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI', 'DIMANCHE']
 
 export function RoutineEditor({ routineId }: { routineId?: string }) {
   const existing = useStore((s) => s.routines.find((r) => r.id === routineId))
@@ -18,6 +20,9 @@ export function RoutineEditor({ routineId }: { routineId?: string }) {
   const save = useStore((s) => s.saveRoutine)
   const del = useStore((s) => s.deleteRoutine)
   const duplicate = useStore((s) => s.duplicateRoutine)
+  // Séances du programme du coach, du lundi au dimanche : une séance à toi peut compter pour l'une d'elles.
+  const routines = useStore((s) => s.routines)
+  const coachRoutines = routines.filter((r) => r.coachDay).sort((a, b) => WEEK.indexOf(a.coachDay as string) - WEEK.indexOf(b.coachDay as string))
   const [draft, setDraft] = useState<Routine>(
     () =>
       existing ?? {
@@ -120,6 +125,26 @@ export function RoutineEditor({ routineId }: { routineId?: string }) {
         <Field label="Nom de la séance">
           <input className="input" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="ex : Push, Haut du corps, Jambes A…" />
         </Field>
+
+        {draft.coachDay ? (
+          <div className="faint small">Séance du programme de ton coach ({draft.coachDay.toLowerCase()}).</div>
+        ) : (
+          coachRoutines.length > 0 && (
+            <div className="field">
+              <span>Chez le coach, compte pour</span>
+              <Segmented
+                value={draft.countsFor ?? 'none'}
+                onChange={(v) => setDraft({ ...draft, countsFor: v === 'none' ? undefined : v })}
+                options={[{ value: 'none', label: 'Aucun' }, ...coachRoutines.map((r) => ({ value: r.coachDay as string, label: shortCoachDay(r.coachDay as string) }))]}
+              />
+              <small className="faint">
+                {draft.countsFor
+                  ? `Ses exercices remplissent les lignes du ${draft.countsFor.toLowerCase()} (${coachRoutines.find((r) => r.coachDay === draft.countsFor)?.name ?? ''}) : le même exercice, sinon le plus proche du même muscle. Tu peux changer pendant la séance.`
+                  : 'Ses exercices iront dans la note du jour de ton coach, sans ligne à eux.'}
+              </small>
+            </div>
+          )
+        )}
 
         {draft.items.length === 0 && (
           <div className="callout">Ajoute les exercices du programme de ton coach. Tu pourras régler séries, répétitions visées et temps de repos.</div>

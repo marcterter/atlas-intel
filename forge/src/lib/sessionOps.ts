@@ -38,7 +38,8 @@ export function sessionFromRoutine(routine: Routine | null, name: string, now = 
     date: todayISO(),
     startedAt: now,
     endedAt: null,
-    coachDay: routine?.coachDay ?? null,
+    // Séance du coach, ou séance à toi comptée pour un jour de son programme.
+    coachDay: routine?.coachDay ?? routine?.countsFor ?? null,
     exercises: (routine?.items ?? []).map((it) =>
       newExercise(it.exerciseId, it.sets, it.restSec, { repsTarget: it.reps, superset: it.superset, note: '', rir: it.rir }),
     ),
