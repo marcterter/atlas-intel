@@ -1,4 +1,5 @@
-import { Sheet, confirmDialog, menuDialog, promptText } from '../../components/ui.tsx'
+import { Sheet, confirmDialog, menuDialog, promptNumber, promptText } from '../../components/ui.tsx'
+import { lastSetAt, suggestedEnd } from '../../lib/sessionOps.ts'
 import { countForLabel } from '../../lib/makeup.ts'
 import { Icon } from '../../components/Icon.tsx'
 import { ExerciseProgress } from '../progress/ExerciseProgress.tsx'
@@ -6,7 +7,7 @@ import { findExercise, MUSCLE_LABEL } from '../../data/exercises.ts'
 import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
 import { exerciseVolume, sessionDurationMs, sessionTonnage, sessionWorkSets, setLabel } from '../../lib/training.ts'
-import { fmtDuration, fmtTonnage } from '../../lib/format.ts'
+import { fmtClock, fmtDuration, fmtTonnage } from '../../lib/format.ts'
 import { cap, formatLong } from '../../lib/date.ts'
 
 export function SessionDetail({ sessionId }: { sessionId: string }) {
@@ -23,12 +24,25 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
     )
   }
 
+  const late = session.endedAt != null ? suggestedEnd(session, session.endedAt) : null
+
   const more = async () => {
     const c = await menuDialog(null, [
       { id: 'rename', label: 'Renommer', icon: 'pencil' },
       { id: 'note', label: 'Note de séance', icon: 'note' },
+      { id: 'duration', label: 'Corriger la durée', icon: 'clock' },
       { id: 'delete', label: 'Supprimer la séance', icon: 'trash', danger: true },
     ])
+    if (c === 'duration') {
+      const min = await promptNumber({
+        title: 'Durée de la séance',
+        hint: 'En minutes, si tu as oublié de la terminer. Elle repart vers le sheet du coach.',
+        initial: Math.round(sessionDurationMs(session) / 60000),
+        suffix: 'min',
+        decimal: false,
+      })
+      if (min != null && min > 0) updateSession(session.id, (s) => ({ ...s, endedAt: s.startedAt + Math.round(min) * 60000 }))
+    }
     if (c === 'rename') {
       const name = await promptText({ title: 'Nom', initial: session.name })
       if (name?.trim()) updateSession(session.id, (s) => ({ ...s, name: name.trim() }))
@@ -56,6 +70,17 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
         <div className="muted">
           {cap(formatLong(session.date))}
         </div>
+        {late != null && (
+          // Séance terminée longtemps après la dernière série : un geste pour remettre la bonne durée.
+          <div className="callout small row-between" style={{ gap: 10, flexWrap: 'wrap' }}>
+            <span>
+              Dernière série à {fmtClock(lastSetAt(session) ?? late)} : séance oubliée ?
+            </span>
+            <button className="link-btn" onClick={() => updateSession(session.id, (s) => ({ ...s, endedAt: late }))}>
+              Durée : {fmtDuration(late - session.startedAt)}
+            </button>
+          </div>
+        )}
         <div className="grid-3">
           <div className="stat">
             <div className="k">Durée</div>

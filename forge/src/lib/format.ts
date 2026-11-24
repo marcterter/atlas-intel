@@ -44,6 +44,12 @@ export function fmtDuration(ms: number): string {
   return `${h} h ${String(m).padStart(2, '0')}`
 }
 
+/** Heure d'un instant : « 14 h 05 ». */
+export function fmtClock(ts: number): string {
+  const d = new Date(ts)
+  return `${d.getHours()} h ${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 /** 90 -> "1:30" */
 export function fmtTimer(totalSec: number): string {
   const s = Math.max(0, Math.round(totalSec))

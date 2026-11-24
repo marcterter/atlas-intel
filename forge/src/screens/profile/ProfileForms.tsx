@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Sheet, Field, NumInput, Segmented, Stepper, Toggle } from '../../components/ui.tsx'
+import { Icon } from '../../components/Icon.tsx'
 import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
 import { GOALS, editMacro, fiberReference, kcalFromMacros } from '../../lib/nutrition.ts'
@@ -15,12 +16,15 @@ export function ProfileFields({
   onChange,
   appSteps,
   withProject = false,
+  withGoal = true,
 }: {
   value: Profile
   onChange: (p: Profile) => void
   appSteps?: number | null
   /** Champ « Mon projet » pour l'agent du lundi (pas pendant la première ouverture). */
   withProject?: boolean
+  /** Choix de la phase (sèche, maintien, prise de masse) : à la première ouverture seulement. */
+  withGoal?: boolean
 }) {
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => onChange({ ...value, [k]: v })
   return (
@@ -39,6 +43,7 @@ export function ProfileFields({
           <NumInput value={value.heightCm} decimal={false} suffix="cm" onChange={(v) => v && set('heightCm', Math.round(v))} />
         </Field>
       </div>
+      {withGoal && (
       <Field label="Objectif">
         <div className="stack" style={{ gap: 8 }}>
           {(Object.keys(GOALS) as Goal[]).map((g) => (
@@ -51,6 +56,7 @@ export function ProfileFields({
           ))}
         </div>
       </Field>
+      )}
       {withProject && (
         <Field label="Mon projet" hint="Lu chaque lundi par l’agent IA : ta prochaine phase, une échéance, ce que tu veux changer.">
           <textarea
@@ -100,7 +106,18 @@ export function ProfileEditor() {
         </button>
       }
     >
-      <ProfileFields value={draft} onChange={setDraft} appSteps={level.stepsFrom === 'app' ? level.steps : null} withProject />
+      <div className="stack">
+        <button className="card tight row-between pressable" style={{ textAlign: 'left' }} onClick={() => ui.push(<TargetsEditor />)}>
+          <span>
+            <span className="bold">Phase : {GOALS[profile.goal].label}</span>
+            <span className="faint small" style={{ display: 'block' }}>
+              Se règle avec tes macros dans Objectifs du jour
+            </span>
+          </span>
+          <Icon name="chevron-right" size={18} />
+        </button>
+        <ProfileFields value={draft} onChange={setDraft} appSteps={level.stepsFrom === 'app' ? level.steps : null} withProject withGoal={false} />
+      </div>
     </Sheet>
   )
 }
@@ -275,6 +292,13 @@ function ReviewHistory() {
   )
 }
 
+/** Ce que la phase change : le jugement du poids au bilan du lundi (app et agent IA). */
+const PHASE_HINT: Record<Goal, string> = {
+  seche: 'Chaque lundi, ton poids doit baisser de 0,4 à 1 % par semaine.',
+  maintien: 'Chaque lundi, ton poids doit rester stable (±0,35 % par semaine).',
+  prise: 'Chaque lundi, ton poids doit monter de 0,2 à 0,5 % par semaine.',
+}
+
 /** `withOff` : ouvert depuis l'interrupteur ON / OFF, avec un Jour OFF proposé s'il n'existe pas encore. */
 export function TargetsEditor({ withOff = false }: { withOff?: boolean }) {
   const targets = useStore((s) => s.targets)
@@ -307,7 +331,12 @@ export function TargetsEditor({ withOff = false }: { withOff?: boolean }) {
       }
     >
       <div className="stack">
-        <div className="callout">Ton coach te donne tes macros ? Saisis-les telles quelles. Sinon, pars du calculateur.</div>
+        <div className="card tight stack" style={{ gap: 8 }}>
+          <div className="bold">Phase</div>
+          <Segmented value={goal} onChange={setGoal} options={(Object.keys(GOALS) as Goal[]).map((g) => ({ value: g, label: GOALS[g].label }))} />
+          <div className="faint small">{PHASE_HINT[goal]}</div>
+        </div>
+        <div className="callout">Tes macros : celles de ton coach telles quelles, ou celles du calculateur (« Utiliser » règle aussi la phase).</div>
         <div className="row-between card tight">
           <div>
             <div className="bold">Jour ON / Jour OFF</div>

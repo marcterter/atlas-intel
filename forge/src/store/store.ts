@@ -122,7 +122,8 @@ export interface Actions {
 
   startSession: (routineId: string | null, name?: string) => void
   updateActive: (fn: (s: Session) => Session | null) => boolean
-  finishSession: () => string | null
+  /** `endedAt` : fin à une autre heure que maintenant (séance oubliée). */
+  finishSession: (endedAt?: number) => string | null
   discardSession: () => void
   startRest: (sec: number, exerciseUid: string | null) => void
   adjustRest: (deltaSec: number) => void
@@ -243,7 +244,7 @@ export const useStore = create<State>()((set, get) => ({
     set({ active: next })
     return true
   },
-  finishSession: () => {
+  finishSession: (endedAt) => {
     const s = get()
     if (!s.active) return null
     if (!sessionHasWork(s.active)) {
@@ -251,7 +252,7 @@ export const useStore = create<State>()((set, get) => ({
       return null
     }
     // Rattrapages (bras de l'Upper faits un autre jour…) figés avec la séance.
-    const done = freezeMakeUps(finalizeSession(s.active), s.sessions, s.routines, s.customExercises)
+    const done = freezeMakeUps(finalizeSession(s.active, endedAt ?? Date.now()), s.sessions, s.routines, s.customExercises)
     const dayType = { ...s.dayType }
     if (dayType[done.date] === false) delete dayType[done.date]
     set({

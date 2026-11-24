@@ -54,9 +54,13 @@ test('bilan du lundi : poids en hausse mais apports au-dessus des objectifs → 
   assert.match(r.detail, /2.800 kcal par jour en moyenne pour 2.430 visées \(\+15 %\)/)
 })
 
-test('bilan du lundi : prise de masse qui stagne → +150 kcal ; pas assez de pesées → on le dit', () => {
+test('bilan du lundi : prise de masse qui recule → +200 kcal ; pas assez de pesées → on le dit', () => {
+  // −0,2 kg alors qu'une prise propre vise +0,2 à +0,5 % par semaine (0,15 à 0,36 kg à 72 kg).
   const r = review('prise', [...flat(72.5, [-14, -12, -10]), ...flat(72.3, [-7, -5, -3])])
-  assert.deepEqual([r.kind, r.deltaKcal], ['ajuste', 150])
+  assert.deepEqual([r.kind, r.deltaKcal], ['ajuste', 200])
+  assert.match(r.detail, /prendre 0,1 à 0,4 kg par semaine/)
+  // Une prise trop lente (+0,05 kg) n'est plus « dans la cible ».
+  assert.equal(review('prise', [...flat(72.5, [-14, -12, -10]), ...flat(72.55, [-7, -5, -3])]).kind, 'ajuste')
   const m = review('seche', [...flat(72.5, [-14, -12, -10]), ...flat(72.3, [-7, -5])])
   assert.equal(m.kind, 'manque')
   assert.match(m.detail, /semaine dernière : 2, celle d’avant : 3/)

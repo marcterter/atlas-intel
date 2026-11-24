@@ -16,11 +16,13 @@ import {
   doNow,
   doNowIndex,
   insertSet,
+  lastSetAt,
   nearestFilled,
   removeExercise,
   removeSet,
   replaceExercise,
   shouldRestAfter,
+  suggestedEnd,
   toggleSetDone,
   toggleSupersetWithNext,
   updateExercise,
@@ -30,7 +32,7 @@ import { lastNoteFor, previousSets, sessionTonnage, sessionWorkSets, setLabel } 
 import { adviseExercise, type Trend } from '../../lib/progression.ts'
 import { exerciseAdviceFor } from '../../lib/agent.ts'
 import { assignMakeUps, countForLabel, makeUpOptions } from '../../lib/makeup.ts'
-import { fmtDuration, fmtKg, fmtTimer, fmtTonnage, parseNum } from '../../lib/format.ts'
+import { fmtClock, fmtDuration, fmtKg, fmtTimer, fmtTonnage, parseNum } from '../../lib/format.ts'
 import { keepScreenOn, haptic, unlockAudio } from '../../lib/device.ts'
 import { relativeDay, todayISO } from '../../lib/date.ts'
 import { syncNow } from '../../lib/sync.ts'
@@ -81,13 +83,23 @@ export function ActiveSession() {
       return
     }
     const pending = active.exercises.reduce((n, e) => n + e.sets.filter((x) => !x.done).length, 0)
-    const ok = await confirmDialog({
-      title: 'Terminer la séance ?',
-      message: pending ? `${pending} série${pending > 1 ? 's' : ''} non validée${pending > 1 ? 's' : ''} ne ser${pending > 1 ? 'ont' : 'a'} pas enregistrée${pending > 1 ? 's' : ''}.` : 'Bravo, tout est validé.',
-      confirm: 'Terminer',
-    })
-    if (!ok) return
-    const id = finishSession()
+    const pendingText = pending ? `${pending} série${pending > 1 ? 's' : ''} non validée${pending > 1 ? 's' : ''} ne ser${pending > 1 ? 'ont' : 'a'} pas enregistrée${pending > 1 ? 's' : ''}.` : ''
+    // Séance oubliée : on propose de la terminer juste après la dernière série (durée juste chez le coach).
+    const late = suggestedEnd(active)
+    let endedAt: number | undefined
+    if (late) {
+      const last = lastSetAt(active) ?? late
+      const c = await menuDialog(`Ta dernière série date de ${fmtClock(last)}.${pendingText ? ` ${pendingText}` : ''}`, [
+        { id: 'late', label: `Terminer à ${fmtClock(late)} · ${fmtDuration(late - active.startedAt)}`, icon: 'clock' },
+        { id: 'now', label: `Terminer maintenant · ${fmtDuration(Date.now() - active.startedAt)}`, icon: 'check' },
+      ])
+      if (!c) return
+      if (c === 'late') endedAt = late
+    } else {
+      const ok = await confirmDialog({ title: 'Terminer la séance ?', message: pendingText || 'Bravo, tout est validé.', confirm: 'Terminer' })
+      if (!ok) return
+    }
+    const id = finishSession(endedAt)
     if (id) {
       useUI.getState().replaceTop(<SessionRecap sessionId={id} />, `recap-${id}`)
       void syncNow()

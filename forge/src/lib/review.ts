@@ -8,7 +8,8 @@ import type { FoodEntry, Goal, ISODate, MacroTargets, Targets, WeighIn } from '.
 export const RATES: Record<Goal, { min: number; max: number }> = {
   seche: { min: -1, max: -0.4 },
   maintien: { min: -0.35, max: 0.35 },
-  prise: { min: 0.05, max: 0.5 },
+  // Prise de masse propre : au moins +0,2 % par semaine (sinon elle n'avance pas), au plus +0,5 % (sinon trop de gras).
+  prise: { min: 0.2, max: 0.5 },
 }
 
 /** Pesées minimum par semaine pour comparer deux moyennes. */
@@ -60,7 +61,7 @@ export function shiftTargets(t: Targets, deltaKcal: number, weightKg: number): T
 function rangeText(goal: Goal, minKg: number, maxKg: number): string {
   const k = (x: number) => fmt(Math.abs(x), 1)
   if (goal === 'seche') return `En sèche, la cible est de perdre ${k(maxKg)} à ${k(minKg)} kg par semaine.`
-  if (goal === 'prise') return `En prise de masse, la cible est de prendre jusqu’à ${k(maxKg)} kg par semaine.`
+  if (goal === 'prise') return `En prise de masse, la cible est de prendre ${k(minKg)} à ${k(maxKg)} kg par semaine.`
   return `En maintien, la cible est de rester à ±${k(maxKg)} kg.`
 }
 

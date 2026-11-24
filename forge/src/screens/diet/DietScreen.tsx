@@ -9,9 +9,9 @@ import { FoodDetail } from './FoodDetail.tsx'
 import { MacroBars, MacroDots, MacroSummary } from './components.tsx'
 import { RecipeEditor } from './Recipes.tsx'
 import { useStore } from '../../store/store.ts'
-import { dayTargets, getFood } from '../../store/selectors.ts'
+import { dayTargets, getFood, isTrainingDay } from '../../store/selectors.ts'
 import { ui, useUI } from '../../store/ui.ts'
-import { MEALS, dayTotals, kcalFromMacros, macrosLookIncomplete, mealForNow, sumNutrients } from '../../lib/nutrition.ts'
+import { MEALS, dayTotals, editMacro, kcalFromMacros, macrosLookIncomplete, mealForNow, sumNutrients } from '../../lib/nutrition.ts'
 import { addDays, cap, relativeDay, formatLong, todayISO } from '../../lib/date.ts'
 import { fmt } from '../../lib/format.ts'
 import { uid } from '../../lib/id.ts'
@@ -33,6 +33,19 @@ export function DietScreen() {
   const restoreEntries = useStore((s) => s.restoreEntries)
   const hapticsOn = useStore((s) => s.settings.haptics)
   const t = useStore((s) => dayTargets(s, date))
+  const onDay = useStore((s) => isTrainingDay(s, date))
+  // Objectif du jour dont les kcal et les macros ne collent pas (saisi avant que les deux soient liés).
+  const targetGap = t.kcal - kcalFromMacros(t)
+  const targetName = targets.rest ? (onDay ? 'Jour ON' : 'Jour OFF') : 'Ton objectif'
+  const fixTargets = (mode: 'kcal' | 'macros') => {
+    const s = useStore.getState()
+    const key = s.targets.rest && !isTrainingDay(s, date) ? 'rest' : 'base'
+    const cur = s.targets[key]
+    if (!cur) return
+    const next = mode === 'kcal' ? editMacro(cur, 'kcal', cur.kcal) : { ...cur, kcal: kcalFromMacros(cur) }
+    s.setTargets({ ...s.targets, [key]: next })
+    ui.toast(`${targetName} : ${fmt(next.kcal)} kcal · P ${next.protein} · G ${next.carbs} · L ${next.fat}`, 'ok')
+  }
   const dayLabel = useDayLabel(date)
   const dayEntries = useMemo(() => entries.filter((e) => e.date === date).sort((a, b) => a.createdAt - b.createdAt), [entries, date])
   const totals = useMemo(() => dayTotals(entries, date), [entries, date])
@@ -118,6 +131,23 @@ export function DietScreen() {
             <div className="faint tiny" style={{ marginTop: 12 }}>
               Étiquettes {fmt(totals.kcal)} kcal · tes macros en font {fmt(kcalFromMacros(totals))} (+ fibres ≈ {fmt((totals.fiber ?? 0) * 2)} kcal)
               {dayEntries.some((e) => macrosLookIncomplete(e.n)) ? ', le reste vient d’aliments aux valeurs incomplètes (⚠)' : ''}. Vise surtout tes macros.
+            </div>
+          )}
+          {Math.abs(targetGap) > 30 && (
+            <div className="callout small targets-gap" style={{ marginTop: 12 }}>
+              <div>
+                {targetName} : objectif {fmt(t.kcal)} kcal, mais tes macros en font {fmt(kcalFromMacros(t))}. Choisis :
+              </div>
+              <div className="row" style={{ gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
+                {t.kcal - t.protein * 4 - t.fat * 9 >= 0 && (
+                  <button className="link-btn" onClick={() => fixTargets('kcal')}>
+                    {fmt(t.kcal)} kcal (glucides {editMacro(t, 'kcal', t.kcal).carbs} g)
+                  </button>
+                )}
+                <button className="link-btn" onClick={() => fixTargets('macros')}>
+                  {fmt(kcalFromMacros(t))} kcal (macros gardées)
+                </button>
+              </div>
             </div>
           )}
           <div className="row-between" style={{ marginTop: 14, gap: 10 }}>

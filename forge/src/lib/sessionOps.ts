@@ -327,6 +327,25 @@ export function finalizeSession(s: Session, now = Date.now()): Session {
   return { ...s, endedAt: now, exercises }
 }
 
+/** Heure de la dernière série validée (null si aucune n'a d'heure). */
+export function lastSetAt(s: Session): number | null {
+  let last: number | null = null
+  for (const e of s.exercises) for (const x of e.sets) if (x.done && x.doneAt && (last == null || x.doneAt > last)) last = x.doneAt
+  return last
+}
+
+/** Au-delà de 45 min sans série, la séance a sans doute été oubliée. */
+export const FORGOTTEN_MS = 45 * 60_000
+
+/**
+ * Séance oubliée (terminée bien après la dernière série) : fin proposée 5 min après cette série.
+ * `end` : l'heure de fin prévue (maintenant pendant la séance, ou celle enregistrée après coup).
+ */
+export function suggestedEnd(s: Session, end = Date.now()): number | null {
+  const last = lastSetAt(s)
+  return last != null && end - last > FORGOTTEN_MS ? last + 5 * 60_000 : null
+}
+
 export function sessionHasWork(s: Session): boolean {
   return s.exercises.some((e) => e.sets.some((x) => x.done))
 }
