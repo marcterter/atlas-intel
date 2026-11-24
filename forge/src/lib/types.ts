@@ -133,6 +133,21 @@ export interface SetEntry {
   doneAt?: number
 }
 
+/**
+ * Rattrapage : exercice compté pour une autre séance du programme (les bras de l'Upper faits avant
+ * les jambes). Le script l'écrit sur la ligne de cette séance chez le coach.
+ */
+export interface CountFor {
+  /** Jour du coach (« JEUDI ») et date de la séance rattrapée. */
+  coachDay: string
+  date: ISODate
+  /** Nom de cette séance (« Upper B »). */
+  session: string
+  /** Exercice du programme sur la ligne duquel écrire : le même, ou celui qu'il remplace. */
+  target: string
+  targetId: string
+}
+
 export interface SessionExercise {
   uid: string
   exerciseId: string
@@ -143,6 +158,8 @@ export interface SessionExercise {
   note?: string
   replacedFrom?: string
   rir?: string
+  /** Rattrapage choisi (null : compté dans cette séance ; absent : choix automatique). */
+  pour?: CountFor | null
 }
 
 export interface Session {

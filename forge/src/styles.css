@@ -767,6 +767,36 @@ textarea.input {
   color: var(--text);
 }
 
+.makeup-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  color: var(--text-2);
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+}
+
+.makeup-chip svg {
+  flex-shrink: 0;
+  color: #60a5fa;
+}
+
+.makeup-chip b {
+  color: var(--text);
+}
+
+.makeup-chip.off {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+
 .ai-tip {
   display: flex;
   gap: 8px;
@@ -1420,6 +1450,78 @@ textarea.input {
   border-radius: var(--radius);
   padding: 14px 12px 10px;
   position: relative;
+}
+
+.ex-card.flash {
+  animation: ex-flash 1.3s ease;
+}
+
+@keyframes ex-flash {
+  0%,
+  45% {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+}
+
+.reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reorder .bold {
+  font-size: 15px;
+}
+
+.reorder-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 2px 5px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.reorder-row.shifting {
+  transition: transform 0.18s ease;
+}
+
+.reorder-row.dragging {
+  z-index: 2;
+  border-color: var(--accent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+}
+
+.reorder-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.reorder-num.done {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.reorder-handle {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  touch-action: none;
+  cursor: grab;
 }
 
 .ex-card.superset {

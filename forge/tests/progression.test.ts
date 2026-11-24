@@ -190,3 +190,23 @@ test('chrono de repos : la série qui vient, superset compris, avec la charge vi
   s = { ...s }
   assert.equal(nextSetHint(s, 'press', history, custom), null)
 })
+
+test('faire maintenant : l’exercice remonte après le dernier commencé, superset compris', async () => {
+  const { doNow, doNowIndex, exerciseGroups, setExerciseOrder } = await import('../src/lib/sessionOps.ts')
+  const mk = (uid: string, done: boolean, superset: string | null = null): SessionExercise => ({ ...today('x-dc', '10', 2), uid, superset, sets: [set(50, 10, { done }), set(50, 10, { done: false })] })
+  const s: Session = {
+    id: 'cur', routineId: null, name: 'Upper A', date: '2026-11-23', startedAt: NOW, endedAt: null, coachDay: 'LUNDI',
+    exercises: [mk('a', true), mk('b', true, 's1'), mk('c', false, 's1'), mk('d', false), mk('e', false), mk('f', false)],
+  }
+  const order = (x: Session) => x.exercises.map((e) => e.uid).join('')
+  // « e » se fait maintenant : juste après le superset b+c (commencé), avant « d ».
+  assert.equal(order(doNow(s, 'e')), 'abcedf')
+  // Déjà à sa place : rien à faire.
+  assert.equal(doNowIndex(s, 'd'), null)
+  // Un superset bouge d'un bloc ; rien de commencé ailleurs → en tête.
+  const fresh: Session = { ...s, exercises: s.exercises.map((e) => ({ ...e, sets: e.sets.map((x) => ({ ...x, done: false })) })) }
+  assert.equal(order(doNow(fresh, 'c')), 'bcadef')
+  // Glisser-déposer : nouvel ordre, et les groupes pour l'écran de tri.
+  assert.equal(order(setExerciseOrder(s, ['f', 'a', 'b', 'c'])), 'fabcde')
+  assert.deepEqual(exerciseGroups(s.exercises).map((g) => g.map((e) => e.uid).join('')), ['a', 'bc', 'd', 'e', 'f'])
+})

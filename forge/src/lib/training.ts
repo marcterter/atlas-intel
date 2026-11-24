@@ -95,12 +95,12 @@ export function exerciseHistory(sessions: Session[], exerciseId: string, custom:
  * semaine après semaine), puis à la dernière fois toutes séances confondues.
  */
 export function previousSets(sessions: Session[], exerciseId: string, before = Infinity, coachDay?: string | null): SetEntry[] {
-  const pick = (keep: (s: Session) => boolean): SetEntry[] => {
+  const pick = (keep: (s: Session, ex: SessionExercise) => boolean): SetEntry[] => {
     let best: { at: number; sets: SetEntry[] } | null = null
     for (const s of sessions) {
-      if (s.startedAt >= before || !keep(s)) continue
+      if (s.startedAt >= before) continue
       for (const ex of s.exercises) {
-        if (ex.exerciseId !== exerciseId) continue
+        if (ex.exerciseId !== exerciseId || !keep(s, ex)) continue
         const done = ex.sets.filter((x) => x.done)
         if (!done.length) continue
         if (!best || s.startedAt > best.at) best = { at: s.startedAt, sets: done }
@@ -109,7 +109,7 @@ export function previousSets(sessions: Session[], exerciseId: string, before = I
     return best?.sets ?? []
   }
   if (coachDay) {
-    const same = pick((s) => s.coachDay === coachDay)
+    const same = pick((s, ex) => (ex.pour?.coachDay ?? s.coachDay) === coachDay)
     if (same.length) return same
   }
   return pick(() => true)

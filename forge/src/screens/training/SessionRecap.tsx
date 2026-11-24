@@ -16,6 +16,8 @@ import {
 } from '../../lib/training.ts'
 import { fmt, fmtDuration, fmtKg, fmtSigned, fmtTonnage } from '../../lib/format.ts'
 import { isConfigured } from '../../lib/sync.ts'
+import { countForLabel } from '../../lib/makeup.ts'
+import type { CountFor } from '../../lib/types.ts'
 
 export function SessionRecap({ sessionId }: { sessionId: string }) {
   const sessions = useStore((s) => s.sessions)
@@ -130,6 +132,22 @@ export function SessionRecap({ sessionId }: { sessionId: string }) {
             </div>
           </div>
         </div>
+
+        {session.exercises.some((e) => e.pour) && (
+          <div className="makeup-chip" style={{ marginTop: 0 }}>
+            <Icon name="calendar" size={14} />
+            <span className="grow">
+              {session.exercises
+                .filter((e) => e.pour)
+                .map((e) => {
+                  const name = findExercise(e.exerciseId, custom).name
+                  return `${name} compte pour ${countForLabel(e.pour as CountFor, name)}`
+                })
+                .join(' · ')}
+              {' '}chez ton coach (rattrapage).
+            </span>
+          </div>
+        )}
 
         {records.length > 0 && (
           <>

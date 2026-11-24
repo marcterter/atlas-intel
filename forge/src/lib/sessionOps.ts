@@ -67,6 +67,73 @@ export function replaceExercise(s: Session, exUid: string, exerciseId: string): 
   }))
 }
 
+/** Indices [début, fin] du superset qui contient l'exercice `i` (lui seul s'il n'est pas en superset). */
+export function groupRange(list: SessionExercise[], i: number): [number, number] {
+  let a = i
+  let b = i
+  const sup = list[i]?.superset
+  if (sup != null) {
+    while (a > 0 && list[a - 1].superset === sup) a--
+    while (b < list.length - 1 && list[b + 1].superset === sup) b++
+  }
+  return [a, b]
+}
+
+/** Exercices regroupés par superset, dans l'ordre de la séance. */
+export function exerciseGroups(list: SessionExercise[]): SessionExercise[][] {
+  const out: SessionExercise[][] = []
+  for (let i = 0; i < list.length; ) {
+    const [, b] = groupRange(list, i)
+    out.push(list.slice(i, b + 1))
+    i = b + 1
+  }
+  return out
+}
+
+/** Déplace l'exercice (avec tout son superset) à la position `at` de la liste sans lui. */
+export function moveGroupTo(s: Session, exUid: string, at: number): Session {
+  const list = s.exercises
+  const i = list.findIndex((e) => e.uid === exUid)
+  if (i < 0) return s
+  const [a, b] = groupRange(list, i)
+  const group = list.slice(a, b + 1)
+  const rest = [...list.slice(0, a), ...list.slice(b + 1)]
+  const k = Math.max(0, Math.min(at, rest.length))
+  return { ...s, exercises: [...rest.slice(0, k), ...group, ...rest.slice(k)] }
+}
+
+/**
+ * Où placer un exercice qu'on fait maintenant : juste après le dernier exercice commencé (et son
+ * superset), ou en tête si rien n'est commencé. null s'il y est déjà.
+ */
+export function doNowIndex(s: Session, exUid: string): number | null {
+  const list = s.exercises
+  const i = list.findIndex((e) => e.uid === exUid)
+  if (i < 0) return null
+  const [a, b] = groupRange(list, i)
+  const rest = [...list.slice(0, a), ...list.slice(b + 1)]
+  let last = -1
+  rest.forEach((e, k) => {
+    if (e.sets.some((x) => x.done)) last = k
+  })
+  const at = last < 0 ? 0 : groupRange(rest, last)[1] + 1
+  return at === a ? null : at
+}
+
+/** « Faire maintenant » : l'exercice remonte (ou descend) à l'endroit où on en est de la séance. */
+export function doNow(s: Session, exUid: string): Session {
+  const at = doNowIndex(s, exUid)
+  return at == null ? s : moveGroupTo(s, exUid, at)
+}
+
+/** Nouvel ordre des exercices (glisser-déposer) ; ceux qui manqueraient restent à la fin. */
+export function setExerciseOrder(s: Session, uids: string[]): Session {
+  const byUid = new Map(s.exercises.map((e) => [e.uid, e]))
+  const list = uids.map((u) => byUid.get(u)).filter((e): e is SessionExercise => !!e)
+  for (const e of s.exercises) if (!uids.includes(e.uid)) list.push(e)
+  return { ...s, exercises: list }
+}
+
 export function moveExercise(s: Session, exUid: string, dir: -1 | 1): Session {
   const i = s.exercises.findIndex((e) => e.uid === exUid)
   const j = i + dir
@@ -158,13 +225,7 @@ export function nextSetAfter(s: Session, fromUid: string | null): { ex: SessionE
   const list = s.exercises
   const i = Math.max(0, list.findIndex((e) => e.uid === fromUid))
   if (!list.length) return null
-  let a = i
-  let b = i
-  const sup = list[i].superset
-  if (sup != null) {
-    while (a > 0 && list[a - 1].superset === sup) a--
-    while (b < list.length - 1 && list[b + 1].superset === sup) b++
-  }
+  const [a, b] = groupRange(list, i)
   const group = list.slice(a, b + 1)
   const most = Math.max(...group.map((e) => e.sets.length))
   for (let k = 0; k < most; k++)

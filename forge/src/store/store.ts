@@ -27,6 +27,7 @@ import { todayISO } from '../lib/date.ts'
 import { TEMPLATE_ROUTINES } from '../data/exercises.ts'
 import { mergeSteps } from '../lib/body.ts'
 import { finalizeSession, sessionFromRoutine, sessionHasWork } from '../lib/sessionOps.ts'
+import { freezeMakeUps } from '../lib/makeup.ts'
 import { clearData, loadData, requestPersistence, saveData } from './persist.ts'
 import type { ImportPlan } from '../lib/coach.ts'
 
@@ -248,7 +249,8 @@ export const useStore = create<State>()((set, get) => ({
       set({ active: null, restTimer: null })
       return null
     }
-    const done = finalizeSession(s.active)
+    // Rattrapages (bras de l'Upper faits un autre jour…) figés avec la séance.
+    const done = freezeMakeUps(finalizeSession(s.active), s.sessions, s.routines, s.customExercises)
     const dayType = { ...s.dayType }
     if (dayType[done.date] === false) delete dayType[done.date]
     set({

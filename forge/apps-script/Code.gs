@@ -86,7 +86,7 @@ const COACH_MAPPING = {
 
 // =========================================================
 
-const VERSION = 8;
+const VERSION = 9;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
@@ -252,7 +252,7 @@ function push_(body) {
       return;
     }
     const exRows = (s.exercices || []).map(function (ex, i) {
-      return [s.id, toDate_(s.date), s.nom || '', num_(s.dureeMin), num_(s.tonnage), num_(s.series), ex.nom || '', ex.groupe || '', ex.resume || '', ex.progres || '', ex.note || '', i === 0 ? s.note || '' : ''];
+      return [s.id, toDate_(s.date), s.nom || '', num_(s.dureeMin), num_(s.tonnage), num_(s.series), ex.nom || '', ex.groupe || '', ex.resume || '', ex.progres || '', [ex.pour && ex.pour.jourCoach ? 'Rattrapage ' + (ex.pour.seance || ex.pour.jourCoach) : '', ex.note || ''].filter(Boolean).join(' · '), i === 0 ? s.note || '' : ''];
     });
     replaceRows_(tab_('seances'), 1, s.id, exRows);
     const setRows = [];
@@ -835,9 +835,40 @@ function writeCoachTraining_(sessions) {
   const sh = st.sheet;
   const problems = [];
   const offPlan = [];
+  const madeUp = [];
   const put = function (row, col, value) {
     sh.getRange(row + 1, col + 1).setValue(value);
     out.cells++;
+  };
+  // Une ligne d'exercice du coach : perf, progression (pas pour un exercice remplacé), notes.
+  const write = function (block, band, target, ex, replaced, before) {
+    if (ex.perf) put(target.row, band.cols.perf, ex.perf);
+    // Progression : comparée à la même ligne les semaines passées, donc pas pour un exercice remplacé.
+    let progres = replaced ? '' : ex.progres || '';
+    if (!replaced && !progres && ex.perf && isNewExercise_(st.blocks, block, target.row)) progres = 'Nouvel exo';
+    if (progres && band.cols.progres >= 0) put(target.row, band.cols.progres, progres);
+    const note = [before || '', replaced ? 'Remplacé par ' + ex.nom : '', ex.note || ''].filter(Boolean).join(' · ');
+    if (note) {
+      if (band.cols.notes >= 0) put(target.row, band.cols.notes, note);
+      else if (!ex.perf) put(target.row, band.cols.perf, note);
+    }
+  };
+  /**
+   * Rattrapage (les bras de l'Upper faits avant les jambes) : écrit sur la ligne de la séance rattrapée,
+   * dans la semaine du coach où elle tombe. false si cette ligne est introuvable (traité comme avant).
+   */
+  const makeUp = function (s, ex) {
+    const p = ex.pour;
+    if (!p || !p.jourCoach || !(ex.perf || ex.note)) return false;
+    const place = placeSession_(st, { date: isoOk_(p.date) ? p.date : s.date, jourCoach: p.jourCoach, exercices: [] });
+    const band = place && !place.error ? place.band : null;
+    const target = band ? findInBand_(band, p.exercice || ex.nom) || findInBand_(band, ex.nom) : null;
+    if (!target) return false;
+    const d = iso_(s.date) || String(s.date);
+    const day = d.slice(8, 10) + '/' + d.slice(5, 7);
+    write(place.block, band, target, ex, !sameExercise_(target.nom, ex.nom), 'Rattrapé le ' + day + (s.nom ? ' (' + s.nom + ')' : ''));
+    madeUp.push(ex.nom + ' → ' + (p.seance || p.jourCoach));
+    return true;
   };
   const extra = function (s, ex) {
     if (!ex.perf) return;
@@ -845,18 +876,22 @@ function writeCoachTraining_(sessions) {
     offPlan.push(ex.nom);
   };
   todo.forEach(function (s) {
-    const place = placeSession_(st, s);
+    // Les rattrapages d'abord : ils partent sur la séance rattrapée, le reste suit le jour de la séance.
+    const rest = (s.exercices || []).filter(function (ex) { return !makeUp(s, ex); });
+    if (!rest.some(function (ex) { return ex.perf || ex.note; })) return;
+    const own = Object.assign({}, s, { exercices: rest });
+    const place = placeSession_(st, own);
     if (place.error) {
       problems.push(place.error);
       return;
     }
     if (!place.band) {
       // Séance sans aucun exercice du programme : tout part dans les notes du jour.
-      (s.exercices || []).forEach(function (ex) { extra(s, ex); });
+      rest.forEach(function (ex) { extra(s, ex); });
       return;
     }
     const band = place.band;
-    (s.exercices || []).forEach(function (ex) {
+    rest.forEach(function (ex) {
       if (!ex.perf && !ex.note) return;
       let target = findInBand_(band, ex.nom);
       const replaced = !target && ex.remplace ? findInBand_(band, ex.remplace) : null;
@@ -865,21 +900,15 @@ function writeCoachTraining_(sessions) {
         extra(s, ex);
         return;
       }
-      if (ex.perf) put(target.row, band.cols.perf, ex.perf);
-      // Progression : comparée à la même ligne les semaines passées, donc pas pour un exercice remplacé.
-      let progres = replaced ? '' : ex.progres || '';
-      if (!replaced && !progres && ex.perf && isNewExercise_(st.blocks, place.block, target.row)) progres = 'Nouvel exo';
-      if (progres && band.cols.progres >= 0) put(target.row, band.cols.progres, progres);
-      const note = [replaced ? 'Remplacé par ' + ex.nom : '', ex.note || ''].filter(Boolean).join(' · ');
-      if (note) {
-        if (band.cols.notes >= 0) put(target.row, band.cols.notes, note);
-        else if (!ex.perf) put(target.row, band.cols.perf, note);
-      }
+      write(place.block, band, target, ex, !!replaced, '');
     });
   });
   out.ok = problems.length === 0;
   out.message = problems.join(' · ');
-  if (offPlan.length) out.info = 'hors programme, mis dans les notes du jour : ' + offPlan.join(', ');
+  const info = [];
+  if (madeUp.length) info.push('rattrapé : ' + madeUp.join(', '));
+  if (offPlan.length) info.push('hors programme, mis dans les notes du jour : ' + offPlan.join(', '));
+  out.info = info.join(' · ');
   return out;
 }
 

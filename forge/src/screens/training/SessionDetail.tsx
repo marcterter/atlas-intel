@@ -1,4 +1,5 @@
 import { Sheet, confirmDialog, menuDialog, promptText } from '../../components/ui.tsx'
+import { countForLabel } from '../../lib/makeup.ts'
 import { Icon } from '../../components/Icon.tsx'
 import { ExerciseProgress } from '../progress/ExerciseProgress.tsx'
 import { findExercise, MUSCLE_LABEL } from '../../data/exercises.ts'
@@ -82,6 +83,7 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
                     {MUSCLE_LABEL[exo.muscle]}
                     {vol > 0 ? ` · ${fmtTonnage(vol)}` : ''}
                   </div>
+                  {ex.pour && <div className="small" style={{ color: '#60a5fa', marginTop: 2 }}>Rattrapage · compte pour {countForLabel(ex.pour, exo.name)}</div>}
                 </div>
                 <Icon name="chevron-right" size={18} style={{ color: 'var(--text-3)' }} />
               </div>

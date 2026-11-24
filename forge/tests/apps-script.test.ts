@@ -613,6 +613,51 @@ test('Coach : même séance deux fois dans la semaine → la plus récente gagne
   assert.equal(entr.get(10, blockCol(8) + 3), '57,5kg x 8')
 })
 
+test('Coach : rattrapage → les bras de l’Upper faits avant les jambes vont sur les lignes de l’Upper', () => {
+  const { ss, suivi, entr } = coachSheet()
+  const { post } = load({ coach: ss })
+  const pour = (exercice: string) => ({ jourCoach: 'JEUDI', date: '2026-11-26', exercice, seance: 'Upper B' })
+  // Upper B le jeudi 26 (semaine 8) sans les bras, puis Lower B le vendredi 27 (semaine 9) avec les bras d'abord.
+  const r = post({
+    action: 'push',
+    days: [day('2026-11-27', { notes: '' })],
+    sessions: [
+      { id: 'w-jeudi', date: '2026-11-26', nom: 'Upper B', jourCoach: 'JEUDI', exercices: [{ nom: 'Développé incliné à la smith', perf: '57,5kg x 9', progres: 'OUI' }] },
+      {
+        id: 'w-vendredi',
+        date: '2026-11-27',
+        nom: 'Lower B',
+        jourCoach: 'VENDREDI',
+        exercices: [
+          { nom: 'Curl marteau', perf: '25kg x 8 ; 20kg x 9 ; 20kg x 9', progres: 'OUI', note: '', pour: pour('Curl pupitre unilatéral avec haltères') },
+          { nom: 'Overhead triceps extension cable', perf: '22,5kg x 8', progres: 'OUI', note: 'coude ok', pour: pour('Overhead triceps extension cable') },
+          { nom: 'Adductor machine', perf: '65kg x 8', progres: 'OUI' },
+        ],
+      },
+    ],
+  })
+  assert.equal(r.coach.ok, true, JSON.stringify(r.coach))
+  const c8 = blockCol(8)
+  assert.equal(entr.get(39, c8 + 3), '25kg x 8 ; 20kg x 9 ; 20kg x 9', 'curl marteau sur la ligne du curl pupitre de jeudi')
+  assert.equal(entr.get(39, c8 + 5), '', 'autre exercice : pas de « Progressé »')
+  assert.equal(entr.get(39, c8 + 6), 'Rattrapé le 27/11 (Lower B) · Remplacé par Curl marteau')
+  assert.equal(entr.get(40, c8 + 3), '22,5kg x 8')
+  assert.equal(entr.get(40, c8 + 5), 'OUI', 'même exercice : progression gardée')
+  assert.equal(entr.get(40, c8 + 6), 'Rattrapé le 27/11 (Lower B) · coude ok')
+  assert.equal(entr.get(35, c8 + 3), '57,5kg x 9', 'le reste de l’Upper B intact')
+  assert.equal(entr.get(47, blockCol(9) + 3), '65kg x 8', 'la Lower B à sa place (semaine 9)')
+  assert.equal(entr.get(39, blockCol(9) + 3), '', 'rien sur le jeudi de la semaine 9')
+  assert.ok(!suivi.rows.some((line) => line.some((v) => String(v).includes('Curl marteau'))), 'pas dans les notes du jour')
+  assert.match(r.coach.info, /rattrapé : Curl marteau → Upper B, Overhead triceps extension cable → Upper B/)
+  // Ligne introuvable (exercice inconnu chez le coach) : comme avant, dans les notes du jour.
+  const r2 = post({
+    action: 'push',
+    days: [day('2026-11-27', { notes: '' })],
+    sessions: [{ id: 'w-vendredi', date: '2026-11-27', nom: 'Lower B', jourCoach: 'VENDREDI', exercices: [{ nom: 'Pull-over poulie', perf: '30kg x 12', progres: '', pour: pour('Pull-over poulie') }] }],
+  })
+  assert.match(r2.coach.info, /hors programme.*Pull-over poulie/)
+})
+
 test('Coach : séance libre sans exercice du programme → tout dans la note du jour', () => {
   const { ss, suivi, entr } = coachSheet()
   const { post } = load({ coach: ss })

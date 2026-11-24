@@ -14,7 +14,7 @@ import type { DirtyState, ISODate, Session, StepsDay } from './types.ts'
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 /** Version de apps-script/Code.gs livrée avec cette version de l'app. */
-export const SCRIPT_VERSION = 8
+export const SCRIPT_VERSION = 9
 
 export function scriptOutdated(s: Pick<State, 'sync'>): boolean {
   return s.sync.scriptVersion != null && s.sync.scriptVersion < SCRIPT_VERSION
@@ -113,11 +113,14 @@ export function buildSession(s: State, x: Session) {
         groupe: MUSCLE_LABEL[exo.muscle],
         resume: work.map((st) => setLabel(st, exo.kind)).join(', '),
         perf: formatPerf(ex.sets, exo.kind),
-        progres: progressLabel(ex, exo.kind, s.sessions.filter((y) => y.id !== x.id), x.startedAt, x.coachDay),
+        // Un rattrapage se compare à la même séance (jour du coach) que celle qu'il rattrape.
+        progres: progressLabel(ex, exo.kind, s.sessions.filter((y) => y.id !== x.id), x.startedAt, ex.pour?.coachDay ?? x.coachDay),
         // Exercice prévu par le coach, si celui-ci l'a remplacé (machine prise…) : le script écrit sur sa ligne.
         remplace: ex.replacedFrom ? findExercise(ex.replacedFrom, s.customExercises).name : '',
         rir: ex.rir ?? '',
         note: ex.note ?? '',
+        // Rattrapage : le script écrit cet exercice sur la ligne de la séance rattrapée (script v9).
+        pour: ex.pour ? { jourCoach: ex.pour.coachDay, date: ex.pour.date, exercice: ex.pour.target, seance: ex.pour.session } : null,
         series: work.map((st, i) => ({
           n: i + 1,
           type: st.type,

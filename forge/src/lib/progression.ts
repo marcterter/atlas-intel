@@ -107,7 +107,7 @@ function reference(history: Session[], exerciseId: string, before: number, coach
       if (!done.some(isWork)) continue
       const r = { sets: done, startedAt: s.startedAt }
       if (!any || s.startedAt > any.startedAt) any = r
-      if (coachDay && s.coachDay === coachDay && (!same || s.startedAt > same.startedAt)) same = r
+      if (coachDay && (ex.pour?.coachDay ?? s.coachDay) === coachDay && (!same || s.startedAt > same.startedAt)) same = r
     }
   }
   return { ref: same ?? any, lastAt: any?.startedAt ?? null, weights }

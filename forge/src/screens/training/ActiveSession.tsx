@@ -5,6 +5,7 @@ import { SwipeToDelete } from '../../components/Swipe.tsx'
 import { ExercisePicker } from './ExercisePicker.tsx'
 import { RestTimerBar } from './RestTimer.tsx'
 import { SessionRecap } from './SessionRecap.tsx'
+import { ReorderSheet } from './Reorder.tsx'
 import { ExerciseProgress } from '../progress/ExerciseProgress.tsx'
 import { findExercise, MUSCLE_LABEL } from '../../data/exercises.ts'
 import { useStore } from '../../store/store.ts'
@@ -12,8 +13,9 @@ import { ui, useUI } from '../../store/ui.ts'
 import {
   addExercise,
   addSet,
+  doNow,
+  doNowIndex,
   insertSet,
-  moveExercise,
   nearestFilled,
   removeExercise,
   removeSet,
@@ -27,6 +29,7 @@ import {
 import { lastNoteFor, previousSets, sessionTonnage, sessionWorkSets, setLabel } from '../../lib/training.ts'
 import { adviseExercise, type Trend } from '../../lib/progression.ts'
 import { exerciseAdviceFor } from '../../lib/agent.ts'
+import { assignMakeUps, countForLabel, makeUpOptions } from '../../lib/makeup.ts'
 import { fmtDuration, fmtKg, fmtTimer, fmtTonnage, parseNum } from '../../lib/format.ts'
 import { keepScreenOn, haptic, unlockAudio } from '../../lib/device.ts'
 import { relativeDay, todayISO } from '../../lib/date.ts'
@@ -37,6 +40,7 @@ export function ActiveSession() {
   const active = useStore((s) => s.active)
   const history = useStore((s) => s.sessions)
   const custom = useStore((s) => s.customExercises)
+  const routines = useStore((s) => s.routines)
   const keepAwake = useStore((s) => s.settings.keepAwake)
   const defaultRest = useStore((s) => s.settings.defaultRestSec)
   const updateActive = useStore((s) => s.updateActive)
@@ -53,6 +57,15 @@ export function ActiveSession() {
   useEffect(() => {
     if (!active) useUI.getState().pop()
   }, [active])
+
+  // Rattrapages : un exercice d'une autre séance du programme (les bras de l'Upper faits avant les
+  // jambes) compte pour elle chez le coach. Choix automatique, modifiable sur la carte de l'exercice.
+  const makeUps = useMemo(() => {
+    if (!active) return null
+    const assigned = assignMakeUps(active, history, routines, custom)
+    const kept = new Set(active.exercises.filter((e) => e.pour === null && makeUpOptions(active, e, history, routines, custom).length).map((e) => e.uid))
+    return { assigned, kept }
+  }, [active, history, routines, custom])
 
   if (!active) return null
 
@@ -85,6 +98,7 @@ export function ActiveSession() {
     const c = await menuDialog(null, [
       { id: 'rename', label: 'Renommer la séance', icon: 'pencil' },
       { id: 'note', label: 'Note de séance', icon: 'note' },
+      ...(active.exercises.length > 1 ? [{ id: 'order', label: 'Réorganiser les exercices', icon: 'list' }] : []),
       { id: 'discard', label: 'Abandonner la séance', icon: 'trash', danger: true },
     ])
     if (c === 'rename') {
@@ -95,6 +109,7 @@ export function ActiveSession() {
       const note = await promptText({ title: 'Note de séance', initial: active.note ?? '', multiline: true, placeholder: 'Forme du jour, sommeil, douleurs…' })
       if (note !== undefined) updateActive((s) => ({ ...s, note }))
     }
+    if (c === 'order') ui.push(<ReorderSheet />)
     if (c === 'discard' && (await confirmDialog({ title: 'Abandonner ?', message: 'Les séries de cette séance seront perdues.', confirm: 'Abandonner', danger: true }))) {
       discardSession()
     }
@@ -143,13 +158,18 @@ export function ActiveSession() {
             <ExerciseBlock
               key={ex.uid}
               ex={ex}
-              index={i}
               count={active.exercises.length}
               nextSuperset={active.exercises[i + 1]?.superset ?? null}
               startedAt={active.startedAt}
               coachDay={active.coachDay ?? null}
               history={history}
               custom={custom}
+              countDay={makeUps?.assigned.get(ex.uid)?.coachDay}
+              countLabel={(() => {
+                const cf = makeUps?.assigned.get(ex.uid)
+                return cf ? countForLabel(cf, findExercise(ex.exerciseId, custom).name) : undefined
+              })()}
+              keptHere={!!makeUps?.kept.has(ex.uid)}
             />
           ))}
           <button
@@ -182,32 +202,39 @@ const TYPE_CLASS: Record<SetType, string> = { normal: '', echauffement: 'warm', 
 
 const ExerciseBlock = memo(function ExerciseBlock({
   ex,
-  index,
   count,
   nextSuperset,
   startedAt,
   coachDay,
   history,
   custom,
+  countDay,
+  countLabel,
+  keptHere,
 }: {
   ex: SessionExercise
-  index: number
   count: number
   nextSuperset: string | null
   startedAt: number
   coachDay: string | null
   history: Session[]
   custom: Exercise[]
+  /** Rattrapage : jour du coach et séance pour lesquels l'exercice compte. */
+  countDay?: string
+  countLabel?: string
+  /** Rattrapage possible, mais l'exercice est gardé dans cette séance. */
+  keptHere?: boolean
 }) {
   const updateActive = useStore((s) => s.updateActive)
   const startRest = useStore((s) => s.startRest)
   const autoRest = useStore((s) => s.settings.autoRest)
   const hapticsOn = useStore((s) => s.settings.haptics)
   const exo = findExercise(ex.exerciseId, custom)
-  const prev = useMemo(() => previousSets(history, ex.exerciseId, startedAt, coachDay), [history, ex.exerciseId, startedAt, coachDay])
+  const day = countDay ?? coachDay
+  const prev = useMemo(() => previousSets(history, ex.exerciseId, startedAt, day), [history, ex.exerciseId, startedAt, day])
   const lastNote = useMemo(() => lastNoteFor(history, ex.exerciseId, startedAt), [history, ex.exerciseId, startedAt])
   // Objectif du jour (charge conseillée), recalculé à chaque série validée.
-  const advice = useMemo(() => adviseExercise(ex, history, custom, startedAt, coachDay), [ex, history, custom, startedAt, coachDay])
+  const advice = useMemo(() => adviseExercise(ex, history, custom, startedAt, day), [ex, history, custom, startedAt, day])
   const allDone = ex.sets.length > 0 && ex.sets.every((x) => x.done)
   // Conseil de l'agent IA du lundi pour cet exercice (s'il en a donné un).
   const aiTip = useStore((s) => exerciseAdviceFor(s.conseils, exo.name, todayISO()))
@@ -258,15 +285,37 @@ const ExerciseBlock = memo(function ExerciseBlock({
     else updateActive((s) => updateSet(s, ex.uid, st.id, { type: c as SetType }))
   }
 
+  // Pour quelle séance compte cet exercice (rattrapage) : celle proposée, une autre, ou celle-ci.
+  const makeUpMenu = async () => {
+    const st = useStore.getState()
+    const cur = st.active
+    if (!cur) return
+    const opts = makeUpOptions(cur, ex, st.sessions, st.routines, st.customExercises)
+    const chosen = assignMakeUps(cur, st.sessions, st.routines, st.customExercises).get(ex.uid)
+    const same = (o: { coachDay: string; date: string; targetId: string }) => !!chosen && chosen.coachDay === o.coachDay && chosen.date === o.date && chosen.targetId === o.targetId
+    const c = await menuDialog('Compter cet exercice pour…', [
+      ...opts.map((o, k) => ({ id: `o${k}`, label: `${countForLabel(o, exo.name)}${same(o) ? ' ✓' : ''}`, icon: 'calendar' })),
+      { id: 'here', label: `Cette séance (${cur.name})${chosen ? '' : ' ✓'}`, icon: 'dumbbell' },
+    ])
+    if (c === 'here') updateActive((s) => updateExercise(s, ex.uid, { pour: null }))
+    else if (c?.startsWith('o')) {
+      const { exact: _exact, ...pour } = opts[Number(c.slice(1))]
+      updateActive((s) => updateExercise(s, ex.uid, { pour }))
+    }
+  }
+
   const exMenu = async () => {
+    const cur = useStore.getState().active
+    const canNow = !!cur && doNowIndex(cur, ex.uid) != null
     const c = await menuDialog(exo.name, [
+      // Remonter l'exercice à l'endroit où on en est (machine enfin libre…), superset compris.
+      ...(canNow ? [{ id: 'now', label: 'Faire maintenant', icon: 'arrow-up' }] : []),
       { id: 'replace', label: 'Remplacer (machine prise…)', icon: 'swap' },
       { id: 'superset', label: linkedNext ? 'Retirer le superset' : 'Superset avec le suivant', icon: 'link' },
       { id: 'note', label: 'Ajouter une note', icon: 'note' },
       { id: 'rest', label: `Temps de repos (${fmtTimer(ex.restSec)})`, icon: 'clock' },
       { id: 'history', label: 'Voir la progression', icon: 'trend' },
-      ...(index > 0 ? [{ id: 'up', label: 'Monter', icon: 'arrow-up' }] : []),
-      ...(index < count - 1 ? [{ id: 'down', label: 'Descendre', icon: 'arrow-down' }] : []),
+      ...(count > 1 ? [{ id: 'order', label: 'Réorganiser la séance', icon: 'list' }] : []),
       { id: 'remove', label: "Retirer l'exercice", icon: 'trash', danger: true },
     ])
     if (c === 'replace')
@@ -283,8 +332,17 @@ const ExerciseBlock = memo(function ExerciseBlock({
     if (c === 'superset') updateActive((s) => toggleSupersetWithNext(s, ex.uid))
     if (c === 'note') setShowNote(true)
     if (c === 'history') ui.push(<ExerciseProgress exerciseId={ex.exerciseId} />)
-    if (c === 'up') updateActive((s) => moveExercise(s, ex.uid, -1))
-    if (c === 'down') updateActive((s) => moveExercise(s, ex.uid, 1))
+    if (c === 'now' && updateActive((s) => doNow(s, ex.uid))) {
+      // On suit l'exercice jusqu'à sa nouvelle place.
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`ex-${ex.uid}`)
+        if (!el) return
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        el.classList.add('flash')
+        setTimeout(() => el.classList.remove('flash'), 1300)
+      })
+    }
+    if (c === 'order') ui.push(<ReorderSheet />)
     if (c === 'rest') {
       const r = await menuDialog('Temps de repos', [45, 60, 75, 90, 120, 150, 180, 240, 300].map((v) => ({ id: String(v), label: fmtTimer(v) })))
       if (r) updateActive((s) => updateExercise(s, ex.uid, { restSec: Number(r) }))
@@ -306,7 +364,7 @@ const ExerciseBlock = memo(function ExerciseBlock({
   let normalIdx = 0
 
   return (
-    <div className={`ex-card ${ex.superset ? 'superset' : ''}`}>
+    <div id={`ex-${ex.uid}`} className={`ex-card ${ex.superset ? 'superset' : ''}`}>
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <button className="grow" style={{ textAlign: 'left' }} onClick={() => ui.push(<ExerciseProgress exerciseId={ex.exerciseId} />)}>
           {ex.superset && <div className="superset-tag">SUPERSET</div>}
@@ -322,6 +380,22 @@ const ExerciseBlock = memo(function ExerciseBlock({
           <Icon name="more" />
         </button>
       </div>
+
+      {(countLabel || keptHere) && (
+        <button className={`makeup-chip ${countLabel ? '' : 'off'}`} onClick={makeUpMenu}>
+          <Icon name="calendar" size={14} />
+          <span className="grow">
+            {countLabel ? (
+              <>
+                Rattrapage · compte pour <b>{countLabel}</b>
+              </>
+            ) : (
+              'Compté dans cette séance · rattrapage possible'
+            )}
+          </span>
+          <Icon name="chevron-right" size={14} />
+        </button>
+      )}
 
       {advice && !allDone && (
         <div className={`advice ${advice.trend}`}>
