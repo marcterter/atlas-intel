@@ -17,6 +17,8 @@ export interface Profile {
   stepsPerDay?: number | null
   /** Séances de sport par semaine. */
   sessionsPerWeek?: number | null
+  /** Ton projet en quelques mots (prochaine phase, échéance, coach…) : lu chaque lundi par l'agent IA. */
+  projet?: string
 }
 
 export interface MacroTargets {
@@ -312,6 +314,8 @@ export interface SyncConfig {
   lastError: string | null
   /** Version du script Apps Script installé (renvoyée par le script), pour signaler une mise à jour. */
   scriptVersion?: number | null
+  /** Empreinte du dernier contexte envoyé pour l'agent IA : renvoyé dès qu'il change, même sans autre donnée. */
+  contexteKey?: string | null
 }
 
 export interface AiAdvice {

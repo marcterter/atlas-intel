@@ -124,6 +124,8 @@ export function buildContexte(
   const w = latestWeight(s.weighins)
   return {
     objectif: GOALS[s.profile.goal].label,
+    // Ce que tu vises, en tes mots (Profil → Mon profil → Mon projet).
+    projet: s.profile.projet?.trim() ? clip(s.profile.projet).slice(0, NOTE_MAX) : null,
     sexe: s.profile.sex === 'H' ? 'homme' : 'femme',
     age: ageFrom(s.profile.birthYear, new Date(`${today}T12:00:00`)),
     tailleCm: s.profile.heightCm,

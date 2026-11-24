@@ -10,7 +10,18 @@ import { plannedWeekdays } from '../../store/selectors.ts'
 import { fmt, fmtKg, fmtSigned } from '../../lib/format.ts'
 import type { Goal, MacroTargets, Profile, Targets } from '../../lib/types.ts'
 
-export function ProfileFields({ value, onChange, appSteps }: { value: Profile; onChange: (p: Profile) => void; appSteps?: number | null }) {
+export function ProfileFields({
+  value,
+  onChange,
+  appSteps,
+  withProject = false,
+}: {
+  value: Profile
+  onChange: (p: Profile) => void
+  appSteps?: number | null
+  /** Champ « Mon projet » pour l'agent du lundi (pas pendant la première ouverture). */
+  withProject?: boolean
+}) {
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => onChange({ ...value, [k]: v })
   return (
     <div className="stack">
@@ -40,6 +51,16 @@ export function ProfileFields({ value, onChange, appSteps }: { value: Profile; o
           ))}
         </div>
       </Field>
+      {withProject && (
+        <Field label="Mon projet" hint="Lu chaque lundi par l’agent IA : ta prochaine phase, une échéance, ce que tu veux changer.">
+          <textarea
+            className="input"
+            value={value.projet ?? ''}
+            onChange={(e) => set('projet', e.target.value)}
+            placeholder="Ex : je sors d’une sèche, je suis en maintien ; prochaine étape : prise de masse propre, date à décider."
+          />
+        </Field>
+      )}
       <div className="grid-2">
         <Field label="Pas par jour" hint={appSteps ? `Ta moyenne dans l’app (14 j) : ${fmt(appSteps)}, utilisée d’office` : 'Ta moyenne : app Santé → Pas → onglet M'}>
           <NumInput value={value.stepsPerDay ?? null} decimal={false} placeholder="ex : 12 000" suffix="pas" onChange={(v) => set('stepsPerDay', v ? Math.round(v) : null)} />
@@ -79,7 +100,7 @@ export function ProfileEditor() {
         </button>
       }
     >
-      <ProfileFields value={draft} onChange={setDraft} appSteps={level.stepsFrom === 'app' ? level.steps : null} />
+      <ProfileFields value={draft} onChange={setDraft} appSteps={level.stepsFrom === 'app' ? level.steps : null} withProject />
     </Sheet>
   )
 }

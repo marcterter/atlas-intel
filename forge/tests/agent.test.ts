@@ -97,7 +97,7 @@ test('agent IA : le contexte envoyé au sheet contient tes notes et ton objectif
   const base = { kcal: 2640, protein: 180, carbs: 330, fat: 66 }
   const ctx = buildContexte(
     {
-      profile: { name: 'M', sex: 'H', birthYear: 1990, heightCm: 180, goal: 'maintien', activity: 'modere' } as never,
+      profile: { name: 'M', sex: 'H', birthYear: 1990, heightCm: 180, goal: 'maintien', activity: 'modere', projet: '  Prise de masse   propre, date à décider ' } as never,
       targets: { base, rest: null, steps: 15000, fiber: 35 },
       routines: [],
       customExercises: custom,
@@ -109,6 +109,7 @@ test('agent IA : le contexte envoyé au sheet contient tes notes et ton objectif
     '2026-11-24',
   )
   assert.equal(ctx.objectifs.fibres, 35)
+  assert.equal(ctx.projet, 'Prise de masse propre, date à décider')
   assert.deepEqual(ctx.notes, [{ date: '2026-11-23', ou: 'Séance Upper A', texte: 'RAS' }])
 })
 

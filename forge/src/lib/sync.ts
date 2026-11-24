@@ -295,9 +295,11 @@ async function doSync({ pullOnly }: { pullOnly?: boolean }): Promise<SyncResult>
   const state = useStore.getState()
   const snap: DirtyState = structuredClone(state.dirty)
   const count = Object.keys(snap.days).length + Object.keys(snap.sessions).length + Object.keys(snap.checkins).length
-  if (count === 0) return { ok: true, pushed: 0, pulledSteps, message: 'Tout est à jour' }
+  // Sans autre donnée à envoyer, le contexte de l'agent (notes, objectifs, programme) part quand même s'il a changé.
+  const payload = buildPayload(state, snap)
+  const contexteKey = hashText(JSON.stringify(payload.contexte))
+  if (count === 0 && contexteKey === state.sync.contexteKey) return { ok: true, pushed: 0, pulledSteps, message: 'Tout est à jour' }
   try {
-    const payload = buildPayload(state, snap)
     const r = await post(url, { action: 'push', token, app: 'forge', version: 1, ...payload })
     if (!r.ok) throw new Error(String(r.error ?? 'Erreur'))
     useStore.getState().clearDirty(snap)
@@ -306,7 +308,7 @@ async function doSync({ pullOnly }: { pullOnly?: boolean }): Promise<SyncResult>
     const info = coach?.info ? ` · ${coach.info}` : ''
     // Les scripts d'avant la version 4 ne renvoient pas leur version à l'envoi.
     const scriptVersion = Number(r.version) || 0
-    useStore.getState().setSync({ lastPushAt: Date.now(), lastError: warn ? warn.trim() : null, scriptVersion })
+    useStore.getState().setSync({ lastPushAt: Date.now(), lastError: warn ? warn.trim() : null, scriptVersion, contexteKey })
     const old = scriptVersion < SCRIPT_VERSION ? ' · script à mettre à jour' : ''
     return { ok: true, pushed: count, pulledSteps, message: `Synchronisé${warn}${info}${old}` }
   } catch (e) {
@@ -314,6 +316,13 @@ async function doSync({ pullOnly }: { pullOnly?: boolean }): Promise<SyncResult>
     useStore.getState().setSync({ lastError: message })
     return { ok: false, pushed: 0, pulledSteps, message }
   }
+}
+
+/** Empreinte courte d'un texte (djb2), pour savoir si le contexte a changé depuis le dernier envoi. */
+export function hashText(text: string): string {
+  let h = 5381
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0
+  return `${(h >>> 0).toString(36)}-${text.length}`
 }
 
 export function dirtyCount(s: Pick<State, 'dirty'>): number {
