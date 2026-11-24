@@ -304,6 +304,8 @@ export interface AiAdvice {
   date: string
   /** Texte en Markdown simple (## titres, - puces, **gras**). */
   texte: string
+  /** Conseils par exercice, affichés dans la séance sous l'objectif du jour. */
+  exercices?: { nom: string; conseil: string }[]
 }
 
 export interface ReviewDecision {

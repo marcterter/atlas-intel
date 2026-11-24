@@ -669,5 +669,17 @@ test('Agent IA : jeton dérivé (même calcul que l’app), lecture de la semain
   const c = get({ action: 'conseils' })
   assert.equal(c.conseils.semaine, '2026-11-23')
   assert.equal(c.conseils.texte, '## Diète\n- Version corrigée')
+  assert.deepEqual(c.conseils.exercices, [])
+  // Conseils par exercice (affichés dans la séance) : nettoyés, gardés avec la semaine
+  const r = post({
+    action: 'conseils_set',
+    token: ia,
+    semaine: '2026-11-23',
+    texte: '## Entraînement\n- Monte le smith',
+    exercices: [{ nom: 'Développé couché à la smith', conseil: 'Passe à 57,5 kg sur la 1re série.' }, { nom: '', conseil: 'ignoré' }, { nom: 'Leg press', conseil: '' }],
+  })
+  assert.deepEqual([r.ok, r.exercices], [true, 1])
+  assert.deepEqual(get({ action: 'conseils' }).conseils.exercices, [{ nom: 'Développé couché à la smith', conseil: 'Passe à 57,5 kg sur la 1re série.' }])
+  assert.equal(tab('Conseils IA').rows[0][3], 'Exercices (JSON)')
   assert.equal(get({ action: 'semaine', token: ia }).conseilsPrecedents.length, 2)
 })

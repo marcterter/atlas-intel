@@ -17,6 +17,24 @@ export function ConseilsSheet() {
             {c.date ? ` · rédigés le ${new Date(c.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}
           </div>
           <Markdown text={c.texte} />
+          {!!c.exercices?.length && (
+            <div>
+              <div className="section-label">Dans tes séances</div>
+              <div className="stack" style={{ gap: 8 }}>
+                {c.exercices.map((x) => (
+                  <div key={x.nom} className="ai-tip" style={{ marginTop: 0 }}>
+                    <Icon name="bolt" size={14} />
+                    <span>
+                      <b>{x.nom}</b> · {x.conseil}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="faint tiny" style={{ marginTop: 6 }}>
+                Chaque conseil s’affiche aussi sous l’objectif de l’exercice, pendant ta séance.
+              </div>
+            </div>
+          )}
           <div className="callout small">Rédigés par Claude à partir de tes données (séances, diète, pas, poids, ressenti). Ce ne sont pas des avis médicaux, et ton coach reste ton référent pour le programme.</div>
         </div>
       ) : (
@@ -47,6 +65,11 @@ export function ConseilsCard() {
         </div>
       </div>
       <Markdown text={preview} />
+      {!!c.exercices?.length && (
+        <div className="faint small" style={{ marginTop: 6 }}>
+          + {c.exercices.length} conseil{c.exercices.length > 1 ? 's' : ''} par exercice, affiché{c.exercices.length > 1 ? 's' : ''} dans tes séances
+        </div>
+      )}
       <div className="row" style={{ marginTop: 10 }}>
         <button className="btn soft grow" onClick={markSeen}>
           OK, vu

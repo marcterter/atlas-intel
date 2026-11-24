@@ -86,7 +86,7 @@ const COACH_MAPPING = {
 
 // =========================================================
 
-const VERSION = 7;
+const VERSION = 8;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
@@ -96,7 +96,7 @@ const TABS = {
   repas: ['Date', 'Repas', 'Aliment', 'Marque', 'Quantité (g/ml)', 'Portion', 'Kcal', 'Protéines (g)', 'Glucides (g)', 'Lipides (g)'],
   pas: ['Date', 'Pas', 'Source', 'Reçu le', 'Horodatage'],
   bilans: ['ID', 'Date', 'Taille', 'Hanches', 'Poitrine', 'Bras', 'Cuisse', 'Mollet', 'Cou', 'Photos', 'Commentaire'],
-  conseils: ['Semaine du', 'Généré le', 'Conseils'],
+  conseils: ['Semaine du', 'Généré le', 'Conseils', 'Exercices (JSON)'],
   contexte: ['Clé', 'Mis à jour', 'Contexte (JSON)'],
 };
 const TAB_NAMES = { jours: 'Jours', seances: 'Séances', series: 'Détail séries', repas: 'Repas', pas: 'Pas', bilans: 'Bilans', conseils: 'Conseils IA', contexte: 'Contexte' };
@@ -386,18 +386,40 @@ function saveConseils_(p) {
   const texte = String(p.texte || '').trim();
   if (!texte) return { ok: false, error: 'Conseils vides' };
   const semaine = isoOk_(p.semaine) ? String(p.semaine) : todayIso_();
-  upsert_(tab_('conseils'), 1, semaine, [toDate_(semaine), new Date(), texte.slice(0, 45000)]);
-  return { ok: true, semaine: semaine };
+  const exercices = cleanExerciseAdvice_(p.exercices);
+  const sh = tab_('conseils');
+  // Onglet créé par la version 7 : il manque l'en-tête des conseils par exercice.
+  if (String(sh.getRange(1, 4, 1, 1).getValues()[0][0] || '') === '') sh.getRange(1, 4).setValue(TABS.conseils[3]);
+  upsert_(sh, 1, semaine, [toDate_(semaine), new Date(), texte.slice(0, 45000), JSON.stringify(exercices)]);
+  return { ok: true, semaine: semaine, exercices: exercices.length };
+}
+
+/** Conseils par exercice de l'agent : [{ nom, conseil }], affichés dans la séance sous l'objectif du jour. */
+function cleanExerciseAdvice_(list) {
+  if (typeof list === 'string') {
+    try {
+      list = JSON.parse(list);
+    } catch (err) {
+      list = [];
+    }
+  }
+  if (!Array.isArray(list)) return [];
+  return list
+    .map(function (x) {
+      return { nom: String((x && x.nom) || '').trim().slice(0, 120), conseil: String((x && x.conseil) || '').trim().slice(0, 300) };
+    })
+    .filter(function (x) { return x.nom && x.conseil; })
+    .slice(0, 40);
 }
 
 function readConseils_() {
   const sh = ss_().getSheetByName(TAB_NAMES.conseils);
   if (!sh || sh.getLastRow() < 2) return { conseils: null, precedents: [] };
   const rows = sh
-    .getRange(2, 1, sh.getLastRow() - 1, 3)
+    .getRange(2, 1, sh.getLastRow() - 1, 4)
     .getValues()
     .map(function (r) {
-      return { semaine: iso_(r[0]), date: r[1] instanceof Date ? r[1].toISOString() : String(r[1] || ''), texte: String(r[2] || '') };
+      return { semaine: iso_(r[0]), date: r[1] instanceof Date ? r[1].toISOString() : String(r[1] || ''), texte: String(r[2] || ''), exercices: cleanExerciseAdvice_(String(r[3] || '[]')) };
     })
     .filter(function (x) { return x.semaine && x.texte; })
     .sort(function (a, b) { return a.semaine < b.semaine ? 1 : -1; });

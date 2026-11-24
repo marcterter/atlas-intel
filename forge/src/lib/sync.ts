@@ -6,7 +6,7 @@ import { dayTotals, MEAL_LABEL } from './nutrition.ts'
 import { sessionDurationMs, sessionTonnage, sessionWorkSets, setLabel } from './training.ts'
 import { formatPerf, progressLabel, type CoachProgram } from './coach.ts'
 import { cardioMinutes, cardioText, dayCardio } from './cardio.ts'
-import { buildContexte } from './agent.ts'
+import { buildContexte, parseConseils } from './agent.ts'
 import { weekAverage } from './body.ts'
 import { addDays, todayISO } from './date.ts'
 import type { DirtyState, ISODate, Session, StepsDay } from './types.ts'
@@ -14,7 +14,7 @@ import type { DirtyState, ISODate, Session, StepsDay } from './types.ts'
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 /** Version de apps-script/Code.gs livrée avec cette version de l'app. */
-export const SCRIPT_VERSION = 7
+export const SCRIPT_VERSION = 8
 
 export function scriptOutdated(s: Pick<State, 'sync'>): boolean {
   return s.sync.scriptVersion != null && s.sync.scriptVersion < SCRIPT_VERSION
@@ -244,8 +244,8 @@ export async function fetchProgram(): Promise<CoachProgram> {
 async function pullConseils(url: string, token: string): Promise<void> {
   try {
     const r = await getAction(url, { action: 'conseils', token })
-    const c = r.ok ? (r.conseils as { semaine?: string; date?: string; texte?: string } | null) : null
-    if (c?.semaine && c.texte) useStore.getState().setConseils({ semaine: c.semaine, date: String(c.date ?? ''), texte: c.texte })
+    const c = r.ok ? parseConseils(r.conseils) : null
+    if (c) useStore.getState().setConseils(c)
   } catch {
     /* script ancien ou hors connexion : on réessaiera à la prochaine synchro */
   }

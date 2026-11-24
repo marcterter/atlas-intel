@@ -391,7 +391,10 @@ export const useStore = create<State>()((set, get) => ({
       const cardio = old ? s.cardio.map((x) => (x.id === old.id ? entry : x)) : [...s.cardio, entry]
       return { cardio, dirty: touchDays(s.dirty, ...(old && old.date !== entry.date ? [old.date, entry.date] : [entry.date])) }
     }),
-  setConseils: (c) => set((s) => (s.conseils?.semaine === c.semaine && s.conseils.texte === c.texte ? {} : { conseils: c })),
+  setConseils: (c) =>
+    set((s) =>
+      s.conseils?.semaine === c.semaine && s.conseils.texte === c.texte && JSON.stringify(s.conseils.exercices ?? []) === JSON.stringify(c.exercices ?? []) ? {} : { conseils: c },
+    ),
   markConseilsSeen: () => set((s) => ({ conseilsVus: s.conseils?.semaine ?? null })),
   deleteCardio: (id) =>
     set((s) => {

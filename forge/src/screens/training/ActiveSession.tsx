@@ -24,9 +24,10 @@ import {
 } from '../../lib/sessionOps.ts'
 import { lastNoteFor, previousSets, sessionTonnage, sessionWorkSets, setLabel } from '../../lib/training.ts'
 import { adviseExercise, type Trend } from '../../lib/progression.ts'
+import { exerciseAdviceFor } from '../../lib/agent.ts'
 import { fmtDuration, fmtKg, fmtTimer, fmtTonnage, parseNum } from '../../lib/format.ts'
 import { keepScreenOn, haptic, unlockAudio } from '../../lib/device.ts'
-import { relativeDay } from '../../lib/date.ts'
+import { relativeDay, todayISO } from '../../lib/date.ts'
 import { syncNow } from '../../lib/sync.ts'
 import type { Exercise, Session, SessionExercise, SetEntry, SetType } from '../../lib/types.ts'
 
@@ -206,6 +207,8 @@ const ExerciseBlock = memo(function ExerciseBlock({
   // Objectif du jour (charge conseillée), recalculé à chaque série validée.
   const advice = useMemo(() => adviseExercise(ex, history, custom, startedAt, coachDay), [ex, history, custom, startedAt, coachDay])
   const allDone = ex.sets.length > 0 && ex.sets.every((x) => x.done)
+  // Conseil de l'agent IA du lundi pour cet exercice (s'il en a donné un).
+  const aiTip = useStore((s) => exerciseAdviceFor(s.conseils, exo.name, todayISO()))
   const [shakeId, setShakeId] = useState<string | null>(null)
   const [showNote, setShowNote] = useState(!!ex.note)
   const kind = exo.kind
@@ -319,6 +322,15 @@ const ExerciseBlock = memo(function ExerciseBlock({
             <span className="num">{advice.summary}</span>
           </div>
           <div className="advice-why">{advice.why}</div>
+        </div>
+      )}
+
+      {aiTip && (
+        <div className="ai-tip">
+          <Icon name="bolt" size={14} />
+          <span>
+            <b>Agent IA</b> · {aiTip}
+          </span>
         </div>
       )}
 
