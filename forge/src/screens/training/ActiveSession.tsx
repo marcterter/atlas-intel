@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 import { Sheet, confirmDialog, menuDialog, promptText, useNow } from '../../components/ui.tsx'
 import { Icon } from '../../components/Icon.tsx'
+import { SwipeToDelete } from '../../components/Swipe.tsx'
 import { ExercisePicker } from './ExercisePicker.tsx'
 import { RestTimerBar } from './RestTimer.tsx'
 import { SessionRecap } from './SessionRecap.tsx'
@@ -11,6 +12,7 @@ import { ui, useUI } from '../../store/ui.ts'
 import {
   addExercise,
   addSet,
+  insertSet,
   moveExercise,
   nearestFilled,
   removeExercise,
@@ -167,7 +169,7 @@ export function ActiveSession() {
           <button className="btn ok block" onClick={finish}>
             <Icon name="check" size={20} /> Terminer la séance
           </button>
-          <div style={{ height: 90 }} />
+          <div style={{ height: 120 }} />
         </div>
       </Sheet>
       <RestTimerBar inSheet />
@@ -236,6 +238,13 @@ const ExerciseBlock = memo(function ExerciseBlock({
     }
   }
 
+  // Supprimer une série (glissé vers la gauche ou menu du numéro), avec « Annuler ».
+  const deleteSet = (st: SetEntry) => {
+    const index = ex.sets.findIndex((x) => x.id === st.id)
+    if (!updateActive((s) => removeSet(s, ex.uid, st.id))) return
+    ui.undo(`Série supprimée · ${exo.name}`, () => updateActive((s) => insertSet(s, ex.uid, st, index)))
+  }
+
   const setMenu = async (st: SetEntry) => {
     const c = await menuDialog('Série', [
       { id: 'normal', label: 'Série normale' },
@@ -245,7 +254,7 @@ const ExerciseBlock = memo(function ExerciseBlock({
       { id: 'delete', label: 'Supprimer la série', icon: 'trash', danger: true },
     ])
     if (!c) return
-    if (c === 'delete') updateActive((s) => removeSet(s, ex.uid, st.id))
+    if (c === 'delete') deleteSet(st)
     else updateActive((s) => updateSet(s, ex.uid, st.id, { type: c as SetType }))
   }
 
@@ -360,7 +369,8 @@ const ExerciseBlock = memo(function ExerciseBlock({
         }
         const tone: Trend | undefined = adv && !st.done ? adv.trend : undefined
         return (
-          <div key={st.id} className={`set-row ${kind === 'cardio' ? 'cardio' : ''} ${st.done ? 'done' : ''} ${shakeId === st.id ? 'shake' : ''}`}>
+          <SwipeToDelete key={st.id} className="swipe-set" onDelete={() => deleteSet(st)} vibrate={hapticsOn}>
+          <div className={`set-row ${kind === 'cardio' ? 'cardio' : ''} ${st.done ? 'done' : ''} ${shakeId === st.id ? 'shake' : ''}`}>
             <button className={`set-num ${TYPE_CLASS[st.type]}`} onClick={() => setMenu(st)} aria-label="Type de série">
               {TYPE_SHORT[st.type] || normalIdx}
             </button>
@@ -398,6 +408,7 @@ const ExerciseBlock = memo(function ExerciseBlock({
               <Icon name="check" size={20} stroke={3} />
             </button>
           </div>
+          </SwipeToDelete>
         )
       })}
 

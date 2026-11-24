@@ -132,7 +132,11 @@ export interface Actions {
   addEntry: (e: Omit<FoodEntry, 'id' | 'createdAt'>, food?: Food) => string
   updateEntry: (id: string, patch: Partial<FoodEntry>) => void
   deleteEntry: (id: string) => void
-  copyEntries: (from: ISODate, to: ISODate, meal: MealId | null, toMeal?: MealId) => number
+  /** Remet des aliments supprimés (bouton « Annuler »). */
+  restoreEntries: (entries: FoodEntry[]) => void
+  deleteEntries: (ids: string[]) => void
+  /** Copie un repas (ou toute la journée) : renvoie les nouveaux identifiants. */
+  copyEntries: (from: ISODate, to: ISODate, meal: MealId | null, toMeal?: MealId) => string[]
   saveFood: (f: Food) => void
   deleteFood: (id: string) => void
   toggleFavorite: (foodId: string, food?: Food) => void
@@ -308,17 +312,27 @@ export const useStore = create<State>()((set, get) => ({
       if (!old) return {}
       return { entries: s.entries.filter((x) => x.id !== id), dirty: touchDays(s.dirty, old.date) }
     }),
+  restoreEntries: (list) =>
+    set((s) => {
+      const fresh = list.filter((e) => !s.entries.some((x) => x.id === e.id))
+      if (!fresh.length) return {}
+      return { entries: [...s.entries, ...fresh], dirty: touchDays(s.dirty, ...fresh.map((e) => e.date)) }
+    }),
+  deleteEntries: (ids) =>
+    set((s) => {
+      const gone = s.entries.filter((x) => ids.includes(x.id))
+      if (!gone.length) return {}
+      return { entries: s.entries.filter((x) => !ids.includes(x.id)), dirty: touchDays(s.dirty, ...gone.map((e) => e.date)) }
+    }),
   copyEntries: (from, to, meal, toMeal) => {
-    const src = get().entries.filter((e) => e.date === from && (meal == null || e.meal === meal))
-    if (!src.length) return 0
-    set((s) => ({
-      entries: [
-        ...s.entries,
-        ...src.map((e, i) => ({ ...e, id: uid('f'), date: to, meal: toMeal ?? e.meal, createdAt: Date.now() + i })),
-      ],
-      dirty: touchDays(s.dirty, to),
-    }))
-    return src.length
+    const src = get()
+      .entries.filter((e) => e.date === from && (meal == null || e.meal === meal))
+      .sort((a, b) => a.createdAt - b.createdAt)
+    if (!src.length) return []
+    const now = Date.now()
+    const copies = src.map((e, i) => ({ ...e, id: uid('f'), date: to, meal: toMeal ?? e.meal, createdAt: now + i }))
+    set((s) => ({ entries: [...s.entries, ...copies], dirty: touchDays(s.dirty, to) }))
+    return copies.map((e) => e.id)
   },
   saveFood: (f) => set((s) => ({ foods: { ...s.foods, [f.id]: f } })),
   deleteFood: (id) =>

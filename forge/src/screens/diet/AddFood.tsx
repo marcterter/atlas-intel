@@ -13,9 +13,22 @@ import { ui } from '../../store/ui.ts'
 import { MEALS, MEAL_LABEL, scaleNutrients } from '../../lib/nutrition.ts'
 import { searchOff } from '../../lib/off.ts'
 import { fmt } from '../../lib/format.ts'
+import { haptic } from '../../lib/device.ts'
 import type { Food, ISODate, MealId } from '../../lib/types.ts'
 
 type Tab = 'recents' | 'favoris' | 'perso' | 'parcourir'
+
+/** Quantité ajoutée par le « + » : la dernière notée pour cet aliment, sinon sa première portion. */
+interface Qty {
+  grams: number
+  label: string
+  portionLabel?: string
+}
+
+interface Quick {
+  qty: (f: Food) => Qty
+  add: (f: Food) => void
+}
 
 export function AddFood({ date, meal: initialMeal, onPick, title }: { date: ISODate; meal: MealId; onPick?: (food: Food, grams: number) => void; title?: string }) {
   const [meal, setMeal] = useState<MealId>(initialMeal)
@@ -29,7 +42,40 @@ export function AddFood({ date, meal: initialMeal, onPick, title }: { date: ISOD
   const recents = useStore((s) => s.recents)
   const favorites = useStore((s) => s.favorites)
   const perso = usePersoFoods()
+  const entries = useStore((s) => s.entries)
+  const addEntry = useStore((s) => s.addEntry)
+  const deleteEntry = useStore((s) => s.deleteEntry)
+  const hapticsOn = useStore((s) => s.settings.haptics)
   const reqId = useRef(0)
+
+  // Dernière quantité notée pour chaque aliment.
+  const lastQty = useMemo(() => {
+    const m = new Map<string, { grams: number; label?: string; at: number }>()
+    for (const e of entries) {
+      if (!e.foodId || !(e.grams > 0)) continue
+      const o = m.get(e.foodId)
+      if (!o || e.createdAt > o.at) m.set(e.foodId, { grams: e.grams, label: e.portionLabel, at: e.createdAt })
+    }
+    return m
+  }, [entries])
+
+  const quick: Quick | undefined = onPick
+    ? undefined
+    : {
+        qty: (f) => {
+          const last = lastQty.get(f.id)
+          if (last) return { grams: last.grams, label: last.label ?? `${fmt(last.grams)} ${f.unit}`, portionLabel: last.label }
+          const p = f.portions?.[0]
+          return p ? { grams: p.grams, label: p.label, portionLabel: p.label } : { grams: 100, label: `100 ${f.unit}` }
+        },
+        // Ajout en un geste, sans ouvrir la fiche : la fenêtre reste ouverte pour enchaîner.
+        add: (f) => {
+          const q = (quick as Quick).qty(f)
+          const id = addEntry({ date, meal, foodId: f.id, name: f.name, brand: f.brand, grams: q.grams, portionLabel: q.portionLabel, n: scaleNutrients(f.per100, q.grams) }, f)
+          if (hapticsOn) haptic(false)
+          ui.undo(`${f.name} · ${q.label} → ${MEAL_LABEL[meal]}`, () => deleteEntry(id))
+        },
+      }
 
   const all = useMemo(() => [...perso, ...Object.values(foods).filter((f) => f.source === 'off'), ...BASE_FOODS], [perso, foods])
   const local = useMemo(() => (q.trim() ? searchFoods(q, all, 30) : []), [q, all])
@@ -134,9 +180,16 @@ export function AddFood({ date, meal: initialMeal, onPick, title }: { date: ISOD
               ))}
             </div>
             {tab === 'recents' &&
-              (recents.length ? <FoodList foods={list(recents).slice(0, 40)} onOpen={open} /> : <div className="faint small">Tes aliments récents apparaîtront ici.</div>)}
+              (recents.length ? (
+                <>
+                  <FoodList foods={list(recents).slice(0, 40)} onOpen={open} quick={quick} />
+                  {quick && <div className="faint tiny">« + » ajoute la même quantité que la dernière fois, sans ouvrir la fiche.</div>}
+                </>
+              ) : (
+                <div className="faint small">Tes aliments récents apparaîtront ici.</div>
+              ))}
             {tab === 'favoris' &&
-              (favorites.length ? <FoodList foods={list(favorites)} onOpen={open} /> : <div className="faint small">Touche l'étoile d'un aliment pour l'ajouter à tes favoris.</div>)}
+              (favorites.length ? <FoodList foods={list(favorites)} onOpen={open} quick={quick} /> : <div className="faint small">Touche l'étoile d'un aliment pour l'ajouter à tes favoris.</div>)}
             {tab === 'perso' && (
               <>
                 <div className="grid-2">
@@ -147,7 +200,7 @@ export function AddFood({ date, meal: initialMeal, onPick, title }: { date: ISOD
                     <Icon name="plus" size={18} /> Nouvel aliment
                   </button>
                 </div>
-                {perso.length ? <FoodList foods={perso} onOpen={open} /> : <div className="faint small">Tes recettes et aliments créés apparaîtront ici.</div>}
+                {perso.length ? <FoodList foods={perso} onOpen={open} quick={quick} /> : <div className="faint small">Tes recettes et aliments créés apparaîtront ici.</div>}
               </>
             )}
             {tab === 'parcourir' && (
@@ -169,26 +222,45 @@ export function AddFood({ date, meal: initialMeal, onPick, title }: { date: ISOD
   )
 }
 
-function FoodList({ foods, onOpen }: { foods: Food[]; onOpen: (f: Food) => void }) {
+function FoodList({ foods, onOpen, quick }: { foods: Food[]; onOpen: (f: Food) => void; quick?: Quick }) {
   return (
     <div className="card flush list">
       {foods.map((f) => {
         const portion = f.portions?.[0]
-        const n = portion ? scaleNutrients(f.per100, portion.grams) : f.per100
-        return (
-          <button key={f.id} className="list-item" onClick={() => onOpen(f)}>
+        const q = quick?.qty(f)
+        const grams = q ? q.grams : portion?.grams
+        const n = grams != null ? scaleNutrients(f.per100, grams) : f.per100
+        const amount = q ? q.label : portion ? portion.label : `100 ${f.unit}`
+        const body = (
+          <>
             {f.image ? <img className="food-thumb" src={f.image} alt="" loading="lazy" /> : null}
             <div className="grow" style={{ minWidth: 0 }}>
               <div className="title ellipsis">{f.name}</div>
-              <div className="meta ellipsis">
-                {[f.brand, f.source === 'recette' ? 'Recette' : f.source === 'perso' ? 'Perso' : null, portion ? `${portion.label}` : `100 ${f.unit}`].filter(Boolean).join(' · ')}
-              </div>
+              <div className="meta ellipsis">{[f.brand, f.source === 'recette' ? 'Recette' : f.source === 'perso' ? 'Perso' : null, amount].filter(Boolean).join(' · ')}</div>
               <MacroDots n={n} />
             </div>
             <div className="bold num" style={{ whiteSpace: 'nowrap' }}>
               {fmt(n.kcal)} <span className="faint tiny">kcal</span>
             </div>
-          </button>
+          </>
+        )
+        if (!quick)
+          return (
+            <button key={f.id} className="list-item" onClick={() => onOpen(f)}>
+              {body}
+            </button>
+          )
+        return (
+          <div key={f.id} className="list-item quick-row">
+            <button className="quick-main" onClick={() => onOpen(f)}>
+              {body}
+            </button>
+            <button className="quick-add" onClick={() => quick.add(f)} aria-label={`Ajouter ${f.name} · ${amount}`}>
+              <span>
+                <Icon name="plus" size={18} stroke={2.6} />
+              </span>
+            </button>
+          </div>
         )
       })}
     </div>

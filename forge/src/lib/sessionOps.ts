@@ -3,7 +3,7 @@ import { findExercise } from '../data/exercises.ts'
 import type { Exercise, Routine, Session, SessionExercise, SetEntry } from './types.ts'
 import { uid } from './id.ts'
 import { todayISO } from './date.ts'
-import { previousSets } from './training.ts'
+import { previousSets, setLabel } from './training.ts'
 import { adviseExercise } from './progression.ts'
 
 export function blankSet(from?: Partial<SetEntry>): SetEntry {
@@ -87,6 +87,16 @@ export function removeSet(s: Session, exUid: string, setId: string): Session {
   return mapEx(s, exUid, (e) => ({ ...e, sets: e.sets.filter((x) => x.id !== setId) }))
 }
 
+/** Remet une série supprimée à sa place (bouton « Annuler »). */
+export function insertSet(s: Session, exUid: string, set: SetEntry, index: number): Session {
+  return mapEx(s, exUid, (e) => {
+    if (e.sets.some((x) => x.id === set.id)) return e
+    const sets = [...e.sets]
+    sets.splice(Math.max(0, Math.min(index, sets.length)), 0, set)
+    return { ...e, sets }
+  })
+}
+
 export function updateSet(s: Session, exUid: string, setId: string, patch: Partial<SetEntry>): Session {
   return mapEx(s, exUid, (e) => ({ ...e, sets: e.sets.map((x) => (x.id === setId ? { ...x, ...patch } : x)) }))
 }
@@ -138,6 +148,65 @@ export function toggleSetDone(
     if (!patch.seconds) return null
   }
   return updateSet(s, exUid, setId, patch)
+}
+
+/**
+ * Prochaine série à faire après le repos : la suite du superset (A1 → B1 → A2…), sinon la série
+ * suivante du même exercice, puis le premier exercice suivant pas terminé, puis ceux sautés avant.
+ */
+export function nextSetAfter(s: Session, fromUid: string | null): { ex: SessionExercise; index: number } | null {
+  const list = s.exercises
+  const i = Math.max(0, list.findIndex((e) => e.uid === fromUid))
+  if (!list.length) return null
+  let a = i
+  let b = i
+  const sup = list[i].superset
+  if (sup != null) {
+    while (a > 0 && list[a - 1].superset === sup) a--
+    while (b < list.length - 1 && list[b + 1].superset === sup) b++
+  }
+  const group = list.slice(a, b + 1)
+  const most = Math.max(...group.map((e) => e.sets.length))
+  for (let k = 0; k < most; k++)
+    for (const e of group) {
+      const st = e.sets[k]
+      if (st && !st.done) return { ex: e, index: k }
+    }
+  for (const e of [...list.slice(b + 1), ...list.slice(0, a)]) {
+    const k = e.sets.findIndex((x) => !x.done)
+    if (k >= 0) return { ex: e, index: k }
+  }
+  return null
+}
+
+export interface NextSetHint {
+  name: string
+  /** « série 3 », « échauffement »… */
+  set: string
+  /** Ce qui est saisi, sinon l'objectif du jour, sinon la dernière fois : « 20 × 9 ». */
+  target: string | null
+}
+
+/** Ce qu'affiche le chrono de repos : l'exercice et la série qui viennent, avec la charge visée. */
+export function nextSetHint(s: Session, fromUid: string | null, history: Session[], custom: Exercise[]): NextSetHint | null {
+  const next = nextSetAfter(s, fromUid)
+  if (!next) return null
+  const { ex, index } = next
+  const exo = findExercise(ex.exerciseId, custom)
+  const st = ex.sets[index]
+  const adv = adviseExercise(ex, history, custom, s.startedAt, s.coachDay)?.sets[index] ?? null
+  const prev = previousSets(history, ex.exerciseId, s.startedAt, s.coachDay)[index]
+  const before = nearestFilled(ex.sets, index)
+  const pick = (f: 'weight' | 'reps' | 'seconds') => st[f] ?? (adv ? adv[f] : (prev?.[f] ?? before?.[f] ?? null))
+  const v = { ...st, weight: pick('weight'), reps: pick('reps'), seconds: pick('seconds'), km: st.km }
+  const known =
+    exo.kind === 'weight' ? v.weight != null && !!v.reps : exo.kind === 'bodyweight' ? !!v.reps : !!v.seconds
+  const n = ex.sets.slice(0, index + 1).filter((x) => x.type !== 'echauffement').length
+  return {
+    name: exo.name,
+    set: st.type === 'echauffement' ? 'échauffement' : `série ${n}`,
+    target: known ? setLabel(v, exo.kind) : null,
+  }
 }
 
 /** Série la plus proche avant `idx` qui contient des valeurs (saisies ou validées). */

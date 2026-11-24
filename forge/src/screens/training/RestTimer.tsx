@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../../store/store.ts'
 import { fmtTimer } from '../../lib/format.ts'
 import { beep, haptic } from '../../lib/device.ts'
 import { Icon } from '../../components/Icon.tsx'
-import { findExercise } from '../../data/exercises.ts'
+import { nextSetHint } from '../../lib/sessionOps.ts'
 
 let alertedFor = 0
 
@@ -16,6 +16,10 @@ export function RestTimerBar({ inSheet = false }: { inSheet?: boolean }) {
   const hapticsOn = useStore((s) => s.settings.haptics)
   const active = useStore((s) => s.active)
   const custom = useStore((s) => s.customExercises)
+  const history = useStore((s) => s.sessions)
+  const fromUid = timer?.exerciseUid ?? null
+  // Ce qui vient après le repos (exercice, série, charge visée) : pas besoin de remonter la page.
+  const hint = useMemo(() => (active ? nextSetHint(active, fromUid, history, custom) : null), [active, fromUid, history, custom])
   const [now, setNow] = useState(() => Date.now())
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -46,8 +50,6 @@ export function RestTimerBar({ inSheet = false }: { inSheet?: boolean }) {
 
   if (!timer) return null
   const pct = Math.max(0, Math.min(1, 1 - (timer.endsAt - now) / 1000 / timer.total))
-  const ex = active?.exercises.find((e) => e.uid === timer.exerciseUid)
-  const nextLabel = ex ? findExercise(ex.exerciseId, custom).name : null
 
   return (
     <div className={`rest-bar ${finished ? 'finished' : ''}`} style={inSheet ? { bottom: 'calc(var(--safe-bottom) + 14px)' } : undefined} role="timer">
@@ -55,7 +57,6 @@ export function RestTimerBar({ inSheet = false }: { inSheet?: boolean }) {
         <div className="grow">
           <div className="tiny faint bold ellipsis" style={{ letterSpacing: '.08em', maxWidth: '44vw' }}>
             {finished ? 'C’EST REPARTI !' : 'REPOS'}
-            {nextLabel && !finished ? ` · ${nextLabel}` : ''}
           </div>
           <div className="rest-time" style={{ color: finished ? 'var(--ok)' : undefined }}>
             {finished ? '0:00' : fmtTimer(remaining)}
@@ -78,6 +79,18 @@ export function RestTimerBar({ inSheet = false }: { inSheet?: boolean }) {
       <div className="bar thin" style={{ marginTop: 10 }}>
         <i style={{ width: `${pct * 100}%`, background: finished ? 'var(--ok)' : 'var(--accent)' }} />
       </div>
+      {active && (
+        <div className="rest-next ellipsis">
+          {hint ? (
+            <>
+              <span className="faint">Ensuite</span> · {hint.name} · {hint.set}
+              {hint.target && <b className="num"> · {hint.target}</b>}
+            </>
+          ) : (
+            <span className="faint">Toutes les séries sont faites : tu peux terminer la séance.</span>
+          )}
+        </div>
+      )}
     </div>
   )
 }

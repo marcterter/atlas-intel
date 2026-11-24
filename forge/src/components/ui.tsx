@@ -63,11 +63,23 @@ export function Sheet({
 
 export function Toasts() {
   const toasts = useUI((s) => s.toasts)
+  const dismiss = useUI((s) => s.dismissToast)
   return (
     <div className="toasts" aria-live="polite">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.kind}`}>
-          {t.text}
+        <div key={t.id} className={`toast ${t.kind} ${t.action ? 'has-action' : ''}`}>
+          <span>{t.text}</span>
+          {t.action && (
+            <button
+              className="toast-action"
+              onClick={() => {
+                dismiss(t.id)
+                t.action?.run()
+              }}
+            >
+              {t.action.label}
+            </button>
+          )}
         </div>
       ))}
     </div>

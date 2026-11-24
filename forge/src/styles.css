@@ -334,6 +334,44 @@ button.list-item:active {
   background: var(--surface-2);
 }
 
+.list-item.quick-row {
+  padding: 0;
+  gap: 0;
+}
+
+.quick-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  padding: 13px 4px 13px 16px;
+  text-align: left;
+}
+
+.quick-main:active,
+.quick-add:active {
+  background: var(--surface-2);
+}
+
+.quick-add {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  padding: 0 14px 0 8px;
+}
+
+.quick-add span {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .list-item .title {
   font-weight: 600;
   font-size: 15px;
@@ -1071,6 +1109,77 @@ textarea.input {
   border-color: rgba(61, 220, 151, 0.4);
 }
 
+.toast.has-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 8px 7px 16px;
+  pointer-events: auto;
+}
+
+.toast-action {
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.toast-action:active {
+  background: var(--surface-2);
+}
+
+/* ---------- Glisser pour supprimer ---------- */
+
+.swipe {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+  transition: height 0.19s ease;
+}
+
+.swipe-body {
+  position: relative;
+  z-index: 1;
+  background: var(--swipe-bg, var(--surface));
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.swipe.dragging .swipe-body {
+  transition: none;
+}
+
+.swipe-act {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: var(--danger);
+}
+
+.swipe-act button {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.swipe.armed .swipe-act button,
+.swipe.leaving .swipe-act button {
+  align-items: flex-start;
+  padding-left: 22px;
+}
+
+.swipe-set {
+  border-radius: 12px;
+}
+
+
 .toast.err {
   border-color: rgba(255, 77, 109, 0.5);
 }
@@ -1535,6 +1644,12 @@ textarea.input {
   }
 }
 
+.rest-next {
+  margin-top: 9px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
 .rest-time {
   font-family: var(--font-display);
   font-size: 36px;
@@ -1571,6 +1686,25 @@ textarea.input {
 
 .food-row:active {
   background: var(--surface-2);
+}
+
+.meal-again {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 32px);
+  margin: 0 16px 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.meal-again:active {
+  background: var(--surface-3);
 }
 
 .food-row .kcal {

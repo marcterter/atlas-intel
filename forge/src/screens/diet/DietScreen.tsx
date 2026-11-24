@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Icon } from '../../components/Icon.tsx'
+import { SwipeToDelete } from '../../components/Swipe.tsx'
 import { menuDialog } from '../../components/ui.tsx'
 import { DayTypeSwitch, useDayLabel } from './DayType.tsx'
 import { AddFood } from './AddFood.tsx'
@@ -27,11 +28,32 @@ export function DietScreen() {
   const foods = useStore((s) => s.foods)
   const recipes = useStore((s) => s.recipes)
   const copyEntries = useStore((s) => s.copyEntries)
+  const deleteEntries = useStore((s) => s.deleteEntries)
+  const restoreEntries = useStore((s) => s.restoreEntries)
+  const hapticsOn = useStore((s) => s.settings.haptics)
   const t = useStore((s) => dayTargets(s, date))
   const dayLabel = useDayLabel(date)
   const dayEntries = useMemo(() => entries.filter((e) => e.date === date).sort((a, b) => a.createdAt - b.createdAt), [entries, date])
   const totals = useMemo(() => dayTotals(entries, date), [entries, date])
-  const yesterdayCount = useMemo(() => entries.filter((e) => e.date === addDays(date, -1)).length, [entries, date])
+  const yesterday = useMemo(() => entries.filter((e) => e.date === addDays(date, -1)), [entries, date])
+  const yesterdayCount = yesterday.length
+
+  // Copie d'hier (un repas ou toute la journée), annulable.
+  const copyFromYesterday = (meal: MealId | null) => {
+    const ids = copyEntries(addDays(date, -1), date, meal)
+    if (!ids.length) {
+      ui.toast('Rien à copier hier pour ce repas', 'info')
+      return
+    }
+    const n = ids.length
+    const where = meal ? ` · ${MEALS.find((m) => m.id === meal)?.label ?? ''}` : ''
+    ui.undo(`${n} aliment${n > 1 ? 's' : ''} copié${n > 1 ? 's' : ''} depuis la veille${where}`, () => deleteEntries(ids))
+  }
+
+  const removeEntry = (e: FoodEntry) => {
+    useStore.getState().deleteEntry(e.id)
+    ui.undo(`Aliment retiré · ${e.name}`, () => restoreEntries([e]))
+  }
 
   const openEntry = (e: FoodEntry) => {
     const food = e.foodId ? getFood({ foods, recipes }, e.foodId) : undefined
@@ -48,10 +70,7 @@ export function DietScreen() {
       { id: 'recipe', label: 'Enregistrer comme recette', icon: 'book' },
       { id: 'clear', label: 'Vider ce repas', icon: 'trash', danger: true },
     ])
-    if (c === 'copy') {
-      const n = copyEntries(addDays(date, -1), date, meal)
-      ui.toast(n ? `${n} aliment${n > 1 ? 's' : ''} copié${n > 1 ? 's' : ''}` : 'Rien à copier hier pour ce repas', n ? 'ok' : 'info')
-    }
+    if (c === 'copy') copyFromYesterday(meal)
     if (c === 'recipe') {
       const ingredients = dayEntries
         .filter((e) => e.meal === meal && e.foodId && e.grams > 0)
@@ -114,10 +133,7 @@ export function DietScreen() {
         {dayEntries.length === 0 && yesterdayCount > 0 && (
           <button
             className="btn soft block"
-            onClick={() => {
-              const n = copyEntries(addDays(date, -1), date, null)
-              ui.toast(`${n} aliments copiés depuis la veille`, 'ok')
-            }}
+            onClick={() => copyFromYesterday(null)}
           >
             <Icon name="copy" size={18} /> Reprendre la journée de la veille
           </button>
@@ -126,6 +142,8 @@ export function DietScreen() {
         {MEALS.map((m) => {
           const items = dayEntries.filter((e) => e.meal === m.id)
           const sub = sumNutrients(items.map((e) => e.n))
+          // Repas vide aujourd'hui mais pris hier : le reprendre en un geste.
+          const again = items.length === 0 ? yesterday.filter((e) => e.meal === m.id) : []
           return (
             <div className="card flush meal-card" key={m.id}>
               <div className="meal-head">
@@ -147,8 +165,18 @@ export function DietScreen() {
                   <Icon name="plus" />
                 </button>
               </div>
+              {again.length > 0 && (
+                <button className="meal-again" onClick={() => copyFromYesterday(m.id)}>
+                  <Icon name="copy" size={16} />
+                  <span className="grow ellipsis">
+                    Comme hier · {again.length} aliment{again.length > 1 ? 's' : ''}
+                  </span>
+                  <b className="num">{fmt(sumNutrients(again.map((e) => e.n)).kcal)} kcal</b>
+                </button>
+              )}
               {items.map((e) => (
-                <button key={e.id} className="food-row" onClick={() => openEntry(e)}>
+                <SwipeToDelete key={e.id} onDelete={() => removeEntry(e)} label="Retirer" vibrate={hapticsOn}>
+                <button className="food-row" onClick={() => openEntry(e)}>
                   <div className="grow" style={{ minWidth: 0 }}>
                     <div className="ellipsis" style={{ fontWeight: 600 }}>
                       {e.name}
@@ -160,6 +188,7 @@ export function DietScreen() {
                   </div>
                   <div className="kcal">{fmt(e.n.kcal)}</div>
                 </button>
+                </SwipeToDelete>
               ))}
             </div>
           )

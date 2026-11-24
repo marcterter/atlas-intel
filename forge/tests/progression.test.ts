@@ -145,3 +145,48 @@ test('✓ sur une série vide : valide l’objectif du jour affiché en grisé',
   s = toggleSetDone(s, 'cur', ex.sets[1].id, history, custom, NOW + 120_000) as Session
   assert.deepEqual([s.exercises[0].sets[1].weight, s.exercises[0].sets[1].reps], [52.5, 9])
 })
+
+test('série supprimée puis « Annuler » : elle revient à sa place', async () => {
+  const { insertSet, removeSet } = await import('../src/lib/sessionOps.ts')
+  const ex = today('x-dc', '10,8,6', 3)
+  const s: Session = { id: 'cur', routineId: null, name: 'Upper A', date: '2026-11-23', startedAt: NOW, endedAt: null, coachDay: 'LUNDI', exercises: [ex] }
+  const gone = ex.sets[1]
+  const without = removeSet(s, 'cur', gone.id)
+  assert.equal(without.exercises[0].sets.length, 2)
+  const back = insertSet(without, 'cur', gone, 1)
+  assert.deepEqual(back.exercises[0].sets.map((x) => x.id), ex.sets.map((x) => x.id))
+  // Deux fois « Annuler » : pas de doublon.
+  assert.equal(insertSet(back, 'cur', gone, 1).exercises[0].sets.length, 3)
+})
+
+test('chrono de repos : la série qui vient, superset compris, avec la charge visée', async () => {
+  const { nextSetAfter, nextSetHint } = await import('../src/lib/sessionOps.ts')
+  const history = [past('x-dc', [set(52.5, 11), set(50, 10), set(50, 8)])]
+  const dc = today('x-dc', '10,8,6', 3)
+  const elev: SessionExercise = { ...today('x-elev', '12', 2), uid: 'elev', superset: 's1' }
+  const curl: SessionExercise = { ...today('x-curl', '12', 2), uid: 'curl', superset: 's1' }
+  const press: SessionExercise = { ...today('x-press', '5-8', 2), uid: 'press' }
+  Object.assign(dc.sets[0], { weight: 55, reps: 10, done: true }) // 1re série faite comme conseillé
+  let s: Session = { id: 'cur', routineId: null, name: 'Upper A', date: '2026-11-23', startedAt: NOW, endedAt: null, coachDay: 'LUNDI', exercises: [dc, elev, curl, press] }
+  // Même exercice : la série 2, à la charge conseillée.
+  assert.deepEqual(nextSetHint(s, 'cur', history, custom), { name: 'Développé couché à la smith', set: 'série 2', target: '52,5 × 8' })
+  // Superset : après A1 et B1, on revient à A2.
+  dc.sets.forEach((x) => (x.done = true))
+  elev.sets[0].done = true
+  curl.sets[0].done = true
+  assert.deepEqual(nextSetAfter(s, 'curl')?.ex.uid, 'elev')
+  assert.equal(nextSetAfter(s, 'curl')?.index, 1)
+  // Superset fini : exercice suivant ; sa charge est inconnue (jamais fait) mais saisie → affichée.
+  elev.sets[1].done = true
+  curl.sets[1].done = true
+  press.sets[0].weight = 180
+  press.sets[0].reps = 8
+  assert.deepEqual(nextSetHint(s, 'curl', history, custom), { name: 'Leg press', set: 'série 1', target: '180 × 8' })
+  // Un exercice sauté plus haut revient en dernier ; tout fait : plus rien.
+  press.sets.forEach((x) => (x.done = true))
+  dc.sets[2].done = false
+  assert.equal(nextSetAfter(s, 'press')?.ex.uid, 'cur')
+  dc.sets[2].done = true
+  s = { ...s }
+  assert.equal(nextSetHint(s, 'press', history, custom), null)
+})
