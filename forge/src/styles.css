@@ -2105,3 +2105,32 @@ code,
   border: 6px solid var(--accent);
 }
 
+
+/* Programme proposé par l'agent du lundi */
+.prog-change.applique {
+  opacity: 0.75;
+}
+
+.prog-change.ignore {
+  opacity: 0.55;
+}
+
+.prog-pending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text);
+  background: rgba(167, 139, 250, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+}
+
+.prog-pending svg {
+  flex-shrink: 0;
+  color: #a78bfa;
+}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Sheet, Field, NumInput, Segmented, confirmDialog } from '../../components/ui.tsx'
+import { Sheet, Field, NumInput, Segmented, confirmDialog, menuDialog } from '../../components/ui.tsx'
+import { isConfigured, syncNow } from '../../lib/sync.ts'
 import { LineChart } from '../../components/charts.tsx'
 import { Icon } from '../../components/Icon.tsx'
 import { editWeight } from '../today/TodayScreen.tsx'
@@ -70,7 +71,6 @@ function PhotoSlot({ id, label, onPick, onClear }: { id?: string; label: string;
           ref={ref}
           type="file"
           accept="image/*"
-          capture="environment"
           style={{ display: 'none' }}
           onChange={(e) => {
             const f = e.target.files?.[0]
@@ -114,21 +114,44 @@ export function CheckInEditor({ checkinId }: { checkinId?: string }) {
   const last = useStore((s) => [...s.checkins].filter((c) => c.id !== checkinId).pop())
   const save = useStore((s) => s.saveCheckIn)
   const del = useStore((s) => s.deleteCheckIn)
+  const photosAgent = useStore((s) => s.settings.photosAgent)
+  const updateSettings = useStore((s) => s.updateSettings)
+  const configured = useStore((s) => isConfigured(s))
   const [draft, setDraft] = useState<CheckIn>(() => existing ?? { id: uid('c'), date: todayISO(), measures: {}, photos: {}, ratings: {}, note: '', at: Date.now() })
   const [busy, setBusy] = useState(false)
 
-  const addPhoto = async (pose: PhotoPose, f: File) => {
+  const addPhoto = async (pose: PhotoPose | 'myair', f: File) => {
     setBusy(true)
     try {
-      const blob = await compressImage(f)
+      // Capture myAir : plus grande, pour que les chiffres restent lisibles.
+      const blob = pose === 'myair' ? await compressImage(f, 1800, 0.88) : await compressImage(f)
       const id = uid('ph')
       await putPhoto(id, blob)
-      setDraft((d) => ({ ...d, photos: { ...d.photos, [pose]: id } }))
+      setDraft((d) => (pose === 'myair' ? { ...d, myair: id } : { ...d, photos: { ...d.photos, [pose]: id } }))
     } catch {
       ui.toast('Photo illisible', 'err')
     } finally {
       setBusy(false)
     }
+  }
+
+  // Enregistrer : la première fois qu'il y a des photos, on demande si elles peuvent aller à l'agent du lundi.
+  const onSave = async () => {
+    const hasPhotos = Object.keys(draft.photos).length > 0 || !!draft.myair
+    let send = photosAgent
+    if (hasPhotos && configured && send == null) {
+      const c = await menuDialog('Envoyer tes photos à l’agent du lundi ? Elles vont dans un dossier privé de ton Google Drive, et il les compare d’une semaine à l’autre.', [
+        { id: 'yes', label: 'Oui, les envoyer', icon: 'upload' },
+        { id: 'no', label: 'Non, elles restent sur mon téléphone', icon: 'x' },
+      ])
+      if (!c) return
+      send = c === 'yes'
+      updateSettings({ photosAgent: send })
+    }
+    save({ ...draft, at: Date.now() })
+    ui.pop()
+    ui.toast(send && hasPhotos ? 'Bilan enregistré · photos en route vers l’agent' : 'Bilan enregistré', 'ok')
+    if (send && hasPhotos) void syncNow()
   }
 
   return (
@@ -152,15 +175,7 @@ export function CheckInEditor({ checkinId }: { checkinId?: string }) {
               <Icon name="trash" size={20} />
             </button>
           )}
-          <button
-            className="btn grow"
-            disabled={busy}
-            onClick={() => {
-              save({ ...draft, at: Date.now() })
-              ui.pop()
-              ui.toast('Bilan enregistré', 'ok')
-            }}
-          >
+          <button className="btn grow" disabled={busy} onClick={() => void onSave()}>
             Enregistrer le bilan
           </button>
         </>
@@ -198,7 +213,17 @@ export function CheckInEditor({ checkinId }: { checkinId?: string }) {
             />
           ))}
         </div>
-        <div className="faint tiny">Même lumière, même heure, même tenue d’une semaine à l’autre. Les photos restent sur ton téléphone.</div>
+        <div className="faint tiny">
+          Même lumière, même heure, même tenue d’une semaine à l’autre, entre vendredi et dimanche pour l’agent du lundi.{' '}
+          {photosAgent ? 'Elles partent aussi dans un dossier privé de ton Google Drive, pour lui.' : 'Les photos restent sur ton téléphone.'}
+        </div>
+        <div className="section-label">Capture myAir</div>
+        <div className="grid-3">
+          <PhotoSlot id={draft.myair} label="myAir" onPick={(f) => addPhoto('myair', f)} onClear={() => setDraft((d) => ({ ...d, myair: undefined }))} />
+          <div className="faint tiny" style={{ gridColumn: 'span 2', alignSelf: 'center' }}>
+            Capture d’écran de ta semaine dans myAir (heures d’utilisation, événements/h, masque) : l’agent la lit avec tes photos.
+          </div>
+        </div>
         {Object.keys(draft.photos).length > 0 && (
           <button className="btn soft block" onClick={() => void sharePhotos(draft)}>
             <Icon name="upload" size={18} /> Envoyer les photos au coach

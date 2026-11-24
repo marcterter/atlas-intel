@@ -86,7 +86,7 @@ const COACH_MAPPING = {
 
 // =========================================================
 
-const VERSION = 9;
+const VERSION = 10;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
@@ -96,13 +96,18 @@ const TABS = {
   repas: ['Date', 'Repas', 'Aliment', 'Marque', 'Quantité (g/ml)', 'Portion', 'Kcal', 'Protéines (g)', 'Glucides (g)', 'Lipides (g)'],
   pas: ['Date', 'Pas', 'Source', 'Reçu le', 'Horodatage'],
   bilans: ['ID', 'Date', 'Taille', 'Hanches', 'Poitrine', 'Bras', 'Cuisse', 'Mollet', 'Cou', 'Photos', 'Commentaire'],
-  conseils: ['Semaine du', 'Généré le', 'Conseils', 'Exercices (JSON)'],
+  conseils: ['Semaine du', 'Généré le', 'Conseils', 'Exercices (JSON)', 'Programme (JSON)'],
   contexte: ['Clé', 'Mis à jour', 'Contexte (JSON)'],
+  photos: ['Clé', 'Bilan', 'Date', 'Pose', 'Fichier', 'Envoyé le'],
 };
-const TAB_NAMES = { jours: 'Jours', seances: 'Séances', series: 'Détail séries', repas: 'Repas', pas: 'Pas', bilans: 'Bilans', conseils: 'Conseils IA', contexte: 'Contexte' };
+const TAB_NAMES = { jours: 'Jours', seances: 'Séances', series: 'Détail séries', repas: 'Repas', pas: 'Pas', bilans: 'Bilans', conseils: 'Conseils IA', contexte: 'Contexte', photos: 'Photos' };
+
+/** Dossier privé de ton Google Drive où vont les photos de bilan envoyées à l'agent du lundi. */
+const PHOTO_FOLDER = 'Forge – Photos des bilans';
+const PHOTO_POSES = ['face', 'profil', 'dos', 'myair'];
 
 /** Actions permises avec le jeton de l'agent IA : lire la semaine, déposer ses conseils. */
-const IA_ACTIONS = ['ping', 'semaine', 'conseils_set'];
+const IA_ACTIONS = ['ping', 'semaine', 'conseils_set', 'photos'];
 
 const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 const MONTHS = { janv: 1, janvier: 1, fevr: 2, fevrier: 2, mars: 3, avr: 4, avril: 4, mai: 5, juin: 6, juil: 7, juillet: 7, aout: 8, sept: 9, septembre: 9, oct: 10, octobre: 10, nov: 11, novembre: 11, dec: 12, decembre: 12 };
@@ -137,6 +142,8 @@ function handle_(e, body) {
     if (action === 'semaine') return json_(Object.assign({ ok: true }, exportWeek_(p)));
     if (action === 'conseils') return json_(Object.assign({ ok: true }, readConseils_()));
     if (action === 'conseils_set') return json_(withLock_(function () { return saveConseils_(p); }));
+    if (action === 'photos') return json_(Object.assign({ ok: true }, photosForAgent_(p)));
+    if (action === 'photo_put') return json_(withLock_(function () { return photoPut_(p); }));
     if (action === 'steps') return json_({ ok: true, steps: readSteps_(p.since) });
     if (action === 'pas' || action === 'steps_in') return json_(withLock_(function () { return receiveSteps_(p); }));
     if (action === 'push') return json_(withLock_(function () { return push_(body || {}); }));
@@ -273,6 +280,7 @@ function push_(body) {
     if (!b || !b.id) return;
     if (b.deleted) {
       replaceRows_(tab_('bilans'), 1, b.id, []);
+      trashBilanPhotos_(b.id);
       return;
     }
     const m = b.mensurations || {};
@@ -387,11 +395,14 @@ function saveConseils_(p) {
   if (!texte) return { ok: false, error: 'Conseils vides' };
   const semaine = isoOk_(p.semaine) ? String(p.semaine) : todayIso_();
   const exercices = cleanExerciseAdvice_(p.exercices);
+  const programme = cleanProgramChanges_(p.programme);
   const sh = tab_('conseils');
-  // Onglet créé par la version 7 : il manque l'en-tête des conseils par exercice.
-  if (String(sh.getRange(1, 4, 1, 1).getValues()[0][0] || '') === '') sh.getRange(1, 4).setValue(TABS.conseils[3]);
-  upsert_(sh, 1, semaine, [toDate_(semaine), new Date(), texte.slice(0, 45000), JSON.stringify(exercices)]);
-  return { ok: true, semaine: semaine, exercices: exercices.length };
+  // Onglet créé par une version d'avant : il manque les en-têtes des colonnes ajoutées depuis.
+  [4, 5].forEach(function (c) {
+    if (String(sh.getRange(1, c, 1, 1).getValues()[0][0] || '') === '') sh.getRange(1, c).setValue(TABS.conseils[c - 1]);
+  });
+  upsert_(sh, 1, semaine, [toDate_(semaine), new Date(), texte.slice(0, 45000), JSON.stringify(exercices), JSON.stringify(programme)]);
+  return { ok: true, semaine: semaine, exercices: exercices.length, programme: programme.length };
 }
 
 /** Conseils par exercice de l'agent : [{ nom, conseil }], affichés dans la séance sous l'objectif du jour. */
@@ -412,14 +423,151 @@ function cleanExerciseAdvice_(list) {
     .slice(0, 40);
 }
 
+/** Types de changements de programme que l'agent peut proposer (appliqués d'un geste dans l'app). */
+const PROGRAM_TYPES = ['series', 'reps', 'rir', 'ajouter', 'retirer', 'remplacer'];
+
+function cleanProgramChanges_(list) {
+  if (typeof list === 'string') {
+    try {
+      list = JSON.parse(list);
+    } catch (err) {
+      list = [];
+    }
+  }
+  if (!Array.isArray(list)) return [];
+  const txt = function (v, n) {
+    return String(v == null ? '' : v).trim().slice(0, n);
+  };
+  return list
+    .map(function (x) {
+      x = x || {};
+      const c = { type: txt(x.type, 20), seance: txt(x.seance, 80), exercice: txt(x.exercice, 120), pourquoi: txt(x.pourquoi, 240) };
+      const series = Math.round(Number(x.series));
+      if (series >= 1 && series <= 10) c.series = series;
+      if (txt(x.reps, 20)) c.reps = txt(x.reps, 20);
+      if (txt(x.rir, 10)) c.rir = txt(x.rir, 10);
+      if (txt(x.par, 120)) c.par = txt(x.par, 120);
+      if (txt(x.apres, 120)) c.apres = txt(x.apres, 120);
+      if (txt(x.muscle, 20)) c.muscle = txt(x.muscle, 20);
+      return c;
+    })
+    .filter(function (c) {
+      if (PROGRAM_TYPES.indexOf(c.type) < 0 || !c.seance || !c.exercice) return false;
+      if (c.type === 'series') return !!c.series;
+      if (c.type === 'reps') return !!c.reps;
+      if (c.type === 'rir') return !!c.rir;
+      if (c.type === 'remplacer') return !!c.par;
+      return true;
+    })
+    .slice(0, 8);
+}
+
+// ---------------------------------------------------------------- photos de bilan pour l'agent du lundi
+
+function photoFolder_() {
+  const it = DriveApp.getFoldersByName(PHOTO_FOLDER);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(PHOTO_FOLDER);
+}
+
+function trashFile_(id) {
+  if (!id) return;
+  try {
+    DriveApp.getFileById(String(id)).setTrashed(true);
+  } catch (err) {
+    // Déjà supprimé à la main : rien à faire.
+  }
+}
+
+/** Photo d'un bilan (face, profil, dos, capture myAir) envoyée par l'app : rangée dans le dossier privé. */
+function photoPut_(p) {
+  const pose = String(p.pose || '');
+  if (PHOTO_POSES.indexOf(pose) < 0) return { ok: false, error: 'Pose inconnue : ' + pose };
+  const bilan = String(p.bilan || '').slice(0, 64);
+  if (!bilan || !isoOk_(p.date)) return { ok: false, error: 'Bilan ou date manquants' };
+  const data = String(p.data || '');
+  if (!data || data.length > 6000000) return { ok: false, error: 'Photo vide ou trop lourde' };
+  const file = photoFolder_().createFile(Utilities.newBlob(Utilities.base64Decode(data), 'image/jpeg', String(p.date) + '_' + pose + '.jpg'));
+  const sh = tab_('photos');
+  const key = bilan + '|' + pose;
+  const last = sh.getLastRow();
+  if (last >= 2) {
+    const rows = sh.getRange(2, 1, last - 1, 5).getValues();
+    rows.forEach(function (r) {
+      if (String(r[0]) === key) trashFile_(r[4]); // photo remplacée : l'ancienne part à la corbeille
+    });
+  }
+  upsert_(sh, 1, key, [key, bilan, toDate_(String(p.date)), pose, file.getId(), new Date()]);
+  return { ok: true, id: file.getId() };
+}
+
+/** Bilan supprimé dans l'app : ses photos partent à la corbeille du Drive. */
+function trashBilanPhotos_(bilan) {
+  const sh = ss_().getSheetByName(TAB_NAMES.photos);
+  if (!sh || sh.getLastRow() < 2) return;
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 5).getValues();
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i][1]) !== String(bilan)) continue;
+    trashFile_(rows[i][4]);
+    sh.deleteRows(i + 2, 1);
+  }
+}
+
+/**
+ * Pour l'agent : la dernière série de photos (si elle a moins de `jours` jours, 5 par défaut) et une
+ * série de référence environ 4 semaines plus tôt (au moins 2), en base64.
+ */
+function photosForAgent_(p) {
+  const empty = { recent: null, reference: null, dernier: null };
+  const sh = ss_().getSheetByName(TAB_NAMES.photos);
+  if (!sh || sh.getLastRow() < 2) return empty;
+  const rows = sh
+    .getRange(2, 1, sh.getLastRow() - 1, 5)
+    .getValues()
+    .map(function (r) {
+      return { date: iso_(r[2]), pose: String(r[3]), file: String(r[4] || '') };
+    })
+    .filter(function (r) { return r.date && r.file && PHOTO_POSES.indexOf(r.pose) >= 0; });
+  if (!rows.length) return empty;
+  const dates = rows.map(function (r) { return r.date; }).filter(function (d, i, a) { return a.indexOf(d) === i; }).sort().reverse();
+  const days = Math.min(14, Math.max(1, Number(p.jours) || 5));
+  const latest = dates[0];
+  const recent = latest >= isoDaysAgo_(days) ? latest : null;
+  let reference = null;
+  if (recent) {
+    const older = dates.filter(function (d) { return dayDiff_(recent, d) >= 14; });
+    older.sort(function (a, b) { return Math.abs(dayDiff_(recent, a) - 28) - Math.abs(dayDiff_(recent, b) - 28); });
+    reference = older[0] || null;
+  }
+  const pack = function (date) {
+    if (!date) return null;
+    const images = [];
+    rows.forEach(function (r) {
+      if (r.date !== date) return;
+      try {
+        images.push({ pose: r.pose, mime: 'image/jpeg', data: Utilities.base64Encode(DriveApp.getFileById(r.file).getBlob().getBytes()) });
+      } catch (err) {
+        // Fichier supprimé à la main dans le Drive : on l'ignore.
+      }
+    });
+    return images.length ? { date: date, images: images } : null;
+  };
+  return { recent: pack(recent), reference: pack(reference), dernier: latest };
+}
+
 function readConseils_() {
   const sh = ss_().getSheetByName(TAB_NAMES.conseils);
   if (!sh || sh.getLastRow() < 2) return { conseils: null, precedents: [] };
   const rows = sh
-    .getRange(2, 1, sh.getLastRow() - 1, 4)
+    .getRange(2, 1, sh.getLastRow() - 1, 5)
     .getValues()
     .map(function (r) {
-      return { semaine: iso_(r[0]), date: r[1] instanceof Date ? r[1].toISOString() : String(r[1] || ''), texte: String(r[2] || ''), exercices: cleanExerciseAdvice_(String(r[3] || '[]')) };
+      return {
+        semaine: iso_(r[0]),
+        date: r[1] instanceof Date ? r[1].toISOString() : String(r[1] || ''),
+        texte: String(r[2] || ''),
+        exercices: cleanExerciseAdvice_(String(r[3] || '[]')),
+        programme: cleanProgramChanges_(String(r[4] || '[]')),
+      };
     })
     .filter(function (x) { return x.semaine && x.texte; })
     .sort(function (a, b) { return a.semaine < b.semaine ? 1 : -1; });
@@ -1055,7 +1203,8 @@ function tab_(key) {
     sh = ss.insertSheet(name);
     sh.getRange(1, 1, 1, TABS[key].length).setValues([TABS[key]]).setFontWeight('bold');
     sh.setFrozenRows(1);
-    if (key !== 'seances' && key !== 'series' && key !== 'bilans') sh.getRange('A:A').setNumberFormat('dd/mm/yyyy');
+    if (key === 'photos') sh.getRange('C:C').setNumberFormat('dd/mm/yyyy');
+    else if (key !== 'seances' && key !== 'series' && key !== 'bilans') sh.getRange('A:A').setNumberFormat('dd/mm/yyyy');
     else sh.getRange('B:B').setNumberFormat('dd/mm/yyyy');
   }
   return sh;

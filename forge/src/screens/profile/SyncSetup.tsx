@@ -16,6 +16,8 @@ export function SyncSetup() {
   const pending = useStore((s) => dirtyCount(s))
   const outdated = useStore((s) => scriptOutdated(s))
   const [url, setUrl] = useState(sync.url)
+  const photosAgent = useStore((s) => s.settings.photosAgent)
+  const updateSettings = useStore((s) => s.updateSettings)
   const [token] = useState(() => sync.token || randomToken())
   useEffect(() => {
     // Le jeton est mémorisé tout de suite : il doit rester identique à celui collé dans le script.
@@ -74,7 +76,7 @@ export function SyncSetup() {
 
         {sync.enabled && outdated && (
           <button className="callout warn pressable" style={{ textAlign: 'left' }} onClick={() => ui.push(<SheetGuide token={token} />)}>
-            <b>Nouvelle version du script ({SCRIPT_VERSION})</b> : exercices remplacés, exercices en plus et séances décalées bien recopiés chez ton coach.
+            <b>Nouvelle version du script ({SCRIPT_VERSION})</b> : tes photos de bilan et ta capture myAir pour l’agent du lundi, et ses changements de programme à appliquer d’un geste. Google te demandera l’accès à ton Drive (pour ranger les photos).
             Recopie le script depuis le guide, colle-le à la place de l’ancien, puis Déployer → Gérer les déploiements → ✏️ → Nouvelle version.
           </button>
         )}
@@ -145,6 +147,15 @@ export function SyncSetup() {
             {showAgent && agentUrl && (
               <input className="input mono small" value={agentUrl} readOnly onFocus={(e) => e.currentTarget.select()} aria-label="Lien de l’agent" />
             )}
+            <div className="row-between" style={{ gap: 10, marginTop: 4 }}>
+              <div>
+                <div className="small bold">Photos des bilans</div>
+                <div className="faint tiny">
+                  Face, profil, dos et capture myAir, envoyées à l’agent dans un dossier privé de ton Google Drive (script {SCRIPT_VERSION} ou plus).
+                </div>
+              </div>
+              <Toggle on={!!photosAgent} onChange={(v) => updateSettings({ photosAgent: v })} label="Photos des bilans pour l’agent" />
+            </div>
           </div>
         )}
 

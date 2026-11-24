@@ -138,8 +138,36 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const TOKEN = 'secret-token-123'
 
+/** Faux Google Drive : un dossier, des fichiers (octets signés comme Apps Script), la corbeille. */
+function mockDrive() {
+  const files = new Map<string, { name: string; bytes: number[]; trashed: boolean }>()
+  let created = false
+  let n = 0
+  const folder = {
+    createFile: (blob: { name: string; bytes: number[] }) => {
+      const id = `f${++n}`
+      files.set(id, { name: blob.name, bytes: blob.bytes, trashed: false })
+      return { getId: () => id }
+    },
+  }
+  const DriveApp = {
+    getFoldersByName: () => {
+      let given = false
+      return { hasNext: () => created && !given, next: () => ((given = true), folder) }
+    },
+    createFolder: () => ((created = true), folder),
+    getFileById: (id: string) => {
+      const f = files.get(id)
+      if (!f) throw new Error('fichier absent')
+      return { setTrashed: (t: boolean) => void (f.trashed = t), getBlob: () => ({ getBytes: () => f.bytes }) }
+    },
+  }
+  return { DriveApp, files }
+}
+
 function load(opts: { coach?: MockSpreadsheet } = {}) {
   const own = new MockSpreadsheet('Forge – Suivi')
+  const drive = mockDrive()
   let src = readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8')
   src = src.replace("const TOKEN = 'COLLE_TON_JETON_ICI';", `const TOKEN = '${TOKEN}';`)
   if (opts.coach) src = src.replace("const COACH_SHEET_URL = '';", "const COACH_SHEET_URL = 'https://docs.google.com/spreadsheets/d/coach/edit';")
@@ -152,7 +180,11 @@ function load(opts: { coach?: MockSpreadsheet } = {}) {
       // Comme Apps Script : octets signés (-128…127) et base64 « web safe » avec remplissage.
       computeDigest: (_alg: string, value: string) => [...createHash('sha256').update(value, 'utf8').digest()].map((b) => (b > 127 ? b - 256 : b)),
       base64EncodeWebSafe: (bytes: number[]) => Buffer.from(bytes.map((b) => b & 255)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
+      base64Encode: (bytes: number[]) => Buffer.from(bytes.map((b) => b & 255)).toString('base64'),
+      base64Decode: (s: string) => [...Buffer.from(s, 'base64')].map((b) => (b > 127 ? b - 256 : b)),
+      newBlob: (bytes: number[], mime: string, name: string) => ({ bytes, mime, name }),
     },
+    DriveApp: drive.DriveApp,
     SpreadsheetApp: { getActiveSpreadsheet: () => own, openByUrl: () => opts.coach },
     ContentService: { createTextOutput: (s: string) => ({ s, setMimeType() { return this } }), MimeType: { JSON: 'json' } },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
@@ -172,7 +204,7 @@ function load(opts: { coach?: MockSpreadsheet } = {}) {
   const get = (params: Record<string, string>) => JSON.parse(api.doGet({ parameter: { token: TOKEN, ...params } }).s)
   const post = (body: Record<string, unknown>) => JSON.parse(api.doPost({ parameter: {}, postData: { contents: JSON.stringify({ token: TOKEN, ...body }) } }).s)
   const tab = (n: string) => own.getSheetByName(n) as MockSheet
-  return { own, get, post, tab }
+  return { own, get, post, tab, drive }
 }
 
 // ---------------------------------------------------------------- réplique du sheet du coach
@@ -727,4 +759,73 @@ test('Agent IA : jeton dérivé (même calcul que l’app), lecture de la semain
   assert.deepEqual(get({ action: 'conseils' }).conseils.exercices, [{ nom: 'Développé couché à la smith', conseil: 'Passe à 57,5 kg sur la 1re série.' }])
   assert.equal(tab('Conseils IA').rows[0][3], 'Exercices (JSON)')
   assert.equal(get({ action: 'semaine', token: ia }).conseilsPrecedents.length, 2)
+})
+
+test('Agent IA : changements de programme déposés avec les conseils, nettoyés, relus par l’app', async () => {
+  const { tokenIa } = await import('../src/lib/agent.ts')
+  const ia = await tokenIa(TOKEN)
+  const { get, post, tab } = load()
+  const r = post({
+    action: 'conseils_set',
+    token: ia,
+    semaine: '2026-11-30',
+    texte: '## Cap\n- Maintien',
+    programme: [
+      { seance: 'Upper 1', type: 'series', exercice: 'Curl pupitre unilatéral avec haltères', series: 4, pourquoi: 'Biceps sous la zone.' },
+      { seance: 'Lower B', type: 'remplacer', exercice: 'Leg press', par: 'Hack squat', muscle: 'quadriceps', pourquoi: 'Leg press en baisse 2 semaines.' },
+      { seance: 'Upper 1', type: 'ajouter', exercice: 'Curl marteau', series: 3, reps: '10-12', apres: 'Curl pupitre', muscle: 'biceps' },
+      { seance: 'Upper 1', type: 'series', exercice: 'Tirage vertical', series: 40 }, // hors bornes : écarté
+      { seance: '', type: 'retirer', exercice: 'Écarté haltères' }, // sans séance : écarté
+      { seance: 'Upper 1', type: 'danser', exercice: 'x' }, // type inconnu : écarté
+    ],
+  })
+  assert.deepEqual([r.ok, r.programme], [true, 3])
+  assert.equal(tab('Conseils IA').rows[0][4], 'Programme (JSON)')
+  const c = get({ action: 'conseils' }).conseils
+  assert.deepEqual(
+    c.programme.map((x: Record<string, unknown>) => [x.type, x.seance, x.exercice, x.series ?? x.par ?? null]),
+    [
+      ['series', 'Upper 1', 'Curl pupitre unilatéral avec haltères', 4],
+      ['remplacer', 'Lower B', 'Leg press', 'Hack squat'],
+      ['ajouter', 'Upper 1', 'Curl marteau', 3],
+    ],
+  )
+  // Ancien dépôt sans programme : liste vide.
+  post({ action: 'conseils_set', token: ia, semaine: '2026-11-23', texte: 'x' })
+  assert.deepEqual(get({ action: 'semaine', token: ia }).conseilsPrecedents.map((x: { programme: unknown[] }) => x.programme.length), [0, 3])
+})
+
+test('Photos de bilan : rangées dans le Drive par l’app, lues par l’agent (récente + 4 semaines avant), supprimées avec le bilan', async () => {
+  const { tokenIa } = await import('../src/lib/agent.ts')
+  const ia = await tokenIa(TOKEN)
+  const { get, post, tab, drive } = load()
+  const img = (txt: string) => Buffer.from(txt).toString('base64')
+  // Aujourd'hui (horloge figée des tests) et environ 4 semaines avant.
+  const today = iso(new FixedDate())
+  const ago = (n: number) => iso(new FixedDate(new FixedDate().getTime() - n * 86400000))
+  for (const [bilan, date] of [['c-old', ago(30)], ['c-mid', ago(9)], ['c-new', ago(1)]]) {
+    for (const pose of ['face', 'dos']) assert.equal(post({ action: 'photo_put', bilan, date, pose, data: img(`${bilan}-${pose}`) }).ok, true)
+  }
+  assert.equal(post({ action: 'photo_put', bilan: 'c-new', date: ago(1), pose: 'myair', data: img('capture') }).ok, true)
+  // Photo refaite : l'ancienne part à la corbeille, une seule ligne par bilan et par pose.
+  post({ action: 'photo_put', bilan: 'c-new', date: ago(1), pose: 'face', data: img('c-new-face-v2') })
+  assert.equal(tab('Photos').data().length, 7)
+  assert.equal([...drive.files.values()].filter((f) => f.trashed).length, 1)
+  // L'agent ne peut pas en envoyer…
+  assert.equal(post({ action: 'photo_put', token: ia, bilan: 'x', date: today, pose: 'face', data: img('x') }).ok, false)
+  // … mais il lit la série récente et celle d'environ 4 semaines avant (pas celle d'il y a 9 jours).
+  const p = get({ action: 'photos', token: ia })
+  assert.equal(p.ok, true, JSON.stringify(p).slice(0, 200))
+  assert.equal(p.recent.date, ago(1))
+  assert.deepEqual(p.recent.images.map((x: { pose: string; data: string }) => [x.pose, Buffer.from(x.data, 'base64').toString()]).sort(), [['dos', 'c-new-dos'], ['face', 'c-new-face-v2'], ['myair', 'capture']])
+  assert.equal(p.reference.date, ago(30))
+  assert.equal(p.dernier, ago(1))
+  // Pose inconnue refusée.
+  assert.equal(post({ action: 'photo_put', bilan: 'c-new', date: today, pose: 'selfie', data: img('x') }).ok, false)
+  // Bilan supprimé dans l'app : ses photos partent à la corbeille.
+  post({ action: 'push', bilans: [{ id: 'c-new', deleted: true }] })
+  assert.equal(tab('Photos').data().length, 4)
+  const again = get({ action: 'photos', token: ia })
+  assert.equal(again.recent, null, 'plus de photos récentes : l’agent les réclamera')
+  assert.equal(again.dernier, ago(9))
 })

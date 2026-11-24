@@ -277,6 +277,9 @@ export type MeasureKey = 'taille' | 'hanches' | 'poitrine' | 'bras' | 'cuisse' |
 export type PhotoPose = 'face' | 'profil' | 'dos'
 export type RatingKey = 'energie' | 'sommeil' | 'faim' | 'stress' | 'digestion'
 
+/** Emplacements de photo d'un bilan : les 3 poses, plus la capture d'écran de myAir (PPC). */
+export type PhotoSlot = PhotoPose | 'myair'
+
 export interface CheckIn {
   id: string
   date: ISODate
@@ -285,6 +288,10 @@ export interface CheckIn {
   ratings: Partial<Record<RatingKey, number>>
   note?: string
   at: number
+  /** Capture d'écran de ta semaine dans myAir (heures de PPC, événements/h, masque), pour l'agent du lundi. */
+  myair?: string
+  /** Photos déjà envoyées à l'agent du lundi (dans ton Google Drive) : la photo envoyée, par emplacement. */
+  envoye?: Partial<Record<PhotoSlot, string>>
 }
 
 /** Suivi quotidien demandé par le coach (échelles du sheet « Suivi journalier »). */
@@ -311,6 +318,8 @@ export interface Settings {
   keepAwake: boolean
   autoRest: boolean
   shortcutName: string
+  /** Photos des bilans envoyées à l'agent du lundi (dossier privé du Google Drive) ; null : pas encore demandé. */
+  photosAgent?: boolean | null
 }
 
 export interface SyncConfig {
@@ -328,6 +337,27 @@ export interface SyncConfig {
   contexteKey?: string | null
 }
 
+export type ProgramChangeType = 'series' | 'reps' | 'rir' | 'ajouter' | 'retirer' | 'remplacer'
+
+/** Changement de programme proposé par l'agent IA du lundi, appliqué d'un geste dans l'app. */
+export interface ProgramChange {
+  type: ProgramChangeType
+  /** Séance concernée (« Upper 1 »). */
+  seance: string
+  /** Exercice concerné ; pour « ajouter », le nouvel exercice. */
+  exercice: string
+  pourquoi: string
+  series?: number
+  reps?: string
+  rir?: string
+  /** « remplacer » : l'exercice qui prend sa place. */
+  par?: string
+  /** « ajouter » : placé juste après cet exercice. */
+  apres?: string
+  /** Muscle du nouvel exercice, s'il n'existe pas encore dans l'app. */
+  muscle?: string
+}
+
 export interface AiAdvice {
   /** Lundi de la semaine analysée. */
   semaine: ISODate
@@ -337,6 +367,8 @@ export interface AiAdvice {
   texte: string
   /** Conseils par exercice, affichés dans la séance sous l'objectif du jour. */
   exercices?: { nom: string; conseil: string }[]
+  /** Changements de programme proposés (script v10), à appliquer d'un geste. */
+  programme?: ProgramChange[]
 }
 
 export interface ReviewDecision {
@@ -388,6 +420,8 @@ export interface AppData {
   conseils: AiAdvice | null
   /** Semaine (lundi) dont les conseils ont été lus et masqués. */
   conseilsVus: ISODate | null
+  /** Changements de programme proposés par l'agent : appliqués ou ignorés (clé : semaine#changement). */
+  programmeVu?: Record<string, 'applique' | 'ignore'>
   /** Jour forcé en "entraînement" (true) ou "repos" (false) pour les objectifs. */
   dayType: Record<ISODate, boolean>
   sync: SyncConfig

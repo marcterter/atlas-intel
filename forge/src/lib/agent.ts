@@ -1,10 +1,10 @@
 // Agent IA du lundi : jeton limité (lire la semaine, déposer des conseils) et contexte envoyé au sheet.
-import { findExercise, normalize } from '../data/exercises.ts'
+import { findExercise, MUSCLE_LABEL, normalize } from '../data/exercises.ts'
 import { addDays } from './date.ts'
 import { GOALS, ageFrom } from './nutrition.ts'
 import { latestWeight } from './body.ts'
-import { setLabel } from './training.ts'
-import type { AiAdvice, AppData, ISODate } from './types.ts'
+import { setLabel, setsByMuscle } from './training.ts'
+import type { AiAdvice, AppData, ISODate, ProgramChange, ProgramChangeType } from './types.ts'
 
 /** SHA-256("forge-ia:" + jeton) en base64 URL, 24 caractères : le même calcul que le script (tokenIa_). */
 export async function tokenIa(token: string): Promise<string> {
@@ -26,6 +26,13 @@ const words = (name: string) =>
     .filter((w) => w && !LINK_WORDS.has(w))
     .sort()
     .join(' ')
+
+/** Même exercice ou même séance à l'écriture près : sans accents ni casse, mots dans n'importe quel ordre. */
+export function sameName(a: string, b: string): boolean {
+  if (normalize(a) === normalize(b)) return true
+  const wa = words(a)
+  return !!wa && wa === words(b)
+}
 
 /**
  * Conseil de l'agent pour cet exercice, pendant les deux semaines qui suivent son bilan : même nom
@@ -50,7 +57,40 @@ export function parseConseils(raw: unknown): AiAdvice | null {
   const exercices = (Array.isArray(c.exercices) ? c.exercices : [])
     .map((x: { nom?: unknown; conseil?: unknown } | null) => ({ nom: String(x?.nom ?? '').trim(), conseil: String(x?.conseil ?? '').trim() }))
     .filter((x) => x.nom && x.conseil)
-  return { semaine, date: String(c.date ?? ''), texte, exercices }
+  const programme = parseProgramChanges((c as { programme?: unknown }).programme)
+  return { semaine, date: String(c.date ?? ''), texte, exercices, ...(programme.length ? { programme } : {}) }
+}
+
+const CHANGE_TYPES: ProgramChangeType[] = ['series', 'reps', 'rir', 'ajouter', 'retirer', 'remplacer']
+
+/** Changements de programme renvoyés par le script, gardés seulement s'ils sont complets. */
+export function parseProgramChanges(raw: unknown): ProgramChange[] {
+  if (!Array.isArray(raw)) return []
+  const txt = (v: unknown) => (v == null ? '' : String(v).trim())
+  const out: ProgramChange[] = []
+  for (const x of raw as Record<string, unknown>[]) {
+    if (!x || typeof x !== 'object') continue
+    const type = txt(x.type) as ProgramChangeType
+    const c: ProgramChange = { type, seance: txt(x.seance), exercice: txt(x.exercice), pourquoi: txt(x.pourquoi) }
+    const series = Math.round(Number(x.series))
+    if (series >= 1 && series <= 10) c.series = series
+    for (const k of ['reps', 'rir', 'par', 'apres', 'muscle'] as const) if (txt(x[k])) c[k] = txt(x[k])
+    if (!CHANGE_TYPES.includes(type) || !c.seance || !c.exercice) continue
+    if ((type === 'series' && !c.series) || (type === 'reps' && !c.reps) || (type === 'rir' && !c.rir) || (type === 'remplacer' && !c.par)) continue
+    out.push(c)
+  }
+  return out.slice(0, 8)
+}
+
+function volumeByMuscle(sessions: AppData['sessions'], custom: AppData['customExercises'], today: ISODate) {
+  const week = setsByMuscle(sessions, today, 7, custom)
+  const month = setsByMuscle(sessions, today, 28, custom)
+  const out: Record<string, { semaine: number; moyenne4sem: number }> = {}
+  for (const [m, n] of month) {
+    if (m === 'cardio') continue
+    out[MUSCLE_LABEL[m]] = { semaine: week.get(m) ?? 0, moyenne4sem: Math.round((n / 4) * 10) / 10 }
+  }
+  return out
 }
 
 /** Une note écrite dans l'app, telle que l'agent la reçoit. */
@@ -118,7 +158,7 @@ export function recentNotes(s: Pick<AppData, 'sessions' | 'daylogs' | 'checkins'
 
 /** Ce que l'agent doit savoir en plus des chiffres du jour : objectif, cibles, programme, tes notes. */
 export function buildContexte(
-  s: Pick<AppData, 'profile' | 'targets' | 'routines' | 'customExercises' | 'weighins' | 'sessions' | 'daylogs' | 'checkins'>,
+  s: Pick<AppData, 'profile' | 'targets' | 'routines' | 'customExercises' | 'weighins' | 'sessions' | 'daylogs' | 'checkins' | 'programmeVu'>,
   today: ISODate,
 ) {
   const w = latestWeight(s.weighins)
@@ -139,11 +179,25 @@ export function buildContexte(
       fibres: s.targets.fiber,
       cardioCoach: s.targets.cardioNote ?? null,
     },
+    // Tes séances dans l'app, avec les noms exacts que l'agent reprend pour proposer des changements.
     programme: s.routines.map((r) => ({
       seance: r.name,
       jourCoach: r.coachDay ?? null,
-      exercices: r.items.map((it) => `${findExercise(it.exerciseId, s.customExercises).name} · ${it.sets} × ${it.reps || '?'}${it.rir ? ` · RIR ${it.rir}` : ''}`),
+      comptePour: r.countsFor ?? null,
+      exercices: r.items.map((it) => {
+        const exo = findExercise(it.exerciseId, s.customExercises)
+        return { nom: exo.name, muscle: MUSCLE_LABEL[exo.muscle], series: it.sets, reps: it.reps || null, rir: it.rir || null, ...(it.superset ? { superset: it.superset } : {}) }
+      }),
     })),
+    // Séries effectives par muscle : les 7 derniers jours et la moyenne des 4 dernières semaines.
+    volumeParMuscle: volumeByMuscle(s.sessions, s.customExercises, today),
+    // Ce que tu as fait de ses changements de programme ces 5 dernières semaines (appliqués ou ignorés).
+    decisionsProgramme: Object.entries(s.programmeVu ?? {})
+      .filter(([k]) => k.slice(0, 10) >= addDays(today, -35))
+      .map(([k, etat]) => {
+        const [type, seance, exercice, series, reps, rir, par] = JSON.parse(k.slice(11)) as (string | number | null)[]
+        return { semaine: k.slice(0, 10), etat: etat === 'applique' ? 'appliqué' : 'ignoré', type, seance, exercice, series, reps, rir, par }
+      }),
     notes: recentNotes(s, today),
   }
 }

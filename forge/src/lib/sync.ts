@@ -9,12 +9,14 @@ import { cardioMinutes, cardioText, dayCardio } from './cardio.ts'
 import { buildContexte, parseConseils } from './agent.ts'
 import { weekAverage } from './body.ts'
 import { addDays, todayISO } from './date.ts'
-import type { DirtyState, ISODate, Session, StepsDay } from './types.ts'
+import { getPhoto } from '../store/persist.ts'
+import { compressImage } from './device.ts'
+import type { DirtyState, ISODate, PhotoSlot, Session, StepsDay } from './types.ts'
 
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 /** Version de apps-script/Code.gs livrée avec cette version de l'app. */
-export const SCRIPT_VERSION = 9
+export const SCRIPT_VERSION = 10
 
 export function scriptOutdated(s: Pick<State, 'sync'>): boolean {
   return s.sync.scriptVersion != null && s.sync.scriptVersion < SCRIPT_VERSION
@@ -298,7 +300,10 @@ async function doSync({ pullOnly }: { pullOnly?: boolean }): Promise<SyncResult>
   // Sans autre donnée à envoyer, le contexte de l'agent (notes, objectifs, programme) part quand même s'il a changé.
   const payload = buildPayload(state, snap)
   const contexteKey = hashText(JSON.stringify(payload.contexte))
-  if (count === 0 && contexteKey === state.sync.contexteKey) return { ok: true, pushed: 0, pulledSteps, message: 'Tout est à jour' }
+  if (count === 0 && contexteKey === state.sync.contexteKey) {
+    const sent = await uploadPhotosSafe(url, token)
+    return { ok: true, pushed: 0, pulledSteps, message: sent ? photosText(sent) : 'Tout est à jour' }
+  }
   try {
     const r = await post(url, { action: 'push', token, app: 'forge', version: 1, ...payload })
     if (!r.ok) throw new Error(String(r.error ?? 'Erreur'))
@@ -310,11 +315,67 @@ async function doSync({ pullOnly }: { pullOnly?: boolean }): Promise<SyncResult>
     const scriptVersion = Number(r.version) || 0
     useStore.getState().setSync({ lastPushAt: Date.now(), lastError: warn ? warn.trim() : null, scriptVersion, contexteKey })
     const old = scriptVersion < SCRIPT_VERSION ? ' · script à mettre à jour' : ''
-    return { ok: true, pushed: count, pulledSteps, message: `Synchronisé${warn}${info}${old}` }
+    const sent = await uploadPhotosSafe(url, token)
+    return { ok: true, pushed: count, pulledSteps, message: `Synchronisé${warn}${info}${old}${sent ? ` · ${photosText(sent)}` : ''}` }
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Envoi impossible'
     useStore.getState().setSync({ lastError: message })
     return { ok: false, pushed: 0, pulledSteps, message }
+  }
+}
+
+const photosText = (n: number) => `${n} photo${n > 1 ? 's' : ''} envoyée${n > 1 ? 's' : ''} à l’agent`
+
+async function blobToBase64(b: Blob): Promise<string> {
+  const bytes = new Uint8Array(await b.arrayBuffer())
+  let bin = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(bin)
+}
+
+/** Photos à envoyer : bilans des 5 dernières semaines, chaque emplacement dont la photo a changé depuis l'envoi. */
+export function photosToSend(checkins: State['checkins'], today: ISODate): { checkin: string; date: ISODate; slot: PhotoSlot; photo: string }[] {
+  const since = addDays(today, -35)
+  const out: { checkin: string; date: ISODate; slot: PhotoSlot; photo: string }[] = []
+  for (const c of checkins) {
+    if (c.date < since) continue
+    const slots: [PhotoSlot, string | undefined][] = [
+      ['face', c.photos.face],
+      ['profil', c.photos.profil],
+      ['dos', c.photos.dos],
+      ['myair', c.myair],
+    ]
+    for (const [slot, photo] of slots) if (photo && c.envoye?.[slot] !== photo) out.push({ checkin: c.id, date: c.date, slot, photo })
+  }
+  return out
+}
+
+/**
+ * Photos de bilan pour l'agent du lundi (si tu l'as accepté, script v10) : réduites puis rangées par le script
+ * dans un dossier privé de ton Google Drive. Quelques-unes par synchro, pour qu'elle reste rapide.
+ */
+async function uploadPhotos(url: string, token: string): Promise<number> {
+  const st = useStore.getState()
+  if (!st.settings.photosAgent || (st.sync.scriptVersion ?? 0) < 10) return 0
+  let sent = 0
+  for (const p of photosToSend(st.checkins, todayISO()).slice(0, 4)) {
+    const blob = await getPhoto(p.photo)
+    if (!blob) continue
+    const small = p.slot === 'myair' ? await compressImage(blob, 1600, 0.85) : await compressImage(blob, 1024, 0.72)
+    const r = await post(url, { action: 'photo_put', token, bilan: p.checkin, date: p.date, pose: p.slot, data: await blobToBase64(small) })
+    if (!r.ok) throw new Error(String(r.error ?? 'Envoi de photo impossible'))
+    useStore.getState().markPhotoSent(p.checkin, p.slot, p.photo)
+    sent++
+  }
+  return sent
+}
+
+async function uploadPhotosSafe(url: string, token: string): Promise<number> {
+  try {
+    return await uploadPhotos(url, token)
+  } catch {
+    // Pas grave : on réessaiera à la prochaine synchro.
+    return 0
   }
 }
 

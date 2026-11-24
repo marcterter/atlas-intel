@@ -12,7 +12,9 @@ import type {
   ISODate,
   MacroTargets,
   MealId,
+  PhotoSlot,
   Profile,
+  ProgramChange,
   Recipe,
   ReviewDecision,
   Routine,
@@ -28,6 +30,7 @@ import { TEMPLATE_ROUTINES } from '../data/exercises.ts'
 import { mergeSteps } from '../lib/body.ts'
 import { finalizeSession, sessionFromRoutine, sessionHasWork } from '../lib/sessionOps.ts'
 import { freezeCoachMapping } from '../lib/coachMap.ts'
+import { applyChange, changeKey } from '../lib/programChanges.ts'
 import { freezeMakeUps } from '../lib/makeup.ts'
 import { clearData, loadData, requestPersistence, saveData } from './persist.ts'
 import type { ImportPlan } from '../lib/coach.ts'
@@ -62,6 +65,7 @@ export function defaultData(): AppData {
     cardio: [],
     conseils: null,
     conseilsVus: null,
+    programmeVu: {},
     dayType: {},
     sync: { url: '', token: '', coachUrl: '', enabled: false, lastPushAt: null, lastPullAt: null, lastError: null, scriptVersion: null },
     dirty: { days: {}, sessions: {}, checkins: {} },
@@ -91,6 +95,7 @@ export function migrate(raw: unknown): AppData {
     cardio: r.cardio ?? [],
     conseils: r.conseils ?? null,
     conseilsVus: r.conseilsVus ?? null,
+    programmeVu: r.programmeVu ?? {},
   }
 }
 
@@ -157,10 +162,16 @@ export interface Actions {
   deleteCardio: (id: string) => void
   setConseils: (c: AiAdvice) => void
   markConseilsSeen: () => void
+  /** Applique des changements de programme de l'agent (ceux qui échouent sont listés) ; `undo` remet tout comme avant. */
+  applyProgramChanges: (semaine: ISODate, changes: ProgramChange[]) => { applied: string[]; errors: string[]; undo: () => void }
+  /** Retient un changement comme ignoré (ou l'oublie : null). */
+  setProgramChange: (semaine: ISODate, c: ProgramChange, state: 'applique' | 'ignore' | null) => void
   /** Bilan du lundi : appliquer les objectifs proposés, garder les siens, ou simplement « vu ». */
   decideReview: (monday: ISODate, decision: Omit<ReviewDecision, 'at'>, next?: Targets | null) => void
   saveCheckIn: (c: CheckIn) => void
   deleteCheckIn: (id: string) => void
+  /** Photo de bilan envoyée à l'agent : retenue pour ne pas la renvoyer (sans relancer de synchro). */
+  markPhotoSent: (checkinId: string, slot: PhotoSlot, photoId: string) => void
 
   setSync: (patch: Partial<SyncConfig>) => void
   clearDirty: (snapshot: DirtyState) => void
@@ -416,9 +427,44 @@ export const useStore = create<State>()((set, get) => ({
     }),
   setConseils: (c) =>
     set((s) =>
-      s.conseils?.semaine === c.semaine && s.conseils.texte === c.texte && JSON.stringify(s.conseils.exercices ?? []) === JSON.stringify(c.exercices ?? []) ? {} : { conseils: c },
+      s.conseils?.semaine === c.semaine &&
+      s.conseils.texte === c.texte &&
+      JSON.stringify(s.conseils.exercices ?? []) === JSON.stringify(c.exercices ?? []) &&
+      JSON.stringify(s.conseils.programme ?? []) === JSON.stringify(c.programme ?? [])
+        ? {}
+        : { conseils: c },
     ),
   markConseilsSeen: () => set((s) => ({ conseilsVus: s.conseils?.semaine ?? null })),
+  applyProgramChanges: (semaine, changes) => {
+    const s = get()
+    const prev = { routines: s.routines, customExercises: s.customExercises, programmeVu: s.programmeVu ?? {} }
+    let routines = s.routines
+    let custom = s.customExercises
+    const vu = { ...(s.programmeVu ?? {}) }
+    const applied: string[] = []
+    const errors: string[] = []
+    for (const c of changes) {
+      const r = applyChange(c, routines, custom)
+      if (!r.ok) {
+        errors.push(r.error)
+        continue
+      }
+      routines = r.routines
+      custom = r.custom
+      vu[`${semaine}#${changeKey(c)}`] = 'applique'
+      applied.push(r.label)
+    }
+    if (applied.length) set({ routines, customExercises: custom, programmeVu: vu })
+    return { applied, errors, undo: () => set(prev) }
+  },
+  setProgramChange: (semaine, c, state) =>
+    set((s) => {
+      const vu = { ...(s.programmeVu ?? {}) }
+      const k = `${semaine}#${changeKey(c)}`
+      if (state) vu[k] = state
+      else delete vu[k]
+      return { programmeVu: vu }
+    }),
   deleteCardio: (id) =>
     set((s) => {
       const old = s.cardio.find((x) => x.id === id)
@@ -438,6 +484,8 @@ export const useStore = create<State>()((set, get) => ({
       )
       return { checkins, dirty: { ...s.dirty, checkins: bump(s.dirty.checkins, c.id) } }
     }),
+  markPhotoSent: (checkinId, slot, photoId) =>
+    set((s) => ({ checkins: s.checkins.map((c) => (c.id === checkinId ? { ...c, envoye: { ...(c.envoye ?? {}), [slot]: photoId } } : c)) })),
   deleteCheckIn: (id) =>
     set((s) => ({ checkins: s.checkins.filter((c) => c.id !== id), dirty: { ...s.dirty, checkins: bump(s.dirty.checkins, id) } })),
 
