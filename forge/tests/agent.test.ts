@@ -105,12 +105,43 @@ test('agent IA : le contexte envoyé au sheet contient tes notes et ton objectif
       sessions: [session('a', '2026-11-23', 'Upper A', [], { note: 'RAS' })],
       daylogs: {},
       checkins: [],
+      reviews: {},
     },
     '2026-11-24',
   )
   assert.equal(ctx.objectifs.fibres, 35)
   assert.equal(ctx.projet, 'Prise de masse propre, date à décider')
   assert.deepEqual(ctx.notes, [{ date: '2026-11-23', ou: 'Séance Upper A', texte: 'RAS' }])
+  assert.deepEqual(ctx.decisionsMacros, [])
+})
+
+test('agent IA : il sait ce que tu as fait de ses macros et de celles du bilan de l’app', () => {
+  const ctx = buildContexte(
+    {
+      profile: { name: 'M', sex: 'H', birthYear: 1990, heightCm: 180, goal: 'maintien', activity: 'modere' } as never,
+      targets: { base: { kcal: 2640, protein: 180, carbs: 330, fat: 66 }, rest: null, steps: 15000, fiber: 35 },
+      routines: [],
+      customExercises: custom,
+      weighins: [],
+      sessions: [],
+      daylogs: {},
+      checkins: [],
+      reviews: {
+        '2026-11-30': { decision: 'applied', deltaKcal: 150, avg: 78, deltaKg: 0.1, at: 1, source: 'agent' }, // tranché via l'agent : déjà compté
+        '2026-11-23': { decision: 'applied', deltaKcal: -100, avg: 78, deltaKg: 0.4, at: 1 },
+        '2026-11-16': { decision: 'seen', deltaKcal: 0, avg: 78, deltaKg: 0, at: 1 },
+        '2026-09-07': { decision: 'kept', deltaKcal: 100, avg: 80, deltaKg: -1, at: 1 }, // trop vieux
+      },
+      macrosVu: { '2026-11-23': 'applique', '2026-11-16': 'garde' },
+    },
+    '2026-12-01',
+  )
+  assert.deepEqual(ctx.decisionsMacros, [
+    { semaine: '2026-11-23', par: 'agent', etat: 'appliquées' },
+    { semaine: '2026-11-16', par: 'agent', etat: 'gardé les siennes' },
+    { semaine: '2026-11-16', par: 'bilan de l’app', etat: 'appliquées', ecartKcal: -100 },
+    { semaine: '2026-11-09', par: 'bilan de l’app', etat: 'vu (rien à changer)', ecartKcal: 0 },
+  ])
 })
 
 test('objectif fibres : repère 14 g pour 1 000 kcal, jamais sous 30 g', () => {

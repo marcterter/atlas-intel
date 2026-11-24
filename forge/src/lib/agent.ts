@@ -4,7 +4,8 @@ import { addDays } from './date.ts'
 import { GOALS, ageFrom } from './nutrition.ts'
 import { latestWeight } from './body.ts'
 import { setLabel, setsByMuscle } from './training.ts'
-import type { AiAdvice, AppData, ISODate, ProgramChange, ProgramChangeType } from './types.ts'
+import { parseMacroProposal } from './macroProposal.ts'
+import type { AiAdvice, AppData, ISODate, ProgramChange, ProgramChangeType, ReviewDecision } from './types.ts'
 
 /** SHA-256("forge-ia:" + jeton) en base64 URL, 24 caractères : le même calcul que le script (tokenIa_). */
 export async function tokenIa(token: string): Promise<string> {
@@ -58,7 +59,8 @@ export function parseConseils(raw: unknown): AiAdvice | null {
     .map((x: { nom?: unknown; conseil?: unknown } | null) => ({ nom: String(x?.nom ?? '').trim(), conseil: String(x?.conseil ?? '').trim() }))
     .filter((x) => x.nom && x.conseil)
   const programme = parseProgramChanges((c as { programme?: unknown }).programme)
-  return { semaine, date: String(c.date ?? ''), texte, exercices, ...(programme.length ? { programme } : {}) }
+  const macros = parseMacroProposal((c as { macros?: unknown }).macros)
+  return { semaine, date: String(c.date ?? ''), texte, exercices, ...(programme.length ? { programme } : {}), ...(macros ? { macros } : {}) }
 }
 
 const CHANGE_TYPES: ProgramChangeType[] = ['series', 'reps', 'rir', 'ajouter', 'retirer', 'remplacer']
@@ -156,9 +158,29 @@ export function recentNotes(s: Pick<AppData, 'sessions' | 'daylogs' | 'checkins'
   return out
 }
 
+const REVIEW_STATE: Record<ReviewDecision['decision'], string> = { applied: 'appliquées', kept: 'gardé les siennes', seen: 'vu (rien à changer)' }
+
+/**
+ * Ce que tu as fait des macros proposées ces 5 dernières semaines, par l'agent ou par le bilan du lundi de
+ * l'app (clé : la semaine analysée, comme les conseils de l'agent).
+ */
+function macroDecisions(s: Pick<AppData, 'reviews' | 'macrosVu'>, today: ISODate) {
+  const since = addDays(today, -35)
+  const agent = Object.entries(s.macrosVu ?? {})
+    .filter(([semaine]) => semaine >= since)
+    .map(([semaine, etat]) => ({ semaine, par: 'agent', etat: etat === 'applique' ? 'appliquées' : 'gardé les siennes' }))
+  const app = Object.entries(s.reviews ?? {})
+    .filter(([lundi, r]) => lundi >= since && r.source !== 'agent')
+    .map(([lundi, r]) => ({ semaine: addDays(lundi, -7), par: 'bilan de l’app', etat: REVIEW_STATE[r.decision], ecartKcal: r.deltaKcal }))
+  return [...agent, ...app].sort((a, b) => b.semaine.localeCompare(a.semaine))
+}
+
 /** Ce que l'agent doit savoir en plus des chiffres du jour : objectif, cibles, programme, tes notes. */
 export function buildContexte(
-  s: Pick<AppData, 'profile' | 'targets' | 'routines' | 'customExercises' | 'weighins' | 'sessions' | 'daylogs' | 'checkins' | 'programmeVu'>,
+  s: Pick<
+    AppData,
+    'profile' | 'targets' | 'routines' | 'customExercises' | 'weighins' | 'sessions' | 'daylogs' | 'checkins' | 'programmeVu' | 'reviews' | 'macrosVu'
+  >,
   today: ISODate,
 ) {
   const w = latestWeight(s.weighins)
@@ -198,6 +220,8 @@ export function buildContexte(
         const [type, seance, exercice, series, reps, rir, par] = JSON.parse(k.slice(11)) as (string | number | null)[]
         return { semaine: k.slice(0, 10), etat: etat === 'applique' ? 'appliqué' : 'ignoré', type, seance, exercice, series, reps, rir, par }
       }),
+    // Ce que tu as fait des macros proposées (par l'agent ou par le bilan du lundi de l'app).
+    decisionsMacros: macroDecisions(s, today),
     notes: recentNotes(s, today),
   }
 }

@@ -358,6 +358,18 @@ export interface ProgramChange {
   muscle?: string
 }
 
+/** Nouveaux objectifs proposés par l'agent IA du lundi (script v11), appliqués d'un geste. */
+export interface MacroProposal {
+  /** Jour ON (ou jour standard si tu n'as pas de jour OFF). */
+  on: MacroTargets
+  /** Jour OFF ; absent : ton jour OFF ne change pas. */
+  off?: MacroTargets
+  fibres?: number
+  /** Changement de phase proposé (passage en prise de masse…). */
+  phase?: Goal
+  pourquoi: string
+}
+
 export interface AiAdvice {
   /** Lundi de la semaine analysée. */
   semaine: ISODate
@@ -369,6 +381,8 @@ export interface AiAdvice {
   exercices?: { nom: string; conseil: string }[]
   /** Changements de programme proposés (script v10), à appliquer d'un geste. */
   programme?: ProgramChange[]
+  /** Macros proposées (script v11), à appliquer d'un geste. */
+  macros?: MacroProposal
 }
 
 export interface ReviewDecision {
@@ -378,6 +392,8 @@ export interface ReviewDecision {
   avg: number | null
   deltaKg: number | null
   at: number
+  /** Décidé sur la proposition de l'agent IA plutôt que sur celle de l'app. */
+  source?: 'agent'
 }
 
 /** Éléments modifiés depuis la dernière synchro (valeur = compteur de révision). */
@@ -422,6 +438,8 @@ export interface AppData {
   conseilsVus: ISODate | null
   /** Changements de programme proposés par l'agent : appliqués ou ignorés (clé : semaine#changement). */
   programmeVu?: Record<string, 'applique' | 'ignore'>
+  /** Macros proposées par l'agent : appliquées ou gardées (clé : semaine analysée). */
+  macrosVu?: Record<ISODate, 'applique' | 'garde'>
   /** Jour forcé en "entraînement" (true) ou "repos" (false) pour les objectifs. */
   dayType: Record<ISODate, boolean>
   sync: SyncConfig

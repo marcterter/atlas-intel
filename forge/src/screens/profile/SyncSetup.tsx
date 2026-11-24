@@ -76,7 +76,10 @@ export function SyncSetup() {
 
         {sync.enabled && outdated && (
           <button className="callout warn pressable" style={{ textAlign: 'left' }} onClick={() => ui.push(<SheetGuide token={token} />)}>
-            <b>Nouvelle version du script ({SCRIPT_VERSION})</b> : tes photos de bilan et ta capture myAir pour l’agent du lundi, et ses changements de programme à appliquer d’un geste. Google te demandera l’accès à ton Drive (pour ranger les photos).
+            <b>Nouvelle version du script ({SCRIPT_VERSION})</b> :{' '}
+            {(sync.scriptVersion ?? 0) < 10
+              ? 'tes photos de bilan et ta capture myAir pour l’agent du lundi, ses changements de programme et ses macros à appliquer d’un geste. Google te demandera l’accès à ton Drive (pour ranger les photos).'
+              : 'les macros proposées par l’agent du lundi (jour ON, jour OFF, phase), à appliquer d’un geste.'}
             Recopie le script depuis le guide, colle-le à la place de l’ancien, puis Déployer → Gérer les déploiements → ✏️ → Nouvelle version.
           </button>
         )}

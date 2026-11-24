@@ -16,7 +16,7 @@ import type { DirtyState, ISODate, PhotoSlot, Session, StepsDay } from './types.
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 /** Version de apps-script/Code.gs livrée avec cette version de l'app. */
-export const SCRIPT_VERSION = 10
+export const SCRIPT_VERSION = 11
 
 export function scriptOutdated(s: Pick<State, 'sync'>): boolean {
   return s.sync.scriptVersion != null && s.sync.scriptVersion < SCRIPT_VERSION

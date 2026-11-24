@@ -25,12 +25,14 @@ import type {
   Targets,
 } from '../lib/types.ts'
 import { uid } from '../lib/id.ts'
-import { todayISO } from '../lib/date.ts'
+import { addDays, todayISO } from '../lib/date.ts'
 import { TEMPLATE_ROUTINES } from '../data/exercises.ts'
 import { mergeSteps } from '../lib/body.ts'
 import { finalizeSession, sessionFromRoutine, sessionHasWork } from '../lib/sessionOps.ts'
 import { freezeCoachMapping } from '../lib/coachMap.ts'
 import { applyChange, changeKey } from '../lib/programChanges.ts'
+import { applyMacroProposal } from '../lib/macroProposal.ts'
+import { weekTrend } from '../lib/review.ts'
 import { freezeMakeUps } from '../lib/makeup.ts'
 import { clearData, loadData, requestPersistence, saveData } from './persist.ts'
 import type { ImportPlan } from '../lib/coach.ts'
@@ -66,6 +68,7 @@ export function defaultData(): AppData {
     conseils: null,
     conseilsVus: null,
     programmeVu: {},
+    macrosVu: {},
     dayType: {},
     sync: { url: '', token: '', coachUrl: '', enabled: false, lastPushAt: null, lastPullAt: null, lastError: null, scriptVersion: null },
     dirty: { days: {}, sessions: {}, checkins: {} },
@@ -96,6 +99,7 @@ export function migrate(raw: unknown): AppData {
     conseils: r.conseils ?? null,
     conseilsVus: r.conseilsVus ?? null,
     programmeVu: r.programmeVu ?? {},
+    macrosVu: r.macrosVu ?? {},
   }
 }
 
@@ -166,6 +170,11 @@ export interface Actions {
   applyProgramChanges: (semaine: ISODate, changes: ProgramChange[]) => { applied: string[]; errors: string[]; undo: () => void }
   /** Retient un changement comme ignoré (ou l'oublie : null). */
   setProgramChange: (semaine: ISODate, c: ProgramChange, state: 'applique' | 'ignore' | null) => void
+  /**
+   * Macros proposées par l'agent pour la semaine `semaine` : appliquées (objectifs, phase, fibres), gardées,
+   * ou de nouveau en attente (null). Tranche aussi le bilan du lundi de l'app s'il ne l'est pas. `undo` remet tout.
+   */
+  decideAgentMacros: (semaine: ISODate, state: 'applique' | 'garde' | null) => { undo: () => void }
   /** Bilan du lundi : appliquer les objectifs proposés, garder les siens, ou simplement « vu ». */
   decideReview: (monday: ISODate, decision: Omit<ReviewDecision, 'at'>, next?: Targets | null) => void
   saveCheckIn: (c: CheckIn) => void
@@ -430,7 +439,8 @@ export const useStore = create<State>()((set, get) => ({
       s.conseils?.semaine === c.semaine &&
       s.conseils.texte === c.texte &&
       JSON.stringify(s.conseils.exercices ?? []) === JSON.stringify(c.exercices ?? []) &&
-      JSON.stringify(s.conseils.programme ?? []) === JSON.stringify(c.programme ?? [])
+      JSON.stringify(s.conseils.programme ?? []) === JSON.stringify(c.programme ?? []) &&
+      JSON.stringify(s.conseils.macros ?? null) === JSON.stringify(c.macros ?? null)
         ? {}
         : { conseils: c },
     ),
@@ -471,6 +481,36 @@ export const useStore = create<State>()((set, get) => ({
       if (!old) return {}
       return { cardio: s.cardio.filter((x) => x.id !== id), dirty: touchDays(s.dirty, old.date) }
     }),
+  decideAgentMacros: (semaine, state) => {
+    const s = get()
+    const m = s.conseils?.semaine === semaine ? s.conseils.macros : undefined
+    const prev = { targets: s.targets, profile: s.profile, reviews: s.reviews, macrosVu: s.macrosVu ?? {} }
+    const undo = () => set((cur) => ({ ...prev, dirty: cur.targets === prev.targets ? cur.dirty : touchDays(cur.dirty, todayISO()) }))
+    const macrosVu = { ...(s.macrosVu ?? {}) }
+    // Bilan du lundi de l'app : la semaine d'après celle que l'agent a analysée.
+    const monday = addDays(semaine, 7)
+    const reviews = { ...s.reviews }
+    if (!state) {
+      delete macrosVu[semaine]
+      if (reviews[monday]?.source === 'agent') delete reviews[monday]
+      set({ macrosVu, reviews })
+      return { undo }
+    }
+    if (state === 'applique' && !m) return { undo: () => {} }
+    macrosVu[semaine] = state
+    const targets = state === 'applique' && m ? applyMacroProposal(s.targets, m) : s.targets
+    if (!reviews[monday]) {
+      const trend = weekTrend(s.weighins, semaine)
+      reviews[monday] = { decision: state === 'applique' ? 'applied' : 'kept', deltaKcal: targets.base.kcal - s.targets.base.kcal, ...trend, at: Date.now(), source: 'agent' }
+    }
+    set({
+      macrosVu,
+      reviews,
+      ...(targets !== s.targets ? { targets, dirty: touchDays(s.dirty, todayISO()) } : {}),
+      ...(state === 'applique' && m?.phase && m.phase !== s.profile.goal ? { profile: { ...s.profile, goal: m.phase } } : {}),
+    })
+    return { undo }
+  },
   decideReview: (monday, decision, next) =>
     set((s) => ({
       reviews: { ...s.reviews, [monday]: { ...decision, at: Date.now() } },

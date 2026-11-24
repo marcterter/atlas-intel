@@ -2134,3 +2134,21 @@ code,
   flex-shrink: 0;
   color: #a78bfa;
 }
+
+/* Macros proposées par l'agent du lundi */
+.agent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.12);
+}
+
+.agent-macros.garde .card {
+  opacity: 0.7;
+}

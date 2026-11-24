@@ -283,7 +283,7 @@ function ReviewHistory() {
             </div>
             <div className="small num" style={{ textAlign: 'right' }}>
               {r.deltaKcal ? `${r.deltaKcal > 0 ? '+' : '−'}${fmt(Math.abs(r.deltaKcal))} kcal` : 'on garde'}
-              <div className="tiny faint">{r.deltaKcal ? label[r.decision] : ''}</div>
+              <div className="tiny faint">{[r.deltaKcal ? label[r.decision] : '', r.source === 'agent' ? 'agent IA' : ''].filter(Boolean).join(' · ')}</div>
             </div>
           </div>
         ))}

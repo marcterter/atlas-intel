@@ -86,7 +86,7 @@ const COACH_MAPPING = {
 
 // =========================================================
 
-const VERSION = 10;
+const VERSION = 11;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
@@ -96,7 +96,7 @@ const TABS = {
   repas: ['Date', 'Repas', 'Aliment', 'Marque', 'Quantité (g/ml)', 'Portion', 'Kcal', 'Protéines (g)', 'Glucides (g)', 'Lipides (g)'],
   pas: ['Date', 'Pas', 'Source', 'Reçu le', 'Horodatage'],
   bilans: ['ID', 'Date', 'Taille', 'Hanches', 'Poitrine', 'Bras', 'Cuisse', 'Mollet', 'Cou', 'Photos', 'Commentaire'],
-  conseils: ['Semaine du', 'Généré le', 'Conseils', 'Exercices (JSON)', 'Programme (JSON)'],
+  conseils: ['Semaine du', 'Généré le', 'Conseils', 'Exercices (JSON)', 'Programme (JSON)', 'Macros (JSON)'],
   contexte: ['Clé', 'Mis à jour', 'Contexte (JSON)'],
   photos: ['Clé', 'Bilan', 'Date', 'Pose', 'Fichier', 'Envoyé le'],
 };
@@ -396,13 +396,55 @@ function saveConseils_(p) {
   const semaine = isoOk_(p.semaine) ? String(p.semaine) : todayIso_();
   const exercices = cleanExerciseAdvice_(p.exercices);
   const programme = cleanProgramChanges_(p.programme);
+  const macros = cleanMacros_(p.macros);
   const sh = tab_('conseils');
   // Onglet créé par une version d'avant : il manque les en-têtes des colonnes ajoutées depuis.
-  [4, 5].forEach(function (c) {
+  [4, 5, 6].forEach(function (c) {
     if (String(sh.getRange(1, c, 1, 1).getValues()[0][0] || '') === '') sh.getRange(1, c).setValue(TABS.conseils[c - 1]);
   });
-  upsert_(sh, 1, semaine, [toDate_(semaine), new Date(), texte.slice(0, 45000), JSON.stringify(exercices), JSON.stringify(programme)]);
-  return { ok: true, semaine: semaine, exercices: exercices.length, programme: programme.length };
+  upsert_(sh, 1, semaine, [toDate_(semaine), new Date(), texte.slice(0, 45000), JSON.stringify(exercices), JSON.stringify(programme), macros ? JSON.stringify(macros) : '']);
+  return { ok: true, semaine: semaine, exercices: exercices.length, programme: programme.length, macros: !!macros };
+}
+
+/**
+ * Macros proposées par l'agent (appliquées d'un geste dans l'app) :
+ * { jourOn: { kcal, protein, carbs, fat }, jourOff, fibres, phase, pourquoi }. Null sans jour ON valable.
+ */
+function cleanMacros_(x) {
+  if (typeof x === 'string') {
+    if (!x.trim()) return null;
+    try {
+      x = JSON.parse(x);
+    } catch (err) {
+      return null;
+    }
+  }
+  if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
+  const num = function (v) {
+    const f = Number(typeof v === 'string' ? v.replace(',', '.').trim() : v);
+    return v === '' || v == null || !isFinite(f) ? NaN : f;
+  };
+  const pick = function (o, a, b) {
+    return o[a] != null ? o[a] : o[b];
+  };
+  const day = function (d) {
+    if (!d || typeof d !== 'object') return null;
+    const o = { kcal: Math.round(num(d.kcal)), protein: Math.round(num(pick(d, 'protein', 'proteines'))), carbs: Math.round(num(pick(d, 'carbs', 'glucides'))), fat: Math.round(num(pick(d, 'fat', 'lipides'))) };
+    if (!(o.protein >= 40 && o.protein <= 400) || !(o.carbs >= 0 && o.carbs <= 900) || !(o.fat >= 20 && o.fat <= 300)) return null;
+    if (!(o.kcal >= 1000 && o.kcal <= 6000)) o.kcal = o.protein * 4 + o.carbs * 4 + o.fat * 9;
+    return o.kcal >= 1000 && o.kcal <= 6000 ? o : null;
+  };
+  const on = day(pick(x, 'jourOn', 'on'));
+  if (!on) return null;
+  const out = { jourOn: on };
+  const off = day(pick(x, 'jourOff', 'off'));
+  if (off) out.jourOff = off;
+  const fibres = Math.round(num(pick(x, 'fibres', 'fiber')));
+  if (fibres >= 10 && fibres <= 80) out.fibres = fibres;
+  const phase = String(x.phase || '').trim().slice(0, 30);
+  if (phase) out.phase = phase;
+  out.pourquoi = String(x.pourquoi || '').trim().slice(0, 300);
+  return out;
 }
 
 /** Conseils par exercice de l'agent : [{ nom, conseil }], affichés dans la séance sous l'objectif du jour. */
@@ -558,7 +600,7 @@ function readConseils_() {
   const sh = ss_().getSheetByName(TAB_NAMES.conseils);
   if (!sh || sh.getLastRow() < 2) return { conseils: null, precedents: [] };
   const rows = sh
-    .getRange(2, 1, sh.getLastRow() - 1, 5)
+    .getRange(2, 1, sh.getLastRow() - 1, 6)
     .getValues()
     .map(function (r) {
       return {
@@ -567,6 +609,7 @@ function readConseils_() {
         texte: String(r[2] || ''),
         exercices: cleanExerciseAdvice_(String(r[3] || '[]')),
         programme: cleanProgramChanges_(String(r[4] || '[]')),
+        macros: cleanMacros_(String(r[5] || '')),
       };
     })
     .filter(function (x) { return x.semaine && x.texte; })

@@ -795,6 +795,45 @@ test('Agent IA : changements de programme déposés avec les conseils, nettoyés
   assert.deepEqual(get({ action: 'semaine', token: ia }).conseilsPrecedents.map((x: { programme: unknown[] }) => x.programme.length), [0, 3])
 })
 
+test('Agent IA : macros proposées déposées avec les conseils, nettoyées, relues par l’app et par l’agent', async () => {
+  const { tokenIa, parseConseils } = await import('../src/lib/agent.ts')
+  const ia = await tokenIa(TOKEN)
+  const { get, post, tab } = load()
+  // Onglet d'une version d'avant (5 colonnes) : l'en-tête « Macros (JSON) » s'ajoute au premier dépôt.
+  post({ action: 'conseils_set', token: ia, semaine: '2026-11-16', texte: '## Cap\n- Maintien' })
+  const r = post({
+    action: 'conseils_set',
+    token: ia,
+    semaine: '2026-11-23',
+    texte: '## Cap\n- On passe en prise de masse',
+    macros: {
+      jourOn: { kcal: 2870, protein: 150, carbs: 415, fat: 68 }, // 2 872 kcal par les grammes : gardé à 2 870
+      jourOff: { kcal: '', proteines: '150', glucides: '300', lipides: '68' }, // kcal manquantes : recalculées
+      fibres: 35,
+      phase: 'Prise de masse',
+      pourquoi: 'Poids stable 3 semaines (±0,1 %), force en hausse : surplus de 250 kcal sur les glucides.',
+    },
+  })
+  assert.deepEqual([r.ok, r.macros], [true, true])
+  assert.equal(tab('Conseils IA').rows[0][5], 'Macros (JSON)')
+  const c = get({ action: 'conseils' }).conseils
+  assert.deepEqual(c.macros, {
+    jourOn: { kcal: 2870, protein: 150, carbs: 415, fat: 68 },
+    jourOff: { kcal: 150 * 4 + 300 * 4 + 68 * 9, protein: 150, carbs: 300, fat: 68 },
+    fibres: 35,
+    phase: 'Prise de masse',
+    pourquoi: 'Poids stable 3 semaines (±0,1 %), force en hausse : surplus de 250 kcal sur les glucides.',
+  })
+  // Ce que l'app en fait.
+  const advice = parseConseils(c)
+  assert.deepEqual([advice?.macros?.phase, advice?.macros?.on.kcal, advice?.macros?.off?.kcal], ['prise', 2870, 2412])
+  // L'agent revoit sa proposition de la semaine d'avant ; un dépôt sans macros (ou des macros invalides) : null.
+  assert.deepEqual(get({ action: 'semaine', token: ia }).conseilsPrecedents.map((x: { macros: unknown }) => x.macros === null), [true, false])
+  const bad = post({ action: 'conseils_set', token: ia, semaine: '2026-11-30', texte: 'x', macros: { jourOn: { kcal: 2500, protein: 150 } } })
+  assert.deepEqual([bad.ok, bad.macros], [true, false])
+  assert.equal(get({ action: 'conseils' }).conseils.macros, null)
+})
+
 test('Photos de bilan : rangées dans le Drive par l’app, lues par l’agent (récente + 4 semaines avant), supprimées avec le bilan', async () => {
   const { tokenIa } = await import('../src/lib/agent.ts')
   const ia = await tokenIa(TOKEN)

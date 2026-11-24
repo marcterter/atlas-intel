@@ -34,6 +34,8 @@ export interface WeekReview {
   next: Targets | null
   title: string
   detail: string
+  /** Le constat seul (moyenne et cible de la phase), sans la proposition de l'app. */
+  context: string
 }
 
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
@@ -65,6 +67,15 @@ function rangeText(goal: Goal, minKg: number, maxKg: number): string {
   return `En maintien, la cible est de rester à ±${k(maxKg)} kg.`
 }
 
+/** Poids moyen de la semaine du lundi `from` et variation sur la semaine d'avant (null sans assez de pesées). */
+export function weekTrend(weighins: WeighIn[], from: ISODate): { avg: number | null; deltaKg: number | null } {
+  const kgIn = (a: ISODate, b: ISODate) => weighins.filter((w) => w.date >= a && w.date <= b).map((w) => w.kg)
+  const cur = kgIn(from, addDays(from, 6))
+  const prev = kgIn(addDays(from, -7), addDays(from, -1))
+  const avg = cur.length ? mean(cur) : null
+  return { avg, deltaKg: avg != null && cur.length >= MIN_WEIGHINS && prev.length >= MIN_WEIGHINS ? avg - mean(prev) : null }
+}
+
 /**
  * Compare la moyenne des pesées de la semaine passée (lundi → dimanche) à celle d'avant, par rapport au
  * rythme visé pour l'objectif. Hors cible : ±100 à 200 kcal par jour (la moitié de l'écart constaté,
@@ -89,13 +100,15 @@ export function weekReview(input: {
   const base = { monday, from, to, count: cur.length, prevCount: prev.length, goal, deltaKcal: 0, next: null }
 
   if (cur.length < MIN_WEIGHINS || prev.length < MIN_WEIGHINS) {
+    const counts = `semaine dernière : ${cur.length}, celle d’avant : ${prev.length}`
     return {
       ...base,
       avg: cur.length ? mean(cur) : null,
       deltaKg: null,
       kind: 'manque',
       title: 'Pas assez de pesées',
-      detail: `Pour te proposer un ajustement, il faut au moins ${MIN_WEIGHINS} pesées par semaine, le matin à jeun (semaine dernière : ${cur.length}, celle d’avant : ${prev.length}).`,
+      detail: `Pour te proposer un ajustement, il faut au moins ${MIN_WEIGHINS} pesées par semaine, le matin à jeun (${counts}).`,
+      context: `Pas assez de pesées pour comparer ta moyenne (${counts}) : vise ${MIN_WEIGHINS} pesées par semaine, le matin à jeun.`,
     }
   }
 
@@ -111,7 +124,7 @@ export function weekReview(input: {
       ? `Ta moyenne n’a pas bougé (${fmtKg(Math.round(avg * 10) / 10)} kg).`
       : `Ta moyenne a ${deltaKg < 0 ? 'baissé' : 'monté'} de ${fmt(Math.abs(deltaKg), 1)} kg (${fmtKg(Math.round(avg * 10) / 10)} kg).`
   const ctx = `${moved} ${rangeText(goal, minKg, maxKg)}`
-  const withData = { ...base, avg, deltaKg }
+  const withData = { ...base, avg, deltaKg, context: ctx }
 
   if (pct >= rate.min && pct <= rate.max) {
     return { ...withData, kind: 'ok', title: 'Dans la cible : on garde', detail: `${ctx} C’est bon, on garde tes macros.` }
