@@ -41,14 +41,29 @@ export function SyncSetup() {
     }
   }
 
-  const copy = async (text: string) => {
+  // L'appel au presse-papiers part directement du toucher : sinon Safari (iPhone) le refuse.
+  const copy = async (text: string): Promise<boolean> => {
     try {
       await navigator.clipboard.writeText(text)
       ui.toast('Copié', 'ok')
+      return true
     } catch {
       ui.toast('Copie impossible : sélectionne le texte', 'err')
+      return false
     }
   }
+
+  // Lien de l'agent calculé d'avance (le calcul est asynchrone), et affiché si la copie échoue.
+  const [agentUrl, setAgentUrl] = useState('')
+  const [showAgent, setShowAgent] = useState(false)
+  useEffect(() => {
+    let alive = true
+    if (urlOk) void agentLink(cleanUrl, token).then((l) => alive && setAgentUrl(l))
+    else setAgentUrl('')
+    return () => {
+      alive = false
+    }
+  }, [cleanUrl, token, urlOk])
 
   return (
     <Sheet title="Google Sheets">
@@ -124,9 +139,12 @@ export function SyncSetup() {
               Chaque lundi, Claude lit ta semaine (séances, diète, pas, poids, ressenti et tes notes) et dépose ses conseils, affichés sur Aujourd’hui. Ce lien lui donne seulement le droit de lire ta semaine et
               de déposer des conseils, jamais d’écrire dans tes données.
             </div>
-            <button className="btn soft small" disabled={!urlOk} onClick={async () => copy(await agentLink(cleanUrl, token))}>
+            <button className="btn soft small" disabled={!agentUrl} onClick={() => void copy(agentUrl).then((ok) => !ok && setShowAgent(true))}>
               <Icon name="copy" size={16} /> Copier le lien de l’agent
             </button>
+            {showAgent && agentUrl && (
+              <input className="input mono small" value={agentUrl} readOnly onFocus={(e) => e.currentTarget.select()} aria-label="Lien de l’agent" />
+            )}
           </div>
         )}
 
