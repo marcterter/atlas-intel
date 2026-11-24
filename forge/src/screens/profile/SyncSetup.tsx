@@ -121,7 +121,7 @@ export function SyncSetup() {
           <div className="card stack" style={{ gap: 8 }}>
             <div className="bold">Agent IA du lundi</div>
             <div className="faint small">
-              Chaque lundi, Claude lit ta semaine (séances, diète, pas, poids, ressenti) et dépose ses conseils, affichés sur Aujourd’hui. Ce lien lui donne seulement le droit de lire ta semaine et
+              Chaque lundi, Claude lit ta semaine (séances, diète, pas, poids, ressenti et tes notes) et dépose ses conseils, affichés sur Aujourd’hui. Ce lien lui donne seulement le droit de lire ta semaine et
               de déposer des conseils, jamais d’écrire dans tes données.
             </div>
             <button className="btn soft small" disabled={!urlOk} onClick={async () => copy(await agentLink(cleanUrl, token))}>

@@ -108,6 +108,11 @@ export function editMacro(m: MacroTargets, key: keyof MacroTargets, value: numbe
 
 export const ZERO: Nutrients = { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
 
+/** Repère de fibres : 14 g pour 1 000 kcal (au moins 30 g par jour pour un adulte selon l'Anses). */
+export function fiberReference(kcal: number): number {
+  return Math.max(30, Math.round((kcal * 14) / 1000))
+}
+
 export function scaleNutrients(per100: Nutrients, grams: number): Nutrients {
   const k = grams / 100
   return {

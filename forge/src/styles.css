@@ -1353,6 +1353,25 @@ textarea.input {
   font-weight: 700;
 }
 
+.macro-row.tap {
+  cursor: pointer;
+  border-radius: 8px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.macro-row.tap:active {
+  background: var(--surface-2);
+}
+
+.macro-edit {
+  margin-left: 6px;
+  vertical-align: -1px;
+  color: var(--text-3);
+  opacity: 0.7;
+}
+
 .ring-wrap {
   position: relative;
   display: grid;

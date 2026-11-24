@@ -1,4 +1,5 @@
 import { Bar, Ring } from '../../components/ui.tsx'
+import { Icon } from '../../components/Icon.tsx'
 import { fmt } from '../../lib/format.ts'
 import type { MacroTargets, Nutrients } from '../../lib/types.ts'
 
@@ -29,24 +30,35 @@ export function MacroDots({ n, fiber = false }: { n: Nutrients; fiber?: boolean 
   )
 }
 
-export function MacroBars({ n, t, fiberGoal }: { n: Nutrients; t: MacroTargets; fiberGoal?: number }) {
+/** `onFiber` : la ligne Fibres se touche pour changer l'objectif (et reste affichée sans objectif). */
+export function MacroBars({ n, t, fiberGoal, onFiber }: { n: Nutrients; t: MacroTargets; fiberGoal?: number; onFiber?: () => void }) {
   const rows = [
     { label: 'Protéines', v: n.protein, goal: t.protein, color: 'var(--protein)', min: false },
     { label: 'Glucides', v: n.carbs, goal: t.carbs, color: 'var(--carbs)', min: false },
     { label: 'Lipides', v: n.fat, goal: t.fat, color: 'var(--fat)', min: false },
-    ...(fiberGoal ? [{ label: 'Fibres', v: n.fiber ?? 0, goal: fiberGoal, color: 'var(--fiber)', min: true }] : []),
+    ...(fiberGoal || onFiber ? [{ label: 'Fibres', v: n.fiber ?? 0, goal: fiberGoal ?? 0, color: 'var(--fiber)', min: true, onClick: onFiber }] : []),
   ]
   return (
     <div className="stack" style={{ gap: 10 }}>
       {rows.map((r) => {
         const left = r.goal - r.v
-        return (
-          <div className="macro-row" key={r.label}>
+        const tap = 'onClick' in r && r.onClick ? r.onClick : null
+        const content = (
+          <>
             <div className="top">
               <span>
-                <b>{r.label}</b> <span className="faint num">{fmt(r.v)} / {fmt(r.goal)} g</span>
+                <b>{r.label}</b>{' '}
+                <span className="faint num">
+                  {fmt(r.v)}
+                  {r.goal > 0 ? ` / ${fmt(r.goal)}` : ''} g
+                </span>
+                {tap && <Icon name="pencil" size={12} className="macro-edit" />}
               </span>
-              {r.min && left <= 0 ? (
+              {r.goal <= 0 ? (
+                <span className="accent" style={{ fontWeight: 600 }}>
+                  fixer un objectif
+                </span>
+              ) : r.min && left <= 0 ? (
                 <span className="num ok" style={{ fontWeight: 600 }}>
                   objectif atteint ✓
                 </span>
@@ -56,7 +68,29 @@ export function MacroBars({ n, t, fiberGoal }: { n: Nutrients; t: MacroTargets; 
                 </span>
               )}
             </div>
-            <Bar value={r.goal > 0 ? r.v / r.goal : 0} color={r.color} overOk={r.min} />
+            {r.goal > 0 && <Bar value={r.v / r.goal} color={r.color} overOk={r.min} />}
+          </>
+        )
+        return tap ? (
+          <div
+            className="macro-row tap"
+            key={r.label}
+            role="button"
+            tabIndex={0}
+            aria-label={`Objectif ${r.label.toLowerCase()}`}
+            onClick={tap}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                tap()
+              }
+            }}
+          >
+            {content}
+          </div>
+        ) : (
+          <div className="macro-row" key={r.label}>
+            {content}
           </div>
         )
       })}

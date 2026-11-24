@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Icon } from '../../components/Icon.tsx'
 import { SwipeToDelete } from '../../components/Swipe.tsx'
 import { menuDialog } from '../../components/ui.tsx'
+import { editFiberGoal } from './fiber.ts'
 import { DayTypeSwitch, useDayLabel } from './DayType.tsx'
 import { AddFood } from './AddFood.tsx'
 import { FoodDetail } from './FoodDetail.tsx'
@@ -111,7 +112,7 @@ export function DietScreen() {
         <div className="card">
           <MacroSummary n={totals} t={t} fiberGoal={targets.fiber} />
           <div className="hr" />
-          <MacroBars n={totals} t={t} fiberGoal={targets.fiber} />
+          <MacroBars n={totals} t={t} fiberGoal={targets.fiber} onFiber={editFiberGoal} />
           {totals.kcal - kcalFromMacros(totals) > 60 && (
             // Les kcal des étiquettes comptent aussi les fibres (~2 kcal/g) et parfois des macros manquantes.
             <div className="faint tiny" style={{ marginTop: 12 }}>

@@ -3,6 +3,7 @@ import { findExercise, normalize } from '../data/exercises.ts'
 import { addDays } from './date.ts'
 import { GOALS, ageFrom } from './nutrition.ts'
 import { latestWeight } from './body.ts'
+import { setLabel } from './training.ts'
 import type { AiAdvice, AppData, ISODate } from './types.ts'
 
 /** SHA-256("forge-ia:" + jeton) en base64 URL, 24 caractères : le même calcul que le script (tokenIa_). */
@@ -52,8 +53,74 @@ export function parseConseils(raw: unknown): AiAdvice | null {
   return { semaine, date: String(c.date ?? ''), texte, exercices }
 }
 
-/** Ce que l'agent doit savoir en plus des chiffres du jour : objectif, cibles, programme. */
-export function buildContexte(s: Pick<AppData, 'profile' | 'targets' | 'routines' | 'customExercises' | 'weighins'>, today: ISODate) {
+/** Une note écrite dans l'app, telle que l'agent la reçoit. */
+export interface AgentNote {
+  date: ISODate
+  /** Où elle a été écrite : « Ressenti du jour », « Séance Lower B », « Curl marteau · Lower B », « Bilan ». */
+  ou: string
+  texte: string
+  /** Note d'exercice : les séries faites ce jour-là (« 14 × 10, 14 × 9 »), pour relier la note à la perf. */
+  series?: string
+}
+
+const NOTE_MAX = 300
+/** Le contexte tient dans une seule cellule du sheet (50 000 caractères au plus) : on reste très en dessous. */
+const NOTES_BUDGET = 6000
+
+const clip = (t: string) => {
+  const x = t.trim().replace(/\s+/g, ' ')
+  return x.length > NOTE_MAX ? `${x.slice(0, NOTE_MAX - 1)}…` : x
+}
+
+/**
+ * Tout ce que tu as écrit ces dernières semaines, du plus récent au plus ancien : notes de séance et
+ * d'exercice, ressenti du jour, bilans. L'agent du lundi s'appuie dessus (douleur, fatigue, machine prise…).
+ */
+export function recentNotes(s: Pick<AppData, 'sessions' | 'daylogs' | 'checkins' | 'customExercises'>, today: ISODate, days = 28): AgentNote[] {
+  const since = addDays(today, -days)
+  const inRange = (d: ISODate) => d >= since && d <= today
+  const all: AgentNote[] = []
+  const sessions = s.sessions.filter((x) => !x.imported && inRange(x.date)).sort((a, b) => a.startedAt - b.startedAt)
+  for (const x of sessions) {
+    if (x.note?.trim()) all.push({ date: x.date, ou: `Séance ${x.name}`, texte: clip(x.note) })
+    for (const ex of x.exercises) {
+      if (!ex.note?.trim()) continue
+      const exo = findExercise(ex.exerciseId, s.customExercises)
+      const series = ex.sets
+        .filter((st) => st.done)
+        .map((st) => setLabel(st, exo.kind))
+        .join(', ')
+      all.push({
+        date: x.date,
+        ou: `${exo.name} · ${x.name}${ex.pour ? ` (rattrapage ${ex.pour.session})` : ''}`,
+        texte: clip(ex.note),
+        ...(series ? { series } : {}),
+      })
+    }
+  }
+  for (const log of Object.values(s.daylogs)) {
+    if (inRange(log.date) && log.note?.trim()) all.push({ date: log.date, ou: 'Ressenti du jour', texte: clip(log.note) })
+  }
+  for (const c of s.checkins) {
+    if (inRange(c.date) && c.note?.trim()) all.push({ date: c.date, ou: 'Bilan', texte: clip(c.note) })
+  }
+  // Du plus récent au plus ancien (tri stable : dans une journée, les séances gardent leur ordre).
+  all.sort((a, b) => b.date.localeCompare(a.date))
+  const out: AgentNote[] = []
+  let size = 0
+  for (const n of all) {
+    size += n.ou.length + n.texte.length + (n.series?.length ?? 0)
+    if (size > NOTES_BUDGET) break
+    out.push(n)
+  }
+  return out
+}
+
+/** Ce que l'agent doit savoir en plus des chiffres du jour : objectif, cibles, programme, tes notes. */
+export function buildContexte(
+  s: Pick<AppData, 'profile' | 'targets' | 'routines' | 'customExercises' | 'weighins' | 'sessions' | 'daylogs' | 'checkins'>,
+  today: ISODate,
+) {
   const w = latestWeight(s.weighins)
   return {
     objectif: GOALS[s.profile.goal].label,
@@ -75,5 +142,6 @@ export function buildContexte(s: Pick<AppData, 'profile' | 'targets' | 'routines
       jourCoach: r.coachDay ?? null,
       exercices: r.items.map((it) => `${findExercise(it.exerciseId, s.customExercises).name} · ${it.sets} × ${it.reps || '?'}${it.rir ? ` · RIR ${it.rir}` : ''}`),
     })),
+    notes: recentNotes(s, today),
   }
 }

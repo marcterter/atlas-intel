@@ -188,8 +188,9 @@ export const useStore = create<State>()((set, get) => ({
     })
   },
   updateProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
-  setTargets: (t) => set(() => ({ targets: t })),
-  setBaseTargets: (t) => set((s) => ({ targets: { ...s.targets, base: t } })),
+  // Le jour même repart vers le sheet : objectifs de la journée et contexte de l'agent à jour.
+  setTargets: (t) => set((s) => ({ targets: t, dirty: touchDays(s.dirty, todayISO()) })),
+  setBaseTargets: (t) => set((s) => ({ targets: { ...s.targets, base: t }, dirty: touchDays(s.dirty, todayISO()) })),
   updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
   setDayType: (date, training) =>
     set((s) => {

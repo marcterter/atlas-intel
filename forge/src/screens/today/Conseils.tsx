@@ -35,7 +35,7 @@ export function ConseilsSheet() {
               </div>
             </div>
           )}
-          <div className="callout small">Rédigés par Claude à partir de tes données (séances, diète, pas, poids, ressenti). Ce ne sont pas des avis médicaux, et ton coach reste ton référent pour le programme.</div>
+          <div className="callout small">Rédigés par Claude à partir de tes données (séances, diète, pas, poids, ressenti) et de tes notes de séance, d’exercice et du jour. Ce ne sont pas des avis médicaux, et ton coach reste ton référent pour le programme.</div>
         </div>
       ) : (
         <div className="faint">Pas encore de conseils : l’agent passe chaque lundi matin.</div>

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Sheet, Field, NumInput, Segmented, Stepper, Toggle } from '../../components/ui.tsx'
 import { useStore } from '../../store/store.ts'
 import { ui } from '../../store/ui.ts'
-import { GOALS, editMacro, kcalFromMacros } from '../../lib/nutrition.ts'
+import { GOALS, editMacro, fiberReference, kcalFromMacros } from '../../lib/nutrition.ts'
 import { activityLevel, activityText, defaultOff, estimateEnergy, goalPlans, measureTdee, MEASURE_NEEDS, splitOnOff } from '../../lib/energy.ts'
 import { latestWeight } from '../../lib/body.ts'
 import { formatShort, todayISO } from '../../lib/date.ts'
@@ -261,6 +261,9 @@ export function TargetsEditor({ withOff = false }: { withOff?: boolean }) {
   const profile = useStore((s) => s.profile)
   const updateProfile = useStore((s) => s.updateProfile)
   const [draft, setDraft] = useState<Targets>(() => (withOff && !targets.rest ? { ...targets, rest: defaultOff(targets.base) } : targets))
+  // Champs vides pendant la saisie (sans repasser à 0) : arrondis à l'enregistrement.
+  const [fiber, setFiber] = useState<number | null>(targets.fiber || null)
+  const [steps, setSteps] = useState<number | null>(targets.steps || null)
   const [goal, setGoal] = useState<Goal>(profile.goal)
   // Jours ON dans la semaine : ceux du programme du coach, sinon les séances indiquées dans le profil.
   const onDays = useStore((s) => Math.min(7, Math.max(1, plannedWeekdays(s.routines).size || s.profile.sessionsPerWeek || 4)))
@@ -272,7 +275,7 @@ export function TargetsEditor({ withOff = false }: { withOff?: boolean }) {
         <button
           className="btn block"
           onClick={() => {
-            setTargets(draft)
+            setTargets({ ...draft, fiber: Math.max(0, Math.round(fiber ?? 0)), steps: Math.max(0, Math.round(steps ?? 0)) })
             if (goal !== profile.goal) updateProfile({ goal })
             ui.pop()
             ui.toast('Objectifs enregistrés', 'ok')
@@ -311,16 +314,16 @@ export function TargetsEditor({ withOff = false }: { withOff?: boolean }) {
             </div>
           </>
         )}
-        <ReviewHistory />
-        <div className="section-label">Autres objectifs</div>
+        <div className="section-label">Fibres et pas</div>
         <div className="grid-2">
-          <Field label="Pas par jour">
-            <NumInput value={draft.steps} decimal={false} onChange={(v) => setDraft({ ...draft, steps: Math.round(v ?? 0) })} />
+          <Field label="Fibres par jour" hint={`Repère ≈ ${fiberReference(draft.base.kcal)} g · ON et OFF`}>
+            <NumInput value={fiber} decimal={false} suffix="g" placeholder="30" onChange={setFiber} />
           </Field>
-          <Field label="Fibres">
-            <NumInput value={draft.fiber} decimal={false} suffix="g" onChange={(v) => setDraft({ ...draft, fiber: Math.round(v ?? 0) })} />
+          <Field label="Pas par jour">
+            <NumInput value={steps} decimal={false} placeholder="10000" onChange={setSteps} />
           </Field>
         </div>
+        <ReviewHistory />
       </div>
     </Sheet>
   )

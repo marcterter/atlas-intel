@@ -110,9 +110,15 @@ export function ProfileScreen() {
             icon="target"
             title="Objectifs du jour"
             meta={
-              targets.rest
-                ? `ON ${fmt(targets.base.kcal)} · OFF ${fmt(targets.rest.kcal)} kcal · ${fmt(targets.steps)} pas`
-                : `${fmt(targets.base.kcal)} kcal · P ${targets.base.protein} · G ${targets.base.carbs} · L ${targets.base.fat} · ${fmt(targets.steps)} pas`
+              [
+                targets.rest
+                  ? `ON ${fmt(targets.base.kcal)} · OFF ${fmt(targets.rest.kcal)} kcal`
+                  : `${fmt(targets.base.kcal)} kcal · P ${targets.base.protein} · G ${targets.base.carbs} · L ${targets.base.fat}`,
+                targets.fiber ? `fibres ${targets.fiber} g` : '',
+                `${fmt(targets.steps)} pas`,
+              ]
+                .filter(Boolean)
+                .join(' · ')
             }
             onClick={() => ui.push(<TargetsEditor />)}
           />
