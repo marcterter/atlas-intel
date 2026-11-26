@@ -86,7 +86,7 @@ const COACH_MAPPING = {
 
 // =========================================================
 
-const VERSION = 11;
+const VERSION = 12;
 const TZ = Session.getScriptTimeZone() || 'Europe/Paris';
 
 const TABS = {
@@ -310,6 +310,8 @@ function push_(body) {
     // L'entraînement d'abord : ses exercices hors programme vont dans les notes du jour.
     const training = run(function () { return writeCoachTraining_(sessions.filter(function (s) { return s && !s.deleted; })); });
     run(function () { return writeCoachDays_(days, (training && training.extras) || {}); });
+    // Récap des écarts au programme de la semaine, pour le check-up du vendredi (app à jour seulement).
+    if (body.ecarts) run(function () { return writeCoachRecaps_(body.ecarts); });
     coach = { ok: ok, message: parts.join(' · '), info: infos.join(' · '), cells: cells };
   }
   return { ok: true, version: VERSION, written: { days: days.length, sessions: sessions.length, bilans: bilans.length }, coach: coach };
@@ -630,6 +632,7 @@ function resetCaches_() {
   Object.keys(weekStartCache_).forEach(function (k) {
     delete weekStartCache_[k];
   });
+  delete weekLabelCache_.rows;
 }
 
 function coachSs_() {
@@ -760,24 +763,35 @@ const weekStartCache_ = {};
 
 function weekStartUncached_(n) {
   const cfg = COACH_MAPPING && COACH_MAPPING.jours;
-  if (!cfg || !cfg.colonneSemaine) return null;
+  const r = weekLabelRow_(n);
+  if (r < 0) return null;
   const sh = sheetByName_(coachSs_(), cfg.onglet);
-  if (!sh) return null;
-  const first = Number(cfg.premiereLigne || 2);
-  const last = sh.getLastRow();
-  if (last < first) return null;
-  const labels = sh.getRange(first, colIndex_(cfg.colonneSemaine), last - first + 1, 1).getDisplayValues();
   const year = Number(todayIso_().slice(0, 4));
-  for (let i = 0; i < labels.length; i++) {
-    const m = String(labels[i][0] || '').match(/semaine\s*(\d+)/i);
-    if (m && Number(m[1]) === n) {
-      const r = first + i;
-      const c = colIndex_(cfg.colonneDate);
-      return parseCellDate_(sh.getRange(r, c).getValues()[0][0], year) || parseCellDate_(sh.getRange(r, c).getDisplayValues()[0][0], year);
+  const c = colIndex_(cfg.colonneDate);
+  return parseCellDate_(sh.getRange(r, c).getValues()[0][0], year) || parseCellDate_(sh.getRange(r, c).getDisplayValues()[0][0], year);
+}
+
+/** Ligne du libellé « Semaine N » dans le suivi journalier (-1 si absente). */
+function weekLabelRow_(n) {
+  const cfg = COACH_MAPPING && COACH_MAPPING.jours;
+  if (!cfg || !cfg.colonneSemaine) return -1;
+  if (!weekLabelCache_.rows) {
+    weekLabelCache_.rows = {};
+    const sh = sheetByName_(coachSs_(), cfg.onglet);
+    const first = Number(cfg.premiereLigne || 2);
+    const last = sh ? sh.getLastRow() : 0;
+    if (sh && last >= first) {
+      const labels = sh.getRange(first, colIndex_(cfg.colonneSemaine), last - first + 1, 1).getDisplayValues();
+      for (let i = 0; i < labels.length; i++) {
+        const m = String(labels[i][0] || '').match(/semaine\s*(\d+)/i);
+        if (m && !weekLabelCache_.rows[m[1]]) weekLabelCache_.rows[m[1]] = first + i;
+      }
     }
   }
-  return null;
+  return weekLabelCache_.rows[String(n)] || -1;
 }
+
+const weekLabelCache_ = {};
 
 // ---------------------------------------------------------------- sheet du coach : entraînement
 
@@ -1181,6 +1195,241 @@ function pickBand_(block, s) {
 
 function sameExercise_(a, b) {
   return norm_(a) === norm_(b);
+}
+
+// ---------------------------------------------------------------- sheet du coach : récap des écarts (check-up)
+
+/** Début et fin du récap de Forge dans la note « Semaine N » : ce qui est autour reste au coach. */
+const RECAP_TITLE = 'Écarts au programme (Forge)';
+const RECAP_END = '(Réécrit par Forge à chaque synchro.)';
+
+/**
+ * Récap des semaines du coach (vendredi → jeudi) des 14 derniers jours, pour le check-up : séances faites
+ * un autre jour, à la place d'une autre ou pas faites ; exercices remplacés, pas faits, en plus ou rattrapés ;
+ * séries en plus ou en moins ; objectifs de l'app différents de l'onglet Nutrition ; cardio de la semaine.
+ * Posé en note sur « Semaine N » (onglets Entraînement et Suivi journalier) : aucune case du coach ne change.
+ * `recap` : { depuis, seances: [{ date, nom, jourCoach, exercices: [{ nom, remplace, pour, n }] }] } (n = séries faites).
+ */
+function writeCoachRecaps_(recap) {
+  const out = { ok: true, message: '', cells: 0 };
+  const cfg = COACH_MAPPING && COACH_MAPPING.jours;
+  if (!COACH_SHEET_URL || !cfg || !recap || !Array.isArray(recap.seances)) return out;
+  const today = todayIso_();
+  const depuis = isoOk_(recap.depuis) ? String(recap.depuis) : isoDaysAgo_(13);
+  const wk = weekOfDate_(today);
+  if (!wk) return out;
+  const st = trainingStructure_();
+  const suivi = sheetByName_(coachSs_(), cfg.onglet);
+  const names = {};
+  ((readContexte_() || {}).programme || []).forEach(function (r) {
+    if (r && r.jourCoach && r.seance) names[norm_(r.jourCoach)] = String(r.seance);
+  });
+  let targets = null;
+  try {
+    targets = readCoachTargets_();
+  } catch (err) {
+    targets = null;
+  }
+  const seances = recap.seances.filter(function (s) { return s && isoOk_(s.date); });
+  [wk.semaine - 1, wk.semaine].forEach(function (n) {
+    const debut = n === wk.semaine ? wk.debut : weekStart_(n);
+    if (!debut || addDaysIso_(debut, 6) < depuis) return; // semaine d'avant le suivi dans Forge
+    const text = weekRecap_(st, n, debut, today, depuis, seances, names, targets);
+    const block = st.blocks.filter(function (b) { return b.semaine === n; })[0];
+    if (block && setRecapNote_(st.sheet.getRange(block.row + 1, block.col + 1), text)) out.cells++;
+    const row = weekLabelRow_(n);
+    if (suivi && row > 0 && setRecapNote_(suivi.getRange(row, colIndex_(cfg.colonneSemaine)), text)) out.cells++;
+  });
+  return out;
+}
+
+/**
+ * Texte du récap de la semaine n ('' : rien à signaler, pas même une séance). Avant `depuis` (premier
+ * jour suivi dans Forge, ou il y a 13 jours), l'app ne sait rien : aucun jour n'y est dit « pas fait ».
+ */
+function weekRecap_(st, n, debut, today, depuis, seances, names, targets) {
+  const fin = addDaysIso_(debut, 6);
+  const block = st.blocks.filter(function (b) { return b.semaine === n; })[0] || null;
+  const used = {};
+  const madeUps = [];
+  // Toutes les séances envoyées : une séance de la semaine voisine peut remplir un jour de celle-ci.
+  const placed = seances.map(function (s) {
+    const ex = (s.exercices || []).filter(function (e) { return e && e.nom && Number(e.n) > 0; });
+    const own = ex.filter(function (e) { return !(e.pour && e.pour.jourCoach); });
+    ex.forEach(function (e) {
+      if (!(e.pour && e.pour.jourCoach)) return;
+      const p = placeSession_(st, { date: isoOk_(e.pour.date) ? e.pour.date : s.date, jourCoach: e.pour.jourCoach, exercices: [] });
+      if (p && !p.error && p.band) madeUps.push({ cle: p.block.semaine + '|' + norm_(p.band.label), exercice: e.pour.exercice || e.nom, date: s.date });
+    });
+    const place = own.length ? placeSession_(st, { date: s.date, jourCoach: s.jourCoach, exercices: own }) : null;
+    if (place && !place.error && place.band) used[place.block.semaine + '|' + norm_(place.band.label)] = true;
+    return { s: s, ex: ex, own: own, place: place };
+  });
+  const items = [];
+  let done = 0;
+  placed.forEach(function (x) {
+    if (x.s.date < debut || x.s.date > fin) return;
+    done++;
+    const t = sessionRecap_(x, n, names, madeUps);
+    if (t) items.push({ date: x.s.date, texte: t });
+  });
+  // Jours du programme passés sans séance (les rattrapages faits plus tard sont cités).
+  if (block) {
+    block.bands.forEach(function (band, i) {
+      if (!band.cols || !band.exercises.length) return;
+      const when = bandDate_(debut, band.label, i);
+      if (!when || when >= today || when < depuis || when < debut || when > fin) return;
+      const cle = n + '|' + norm_(band.label);
+      if (used[cle]) return;
+      const name = names[norm_(band.label)];
+      const later = madeUps
+        .filter(function (m) { return m.cle === cle; })
+        .map(function (m) { return m.exercice + ' le ' + jourDate_(m.date).toLowerCase(); });
+      items.push({ date: when, texte: jourDate_(when) + (name ? ' · ' + name : '') + ' : pas faite' + (later.length ? ' (rattrapé : ' + later.join(', ') + ')' : '') });
+    });
+  }
+  items.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  const parts = [];
+  if (items.length) parts.push('Séances\n' + items.map(function (i) { return '• ' + i.texte; }).join('\n'));
+  else if (done) parts.push('Séances : faites comme prévu.');
+  const diet = dietRecap_(debut, fin, targets);
+  if (diet.length) parts.push('Diète et activité\n' + diet.map(function (l) { return '• ' + l; }).join('\n'));
+  if (!parts.length) return '';
+  const when = Utilities.formatDate(new Date(), TZ, "dd/MM 'à' HH:mm");
+  const since = debut < depuis ? ' (suivi dans Forge depuis le ' + jourDate_(depuis).toLowerCase() + ')' : '';
+  return [RECAP_TITLE + '\nSemaine ' + n + ' · du ' + jourDate_(debut).toLowerCase() + ' au ' + jourDate_(fin).toLowerCase() + since + ' · mis à jour le ' + when].concat(parts, [RECAP_END]).join('\n\n');
+}
+
+/** Une séance et ses écarts : jour, séance remplacée, exercices remplacés, pas faits, en plus, séries. */
+function sessionRecap_(x, n, names, madeUps) {
+  const s = x.s;
+  const head = jourDate_(s.date) + ' : ' + (s.nom || 'Séance');
+  const subs = [];
+  x.ex.forEach(function (e) {
+    if (e.pour && e.pour.jourCoach) subs.push(e.nom + ' : rattrapage de ' + (e.pour.seance || e.pour.jourCoach.toLowerCase()) + (isoOk_(e.pour.date) ? ' (' + jourDate_(e.pour.date).toLowerCase() + ')' : ''));
+  });
+  const place = x.place;
+  if (place && place.error) return subs.length ? head + bullets_(subs) : '';
+  if (!place || !place.band) {
+    if (!x.own.length) return subs.length ? head + bullets_(subs) : '';
+    return head + ' (hors programme)' + bullets_(x.own.map(function (e) { return e.nom + ' (' + series_(e.n) + ')'; }).concat(subs));
+  }
+  const band = place.band;
+  const flags = [];
+  if (place.block.semaine !== n) flags.push('séance du ' + band.label.toLowerCase() + ', notée en semaine ' + place.block.semaine);
+  else if (norm_(band.label) !== WEEKDAYS[toDate_(s.date).getDay()]) flags.push('prévue le ' + band.label.toLowerCase());
+  const coachName = names[norm_(band.label)];
+  if (coachName && !sameExercise_(coachName, s.nom || '')) flags.push('à la place de ' + coachName);
+  const taken = {};
+  const free = function (nom) {
+    return band.exercises.filter(function (r) { return !taken[r.row] && sameExercise_(r.nom, nom); })[0] || null;
+  };
+  const extras = [];
+  x.own.forEach(function (e) {
+    const row = free(e.nom) || (e.remplace ? free(e.remplace) : null);
+    if (!row) {
+      extras.push(e.nom + ' (' + series_(e.n) + ')');
+      return;
+    }
+    taken[row.row] = true;
+    const planned = parseInt(String(row.series), 10);
+    const series = planned > 0 && Number(e.n) !== planned ? series_(e.n) + ' au lieu de ' + planned : '';
+    if (!sameExercise_(row.nom, e.nom)) subs.push(row.nom.trim() + ' remplacé par ' + e.nom + (series ? ' (' + series + ')' : ''));
+    else if (series) subs.push(e.nom + ' : ' + series);
+  });
+  const cle = place.block.semaine + '|' + norm_(band.label);
+  band.exercises.forEach(function (r) {
+    if (taken[r.row]) return;
+    const m = madeUps.filter(function (k) { return k.cle === cle && sameExercise_(k.exercice, r.nom); })[0];
+    subs.push(r.nom.trim() + (m ? ' : rattrapé le ' + jourDate_(m.date).toLowerCase() : ' : pas fait'));
+  });
+  if (extras.length) subs.push('En plus : ' + extras.join(', '));
+  if (!flags.length && !subs.length) return '';
+  return head + (flags.length ? ' (' + flags.join(', ') + ')' : '') + bullets_(subs);
+}
+
+/** Objectifs de l'app (et leurs changements) face à l'onglet Nutrition, pas et cardio de la semaine. */
+function dietRecap_(debut, fin, targets) {
+  const rows = tabRows_('jours', 0, debut).filter(function (j) { return j.Date <= fin; });
+  if (!rows.length) return [];
+  const show = function (t) {
+    return int_(t.kcal) + ' kcal (P ' + int_(t.p) + ' · G ' + int_(t.g) + ' · L ' + int_(t.l) + ')';
+  };
+  const app = [];
+  const coach = [];
+  let differs = false;
+  [['entrainement', 'jour ON', 'on'], ['repos', 'jour OFF', 'off']].forEach(function (k) {
+    const seq = [];
+    rows.forEach(function (j) {
+      if (norm_(j['Type de jour']) !== k[0]) return;
+      const t = { kcal: Number(j['Objectif kcal']) || 0, p: Number(j['Objectif P']) || 0, g: Number(j['Objectif G']) || 0, l: Number(j['Objectif L']) || 0 };
+      if (!(t.kcal > 0)) return;
+      const last = seq.length ? seq[seq.length - 1].t : null;
+      if (last && last.kcal === t.kcal && last.p === t.p && last.g === t.g && last.l === t.l) return;
+      seq.push({ date: j.Date, t: t });
+    });
+    if (!seq.length) return;
+    if (seq.length > 1) differs = true; // objectifs changés en cours de semaine
+    app.push(k[1] + ' ' + seq.map(function (x, i) { return i ? 'puis ' + show(x.t) + ' dès le ' + jourDate_(x.date).toLowerCase() : show(x.t); }).join(', '));
+    const c = targets && targets[k[2]];
+    if (!c) return;
+    coach.push(k[1] + ' ' + show({ kcal: c.kcal, p: c.protein || 0, g: c.carbs || 0, l: c.fat || 0 }));
+    const t = seq[seq.length - 1].t;
+    if (Math.abs(t.kcal - c.kcal) >= 30 || Math.abs(t.p - (c.protein || 0)) >= 5 || Math.abs(t.g - (c.carbs || 0)) >= 10 || Math.abs(t.l - (c.fat || 0)) >= 5) differs = true;
+  });
+  const lines = [];
+  if (differs) {
+    lines.push('Objectifs suivis dans l’app : ' + app.join(' ; '));
+    if (coach.length) lines.push('Onglet Nutrition : ' + coach.join(' ; '));
+  }
+  let pas = 0;
+  rows.forEach(function (j) {
+    if (Number(j['Objectif pas']) > 0) pas = Number(j['Objectif pas']);
+  });
+  if (targets && targets.pas && pas && Math.abs(pas - targets.pas) >= 500) lines.push('Objectif de pas dans l’app : ' + int_(pas) + ' (Nutrition : ' + int_(targets.pas) + ')');
+  if (targets && targets.cardio) {
+    const min = rows.reduce(function (a, j) { return a + (Number(j['Cardio (min)']) || 0); }, 0);
+    lines.push('Cardio : ' + int_(min) + ' min sur la semaine (Nutrition : « ' + targets.cardio + ' »)');
+  }
+  return lines;
+}
+
+/** Remplace le récap de Forge dans la note de la cellule, sans toucher au texte du coach autour. */
+function setRecapNote_(range, text) {
+  const prev = String(range.getNote() || '');
+  const a = prev.indexOf(RECAP_TITLE);
+  const b = a >= 0 ? prev.indexOf(RECAP_END, a) : -1;
+  const before = (a >= 0 ? prev.slice(0, a) : prev).replace(/\s+$/, '');
+  const after = b >= 0 ? prev.slice(b + RECAP_END.length).replace(/^\s+/, '') : '';
+  const next = [before, text, after].filter(Boolean).join('\n\n');
+  if (next === prev) return false;
+  range.setNote(next);
+  return true;
+}
+
+/** « Lun. 23/11 » */
+function jourDate_(iso) {
+  const w = WEEKDAYS[toDate_(iso).getDay()];
+  return w.charAt(0).toUpperCase() + w.slice(1, 3) + '. ' + String(iso).slice(8, 10) + '/' + String(iso).slice(5, 7);
+}
+
+function bullets_(list) {
+  return list.map(function (x) { return '\n   – ' + x; }).join('');
+}
+
+function series_(n) {
+  const k = Number(n) || 0;
+  return k + ' série' + (k > 1 ? 's' : '');
+}
+
+/** Entier avec espace insécable pour les milliers : « 2 620 ». */
+function int_(n) {
+  return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+}
+
+function addDaysIso_(iso, k) {
+  const d = toDate_(iso);
+  return Utilities.formatDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + k), TZ, 'yyyy-MM-dd');
 }
 
 function coachSummary_() {

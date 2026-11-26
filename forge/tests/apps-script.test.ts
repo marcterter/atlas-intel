@@ -59,6 +59,13 @@ class MockRange {
   setNumberFormat() {
     return this
   }
+  getNote() {
+    return this.sheet.notes.get(`${this.r},${this.c}`) ?? ''
+  }
+  setNote(v: string) {
+    this.sheet.notes.set(`${this.r},${this.c}`, String(v))
+    return this
+  }
 }
 
 class MockSheet {
@@ -66,6 +73,7 @@ class MockSheet {
   rows: Cell[][] = []
   rules = new Set<string>()
   writes: string[] = []
+  notes = new Map<string, string>()
   constructor(name: string) {
     this.name = name
   }
@@ -701,6 +709,106 @@ test('Coach : séance libre sans exercice du programme → tout dans la note du 
   assert.equal(r.coach.ok, true, JSON.stringify(r.coach))
   assert.equal(suivi.get(11 + 8 * 7 + 2, COL.AC), 'Hors programme : Tractions (PDC x 10 ; PDC x 8)')
   assert.equal(entr.writes.length, 0)
+})
+
+test('Coach : récap des écarts de la semaine en note sur « Semaine N » (Entraînement et Suivi journalier), pour le check-up', () => {
+  const { ss, suivi, entr } = coachSheet()
+  const { post } = load({ coach: ss })
+  const ex = (nom: string, n: number, extra: Record<string, unknown> = {}) => ({ nom, n, remplace: '', pour: null, ...extra })
+  const asPlanned = (exos: Exo[]) => exos.map((e) => ex(e[0], Number(e[1])))
+  // Aujourd'hui : dimanche 22 nov. → semaine 8 (20 → 26 nov.) en cours, semaine 7 (13 → 19 nov.) terminée.
+  const seances = [
+    { date: '2026-11-13', nom: 'Lower B', jourCoach: 'VENDREDI', exercices: asPlanned(VENDREDI) }, // comme prévu : rien à dire
+    {
+      date: '2026-11-16',
+      nom: 'Upper 1',
+      jourCoach: 'LUNDI',
+      exercices: [
+        ex('Tirage vertical unilatéral', 3),
+        ex('Développé couché à la smith', 3),
+        ex('Tirage horizontal machine', 2),
+        ex('Écarté haltères', 2, { remplace: 'Écarté à la poulie sur banc' }),
+        ex('Élévation latérale unilatéral cuff de poignet', 3),
+        ex('Curl pupitre unilatéral avec haltères', 3),
+        ex('Overhead triceps extension cable', 3),
+        ex('Curl marteau', 3),
+      ],
+    },
+    { date: '2026-11-17', nom: 'Lower B', jourCoach: 'VENDREDI', exercices: asPlanned(VENDREDI) }, // faite le mardi : notée au vendredi de la semaine 8
+    {
+      date: '2026-11-20',
+      nom: 'Lower B',
+      jourCoach: 'VENDREDI',
+      exercices: [
+        ex('Curl marteau', 3, { pour: { jourCoach: 'JEUDI', date: '2026-11-19', exercice: 'Curl pupitre unilatéral avec haltères', seance: 'Upper B' } }),
+        ...asPlanned(VENDREDI).map((e) => (e.nom === 'Leg press' ? { ...e, n: 1 } : e)),
+      ],
+    },
+  ]
+  const programme = [['Upper A', 'LUNDI'], ['Lower A', 'MARDI'], ['Upper B', 'JEUDI'], ['Lower B', 'VENDREDI']].map(([seance, jourCoach]) => ({ seance, jourCoach, exercices: [] }))
+  const on = { typeJour: 'entrainement', objectifKcal: 2620, objectifProteines: 145, objectifGlucides: 365, objectifLipides: 65, objectifPas: 10000 }
+  const off = { typeJour: 'repos', objectifKcal: 2105, objectifProteines: 145, objectifGlucides: 235, objectifLipides: 65, objectifPas: 10000, cardio: 0 }
+  const days = [
+    day('2026-11-16', { ...on, cardio: 30 }),
+    day('2026-11-18', off),
+    day('2026-11-19', { ...off, objectifKcal: 2400, objectifGlucides: 309, cardio: 30 }),
+    day('2026-11-20', { ...on, cardio: 0 }),
+  ]
+  // Note déjà posée par le coach sur la semaine 8 : gardée.
+  entr.notes.set(`3,${blockCol(8)}`, 'Penser au deload en S10')
+  const before = JSON.stringify(entr.rows)
+  const r = post({ action: 'push', days, contexte: { programme }, ecarts: { depuis: '2026-11-09', seances } })
+  assert.equal(r.coach.ok, true, JSON.stringify(r.coach))
+  const sp = (t = '') => t.replace(/\u00a0/g, ' ')
+  const s7 = sp(entr.notes.get(`3,${blockCol(7)}`))
+  assert.equal(
+    s7.split('\n\n').slice(1).join('\n\n'),
+    [
+      'Séances',
+      '• Lun. 16/11 : Upper 1 (à la place de Upper A)',
+      '   – Tirage vertical unilatéral : 3 séries au lieu de 2',
+      '   – Écarté à la poulie sur banc remplacé par Écarté haltères (2 séries au lieu de 3)',
+      '   – Rotation latérale abdos : pas fait',
+      '   – En plus : Curl marteau (3 séries)',
+      '• Mar. 17/11 : Lower B (séance du vendredi, notée en semaine 8)',
+      '• Mar. 17/11 · Lower A : pas faite',
+      '• Jeu. 19/11 · Upper B : pas faite (rattrapé : Curl pupitre unilatéral avec haltères le ven. 20/11)',
+      '',
+      'Diète et activité',
+      '• Objectifs suivis dans l’app : jour ON 2 620 kcal (P 145 · G 365 · L 65) ; jour OFF 2 105 kcal (P 145 · G 235 · L 65), puis 2 400 kcal (P 145 · G 309 · L 65) dès le jeu. 19/11',
+      '• Onglet Nutrition : jour ON 2 640 kcal (P 215 · G 310 · L 60) ; jour OFF 2 140 kcal (P 200 · G 200 · L 60)',
+      '• Objectif de pas dans l’app : 10 000 (Nutrition : 15 000)',
+      '• Cardio : 60 min sur la semaine (Nutrition : « 60 min zone 2 »)',
+      '',
+      '(Réécrit par Forge à chaque synchro.)',
+    ].join('\n'),
+  )
+  assert.match(s7, /^Écarts au programme \(Forge\)\nSemaine 7 · du ven\. 13\/11 au jeu\. 19\/11 · mis à jour le /)
+  assert.equal(sp(suivi.notes.get(`${11 + 8 * 6},${COL.B}`)), s7, 'même note sur « Semaine 7 » du suivi journalier')
+  const s8 = sp(entr.notes.get(`3,${blockCol(8)}`))
+  assert.ok(s8.startsWith('Penser au deload en S10\n\nÉcarts au programme (Forge)\nSemaine 8'), 'la note du coach reste en tête')
+  assert.match(s8, /• Ven\. 20\/11 : Lower B\n {3}– Curl marteau : rattrapage de Upper B \(jeu\. 19\/11\)\n {3}– Leg press : 1 série au lieu de 2/)
+  assert.doesNotMatch(s8, /pas faite/, 'lundi 23 et après : pas encore passés')
+  // Aucune case du coach modifiée par le récap, et un renvoi ne le duplique pas.
+  assert.equal(JSON.stringify(entr.rows), before, 'Entraînement : seules des notes')
+  post({ action: 'push', contexte: { programme }, ecarts: { depuis: '2026-11-09', seances } })
+  assert.equal(sp(entr.notes.get(`3,${blockCol(8)}`)).split('Écarts au programme (Forge)').length, 2)
+  assert.ok(sp(entr.notes.get(`3,${blockCol(8)}`)).startsWith('Penser au deload en S10'))
+  // Ancienne version de l'app (sans `ecarts`) : aucune note.
+  const other = coachSheet()
+  load({ coach: other.ss }).post({ action: 'push', days })
+  assert.equal(other.entr.notes.size + other.suivi.notes.size, 0)
+  // Suivi dans Forge depuis le lundi 16 : rien n'est dit des jours d'avant ; séance libre = hors programme.
+  const fresh = coachSheet()
+  load({ coach: fresh.ss }).post({
+    action: 'push',
+    contexte: { programme },
+    ecarts: { depuis: '2026-11-16', seances: [seances[1], { date: '2026-11-18', nom: 'Bras', jourCoach: '', exercices: [ex('Curl marteau', 3)] }] },
+  })
+  const f7 = sp(fresh.entr.notes.get(`3,${blockCol(7)}`))
+  assert.match(f7, /^Écarts au programme \(Forge\)\nSemaine 7 · du ven\. 13\/11 au jeu\. 19\/11 \(suivi dans Forge depuis le lun\. 16\/11\)/)
+  assert.doesNotMatch(f7, /13\/11 · Lower B/, 'vendredi 13 : avant le suivi')
+  assert.match(f7, /• Mar\. 17\/11 · Lower A : pas faite\n• Mer\. 18\/11 : Bras \(hors programme\)\n {3}– Curl marteau \(3 séries\)\n• Jeu\. 19\/11 · Upper B : pas faite/)
 })
 
 test('Coach : semaine pas encore créée par le coach → signalée, la semaine d’avant n’est pas écrasée', () => {

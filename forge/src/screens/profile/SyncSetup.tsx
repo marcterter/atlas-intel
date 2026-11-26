@@ -10,6 +10,16 @@ import { dirtyCount, ping, scriptOutdated, syncNow, SCRIPT_VERSION } from '../..
 import { agentLink } from '../../lib/agent.ts'
 import { timeAgo } from '../../lib/format.ts'
 
+/** Ce qu'apportent les versions du script plus récentes que celle installée. */
+function scriptNews(installed: number): string {
+  const news: string[] = []
+  if (installed < 10) news.push('tes photos de bilan et ta capture myAir pour l’agent du lundi, et ses changements de programme à appliquer d’un geste')
+  if (installed < 11) news.push('les macros proposées par l’agent (jour ON, jour OFF, phase), à appliquer d’un geste')
+  if (installed < 12) news.push('le récap de tes écarts au programme, en note sur « Semaine N » du sheet de ton coach, pour le check-up du vendredi')
+  const drive = installed < 10 ? ' Google te demandera l’accès à ton Drive (pour ranger les photos).' : ''
+  return `${news.join(' ; ')}.${drive}`
+}
+
 export function SyncSetup() {
   const sync = useStore((s) => s.sync)
   const setSync = useStore((s) => s.setSync)
@@ -76,10 +86,7 @@ export function SyncSetup() {
 
         {sync.enabled && outdated && (
           <button className="callout warn pressable" style={{ textAlign: 'left' }} onClick={() => ui.push(<SheetGuide token={token} />)}>
-            <b>Nouvelle version du script ({SCRIPT_VERSION})</b> :{' '}
-            {(sync.scriptVersion ?? 0) < 10
-              ? 'tes photos de bilan et ta capture myAir pour l’agent du lundi, ses changements de programme et ses macros à appliquer d’un geste. Google te demandera l’accès à ton Drive (pour ranger les photos).'
-              : 'les macros proposées par l’agent du lundi (jour ON, jour OFF, phase), à appliquer d’un geste.'}
+            <b>Nouvelle version du script ({SCRIPT_VERSION})</b> : {scriptNews(sync.scriptVersion ?? 0)}
             Recopie le script depuis le guide, colle-le à la place de l’ancien, puis Déployer → Gérer les déploiements → ✏️ → Nouvelle version.
           </button>
         )}

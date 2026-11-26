@@ -16,7 +16,7 @@ import type { DirtyState, ISODate, PhotoSlot, Session, StepsDay } from './types.
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 /** Version de apps-script/Code.gs livrée avec cette version de l'app. */
-export const SCRIPT_VERSION = 11
+export const SCRIPT_VERSION = 12
 
 export function scriptOutdated(s: Pick<State, 'sync'>): boolean {
   return s.sync.scriptVersion != null && s.sync.scriptVersion < SCRIPT_VERSION
@@ -157,7 +157,37 @@ export function buildPayload(s: State, snap: DirtyState) {
     return { id: c.id, date: c.date, mensurations: c.measures, note: c.note ?? '', photos: Object.keys(c.photos).length }
   })
   // Contexte pour l'agent IA du lundi (objectif, cibles ON / OFF, programme) : petit, envoyé à chaque fois.
-  return { days, sessions, bilans, contexte: buildContexte(s, todayISO()) }
+  // Séances récentes en bref : récap des écarts au programme pour le coach.
+  return { days, sessions, bilans, contexte: buildContexte(s, todayISO()), ecarts: buildRecap(s, todayISO()) }
+}
+
+/**
+ * Séances des 14 derniers jours, en bref (séries faites hors échauffement) : le script en tire, pour
+ * chaque semaine du coach, le récap des écarts au programme posé en note sur « Semaine N » (script v12).
+ * `depuis` : début de la fenêtre, ou premier jour suivi dans l'app s'il est plus récent.
+ */
+export function buildRecap(s: Pick<State, 'sessions' | 'customExercises' | 'entries'>, today: ISODate) {
+  // Avant le premier jour suivi dans l'app (séance ou repas), rien n'est connu : pas de « séance pas faite ».
+  let first = today
+  for (const x of s.sessions) if (!x.imported && x.date < first) first = x.date
+  for (const e of s.entries) if (e.date < first) first = e.date
+  const window = addDays(today, -13)
+  const depuis = first > window ? first : window
+  const seances = s.sessions
+    .filter((x) => !x.imported && x.date >= depuis && x.date <= today && x.exercises.some((e) => e.sets.some((st) => st.done)))
+    .sort((a, b) => a.startedAt - b.startedAt)
+    .map((x) => ({
+      date: x.date,
+      nom: x.name,
+      jourCoach: x.coachDay ?? '',
+      exercices: x.exercises.map((ex) => ({
+        nom: findExercise(ex.exerciseId, s.customExercises).name,
+        remplace: ex.replacedFrom ? findExercise(ex.replacedFrom, s.customExercises).name : '',
+        pour: ex.pour ? { jourCoach: ex.pour.coachDay, date: ex.pour.date, exercice: ex.pour.target, seance: ex.pour.session } : null,
+        n: ex.sets.filter((st) => st.done && st.type !== 'echauffement').length,
+      })),
+    }))
+  return { depuis, seances }
 }
 
 async function post(url: string, body: unknown): Promise<Record<string, unknown>> {
@@ -297,9 +327,10 @@ async function doSync({ pullOnly }: { pullOnly?: boolean }): Promise<SyncResult>
   const state = useStore.getState()
   const snap: DirtyState = structuredClone(state.dirty)
   const count = Object.keys(snap.days).length + Object.keys(snap.sessions).length + Object.keys(snap.checkins).length
-  // Sans autre donnée à envoyer, le contexte de l'agent (notes, objectifs, programme) part quand même s'il a changé.
+  // Sans autre donnée à envoyer, le contexte de l'agent (notes, objectifs, programme) part quand même s'il a changé,
+  // et au moins une fois par jour : le récap des écarts du coach se met à jour (séance de la veille pas faite…).
   const payload = buildPayload(state, snap)
-  const contexteKey = hashText(JSON.stringify(payload.contexte))
+  const contexteKey = hashText(`${todayISO()}|${JSON.stringify(payload.contexte)}|${JSON.stringify(payload.ecarts)}`)
   if (count === 0 && contexteKey === state.sync.contexteKey) {
     const sent = await uploadPhotosSafe(url, token)
     return { ok: true, pushed: 0, pulledSteps, message: sent ? photosText(sent) : 'Tout est à jour' }
