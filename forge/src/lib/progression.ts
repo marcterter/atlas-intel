@@ -20,8 +20,14 @@ export interface SetAdvice {
   trend: Trend
   /** Série de la dernière fois qui a servi de base. */
   from: SetEntry | null
-  /** Hausse annulée : la série d'avant, aujourd'hui, a été nettement plus dure que prévu. */
-  calmed?: boolean
+  /**
+   * Forme du jour : la dernière série faite aujourd'hui a dépassé (better) ou raté (worse) son objectif
+   * d'environ 2 reps ou plus, et celle-ci a été recalculée en conséquence ; `today` : pas d'historique,
+   * la série part de la précédente du jour.
+   */
+  form?: 'better' | 'worse' | 'today'
+  /** Numéro (parmi les séries de travail) de la série du jour qui a servi de repère. */
+  formFrom?: number
 }
 
 export interface ExerciseAdvice {
@@ -174,9 +180,36 @@ function which(idx: number[], total: number): string {
   return `les séries ${n.slice(0, -1).join(', ')} et ${n[n.length - 1]}`
 }
 
+const e1rm = (w: number, r: number) => w * (1 + r / 30)
+/** Écart à l'objectif à partir duquel la suite s'ajuste : ~2 reps (vers 8-12 reps, une rep ≈ 2,5 %). */
+const FORM_GAP = 0.045
+
 /**
- * Objectif du jour pour un exercice. Prend aussi en compte la séance en cours : si une série vient
- * d'être nettement plus dure que prévu, la suivante revient à la charge de la dernière fois.
+ * Recalcule une série d'après la forme du jour (rapport des 1RM estimés : série faite / son objectif).
+ * Mêmes reps visées, charge refaite sur la grille (amortie aux trois quarts, deux paliers au plus) ;
+ * si la charge ne bouge pas, une rep de plus ou de moins.
+ */
+export function adjustToForm(a: SetAdvice, ratio: number, step: number): SetAdvice {
+  if (a.weight == null || a.reps == null || a.weight <= 0 || Math.abs(ratio - 1) < FORM_GAP) return a
+  const better = ratio > 1
+  const target = e1rm(a.weight, a.reps) * (1 + (ratio - 1) * 0.75)
+  const max = 2 * stepFor(a.weight, step)
+  let w = Math.round(target / (1 + a.reps / 30) / step) * step
+  w = round2(Math.min(a.weight + max, Math.max(a.weight - max, w)))
+  let reps = a.reps
+  if (w === a.weight || w <= 0) {
+    w = a.weight
+    reps = Math.max(1, a.reps + (better ? 1 : -1))
+  }
+  const ref = a.from?.weight ?? a.weight
+  const trend: Trend = w > ref ? 'up' : w < ref ? 'down' : 'same'
+  return { ...a, weight: w, reps, trend, form: better ? 'better' : 'worse' }
+}
+
+/**
+ * Objectif du jour pour un exercice. Prend aussi en compte la séance en cours : chaque série faite
+ * aujourd'hui, comparée à son objectif, recale les suivantes (forme du jour). Sans historique, la suite
+ * part de la dernière série du jour (même charge, reps visées par le coach).
  */
 export function adviseExercise(
   ex: SessionExercise,
@@ -189,18 +222,20 @@ export function adviseExercise(
   const exo = findExercise(ex.exerciseId, custom)
   if (exo.kind === 'cardio') return null
   const { ref, lastAt, weights } = reference(history, ex.exerciseId, before, coachDay)
-  if (!ref) return null
+  const doneToday = ex.sets.filter((x) => x.done && isWork(x))
+  if (!ref && !(exo.kind === 'weight' && doneToday.some((x) => (x.weight ?? 0) > 0 && (x.reps ?? 0) > 0))) return null
   const targets = parseRepsScheme(ex.repsTarget)
-  const step = loadStep(weights, exo.equipment)
-  const lastWork = ref.sets.filter(isWork)
+  const step = loadStep([...weights, ...doneToday.map((x) => x.weight ?? 0)], exo.equipment)
+  const lastWork = ref ? ref.sets.filter(isWork) : []
   // Après une coupure de 4 semaines ou plus, on reprend aux mêmes charges.
   const weeksOff = lastAt != null ? Math.floor((now - lastAt) / (7 * DAY)) : 0
   const comeback = weeksOff >= 4
 
   const out: (SetAdvice | null)[] = []
   let k = 0
-  let prevAdvice: SetAdvice | null = null
-  let prevToday: SetEntry | null = null
+  let prevPlan: SetAdvice | null = null
+  // Dernière série de travail faite aujourd'hui : son numéro, ce qui a été fait, son objectif d'origine.
+  let lastDone: { n: number; set: SetEntry; plan: SetAdvice | null } | null = null
   for (const st of ex.sets) {
     if (!isWork(st)) {
       out.push(null)
@@ -208,21 +243,34 @@ export function adviseExercise(
     }
     const target = targets[k] ?? targets[targets.length - 1] ?? null
     const last = lastWork[k]
-    let a: SetAdvice | null = null
+    let plan: SetAdvice | null = null
     if (last) {
-      if (comeback) a = { weight: last.weight, reps: last.reps, seconds: last.seconds, trend: 'same', from: last }
-      else a = exo.kind === 'weight' ? adviseWeightSet(last, target, step) : adviseOther(last, exo.kind, target, step)
-    } else if (prevAdvice) {
+      if (comeback) plan = { weight: last.weight, reps: last.reps, seconds: last.seconds, trend: 'same', from: last }
+      else plan = exo.kind === 'weight' ? adviseWeightSet(last, target, step) : adviseOther(last, exo.kind, target, step)
+    } else if (prevPlan) {
       // Série en plus par rapport à la dernière fois : même charge que la précédente.
-      a = { weight: prevAdvice.weight, reps: target?.lo ?? prevAdvice.reps, seconds: prevAdvice.seconds, trend: 'same', from: null }
+      plan = { weight: prevPlan.weight, reps: target?.lo ?? prevPlan.reps, seconds: prevPlan.seconds, trend: 'same', from: null }
     }
-    // Autorégulation : la série d'avant (aujourd'hui) a raté l'objectif de 2 reps ou plus.
-    if (a && a.trend === 'up' && a.from && prevToday?.done && prevAdvice?.reps != null && (prevToday.reps ?? 0) <= prevAdvice.reps - 2) {
-      a = { ...a, weight: a.from.weight, reps: a.from.reps, trend: 'same', calmed: true }
+    let a = plan
+    const did = lastDone?.set
+    // (Une série déjà faite garde l'objectif recalculé qu'elle affichait.)
+    if (exo.kind === 'weight' && lastDone && did && (did.weight ?? 0) > 0 && (did.reps ?? 0) > 0) {
+      const p = lastDone.plan
+      if (a && p?.weight && p.reps) {
+        // Forme du jour : la dernière série faite contre son objectif recale celle-ci.
+        const adjusted = adjustToForm(a, e1rm(did.weight as number, did.reps as number) / e1rm(p.weight, p.reps), step)
+        if (adjusted !== a) a = { ...adjusted, formFrom: lastDone.n }
+      } else if (!a) {
+        // Pas d'historique : même charge que la dernière série du jour, reps visées ; 2 reps sous sa cible → un palier de moins.
+        const prevTarget = targets[lastDone.n - 1] ?? targets[targets.length - 1] ?? null
+        const short = prevTarget != null && (did.reps as number) <= prevTarget.lo - 2
+        const w = short ? shift(did.weight as number, step, -1) : (did.weight as number)
+        a = { weight: w > 0 ? w : did.weight, reps: target?.lo ?? did.reps, seconds: null, trend: short ? 'down' : 'same', from: null, form: 'today', formFrom: lastDone.n }
+      }
     }
     out.push(a)
-    if (a) prevAdvice = a
-    prevToday = st
+    if (plan) prevPlan = plan
+    if (st.done) lastDone = { n: k + 1, set: st, plan }
     k++
   }
   const list = out.filter((a): a is SetAdvice => !!a)
@@ -230,25 +278,23 @@ export function adviseExercise(
 
   const upIdx: number[] = []
   const downIdx: number[] = []
-  const calmedIdx: number[] = []
   list.forEach((a, j) => {
     if (a.trend === 'up') upIdx.push(j)
     if (a.trend === 'down') downIdx.push(j)
-    if (a.calmed) calmedIdx.push(j)
   })
   const trend: Trend = upIdx.length ? 'up' : downIdx.length ? 'down' : 'same'
+  const adapted = out.filter((a): a is SetAdvice => !!a?.form)
+  const cue = adapted[adapted.length - 1]
   let why: string
-  if (comeback) why = `Reprise après ${weeksOff} semaines : mêmes charges que la dernière fois`
+  if (cue?.form === 'today') why = `Pas encore d’historique : la suite d’après ta série ${cue.formFrom}`
+  else if (cue) why = `Série ${cue.formFrom} ${cue.form === 'better' ? 'au-dessus de l’objectif : la suite monte' : 'sous l’objectif : la suite s’allège'}`
+  else if (comeback) why = `Reprise après ${weeksOff} semaines : mêmes charges que la dernière fois`
   else if (exo.kind === 'duration') why = 'Tiens 5 secondes de plus'
   else if (exo.kind === 'bodyweight' && !list.some((a) => a.weight)) why = 'Une répétition de plus par série'
   else {
     const parts: string[] = []
     if (upIdx.length) parts.push(`Charge en hausse sur ${which(upIdx, list.length)} : reps visées dépassées la dernière fois`)
     if (downIdx.length) parts.push(`${upIdx.length ? 'allège' : 'Allège'} ${which(downIdx, list.length)} : trop loin des reps visées`)
-    if (calmedIdx.length) {
-      const what = which(calmedIdx, list.length)
-      parts.push(`${parts.length ? what : what.charAt(0).toUpperCase() + what.slice(1)} à la charge habituelle : la série d’avant a été dure`)
-    }
     why = parts.length ? parts.join(' · ') : 'Même charge, vise une rep de plus'
   }
   return { sets: out, trend, summary: list.map((a) => label(a, exo.kind)).join(' · '), why }

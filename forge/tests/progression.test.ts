@@ -112,16 +112,55 @@ test('objectif du jour : même jour du programme d’abord, reprise après une c
   assert.match(old?.why ?? '', /Reprise après 4 semaines/)
 })
 
-test('objectif du jour : la série ratée aujourd’hui calme la suivante', () => {
+test('forme du jour : la série 1 ratée de 3 reps allège la suite (mêmes reps visées, charge recalculée)', () => {
   const history = [past('x-dc', [set(52.5, 11), set(50, 10), set(50, 8)])]
   const cur = today('x-dc', '10,8,6', 0, [set(55, 7), set(null, null, { done: false }), set(null, null, { done: false })])
   const a = adviseExercise(cur, history, custom, NOW, 'LUNDI')
   assert.deepEqual(pick(a), [
     [55, 10, 'up'],
-    [50, 10, 'same'],
+    [50, 8, 'same'],
+    [50, 6, 'same'],
+  ])
+  assert.equal(a?.why, 'Série 1 sous l’objectif : la suite s’allège')
+})
+
+test('forme du jour : série 1 au-dessus de l’objectif → la suite monte, tant que les séries le confirment', () => {
+  const history = [past('x-dc', [set(40, 10, { type: 'echauffement' }), set(55, 10), set(50, 10), set(50, 8)])]
+  const open = () => set(null, null, { done: false })
+  // Objectif 55 × 11 · 52,5 × 8 · 52,5 × 6 ; série 1 faite à 55 × 13.
+  const a = adviseExercise(today('x-dc', '10,8,6', 0, [set(55, 13), open(), open()]), history, custom, NOW, 'LUNDI')
+  assert.deepEqual(pick(a), [
+    [55, 11, 'same'],
+    [55, 8, 'up'],
+    [55, 6, 'up'],
+  ])
+  assert.equal(a?.why, 'Série 1 au-dessus de l’objectif : la suite monte')
+  // Série 2 faite comme conseillé (55 × 8, au-dessus de l'objectif d'origine) : la série 3 reste montée.
+  const b = adviseExercise(today('x-dc', '10,8,6', 0, [set(55, 13), set(55, 8), open()]), history, custom, NOW, 'LUNDI')
+  assert.deepEqual(pick(b), [
+    [55, 11, 'same'],
+    [55, 8, 'up'],
+    [55, 6, 'up'],
+  ], 'la série 2 faite garde l’objectif recalculé qu’elle affichait')
+  assert.equal(b?.why, 'Série 2 au-dessus de l’objectif : la suite monte')
+  // Une rep d'écart : rien ne bouge.
+  const c = adviseExercise(today('x-dc', '10,8,6', 0, [set(55, 12), open(), open()]), history, custom, NOW, 'LUNDI')
+  assert.deepEqual(pick(c), [
+    [55, 11, 'same'],
+    [52.5, 8, 'up'],
     [52.5, 6, 'up'],
   ])
-  assert.match(a?.why ?? '', /la série 2 à la charge habituelle/)
+})
+
+test('forme du jour : nouvel exercice → la suite d’après la série 1 (même charge, reps visées)', () => {
+  const open = () => set(null, null, { done: false })
+  const a = adviseExercise(today('x-press', '10,8,6', 0, [set(100, 10), open(), open()]), [], custom, NOW, 'MARDI')
+  assert.deepEqual(pick(a), [null, [100, 8, 'same'], [100, 6, 'same']])
+  assert.equal(a?.why, 'Pas encore d’historique : la suite d’après ta série 1')
+  assert.equal(a?.summary, '100 × 8 · 100 × 6')
+  // Série 1 à 2 reps ou plus sous sa cible : un palier de moins.
+  const b = adviseExercise(today('x-press', '10,8,6', 0, [set(100, 7), open(), open()]), [], custom, NOW, 'MARDI')
+  assert.deepEqual(pick(b), [null, [97.5, 8, 'down'], [97.5, 6, 'down']])
 })
 
 test('objectif du jour : poids du corps (+1 rep) et nouvel exercice (rien à conseiller)', () => {

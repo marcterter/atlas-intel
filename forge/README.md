@@ -38,7 +38,7 @@ Les données vivent sur le téléphone (IndexedDB). Sauvegarde / restauration en
 - cible atteinte ou presque → même charge, une rep de plus ;
 - nettement sous la cible (3 reps ou plus) → charge allégée, calculée pour retrouver la cible.
 
-Le palier se déduit des charges que tu as déjà utilisées (1,25 kg sur les petits haltères, 2,5 kg à la smith, au moins 2,5 % de la charge à la presse) ; après 4 semaines sans l'exercice, l'app repart des mêmes charges. Pendant la séance, si une série est nettement plus dure que prévu, la suivante revient à ta charge habituelle. L'objectif s'affiche en grisé dans les cases (vert = hausse, jaune = baisse) : ✓ le valide tel quel, ou tape ce que tu as vraiment fait.
+Le palier se déduit des charges que tu as déjà utilisées (1,25 kg sur les petits haltères, 2,5 kg à la smith, au moins 2,5 % de la charge à la presse) ; après 4 semaines sans l'exercice, l'app repart des mêmes charges. Pendant la séance, la forme du jour recale la suite : une série faite à environ 2 reps ou plus au-dessus de son objectif fait monter les suivantes (mêmes reps visées, charge recalculée sur ton palier, deux paliers au plus), 2 reps ou plus en dessous les allège ; si la charge ne bouge pas, c'est une rep de plus ou de moins. Sur un exercice sans historique, la suite part de ta série 1 (même charge, reps visées par le coach, un palier de moins si elle a été ratée de 2 reps). L'objectif s'affiche en grisé dans les cases (vert = hausse, jaune = baisse) : ✓ le valide tel quel, ou tape ce que tu as vraiment fait.
 
 ---
 
