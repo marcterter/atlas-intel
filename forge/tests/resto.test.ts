@@ -4,7 +4,7 @@ import { BASE_FOODS, QUICK_PRESETS, searchFoods } from '../src/data/foods.ts'
 import { kcalFromMacros } from '../src/lib/nutrition.ts'
 
 test('resto : plats à la pièce trouvés par leur nom ou par « resto », valeurs cohérentes (4/4/9)', () => {
-  for (const q of ['california', 'nem', 'gyoza', 'rillettes', 'poulet roti', 'perle coco', 'brochette yakitori']) {
+  for (const q of ['california', 'nem', 'gyoza', 'rillettes', 'poulet roti', 'perle coco', 'brochette yakitori', 'escalope milanaise', 'carbonara', 'tiramisu']) {
     assert.ok(searchFoods(q, BASE_FOODS).length > 0, q)
   }
   const resto = BASE_FOODS.filter((f) => f.category === 'Resto & apéro')
