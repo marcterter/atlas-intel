@@ -5,6 +5,7 @@ import { ui } from '../../store/ui.ts'
 import { uid } from '../../lib/id.ts'
 import { fmt } from '../../lib/format.ts'
 import { MEALS, MEAL_LABEL } from '../../lib/nutrition.ts'
+import { QUICK_PRESETS } from '../../data/foods.ts'
 import type { Food, ISODate, MealId } from '../../lib/types.ts'
 
 /** Création / modification d'un aliment perso (ex : produit introuvable au scan). */
@@ -168,8 +169,30 @@ export function QuickAdd({ date, meal: initialMeal }: { date: ISODate; meal: Mea
       }
     >
       <div className="stack">
+        <div>
+          <div className="section-label" style={{ marginTop: 0 }}>
+            Repères (à ajuster)
+          </div>
+          <div className="chips">
+            {QUICK_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                className={`chip ${name === p.label ? 'active' : ''}`}
+                onClick={() => {
+                  setName(p.label)
+                  setKcal(p.kcal)
+                  setProtein(p.protein)
+                  setCarbs(p.carbs)
+                  setFat(p.fat)
+                }}
+              >
+                {p.label} · {fmt(p.kcal)}
+              </button>
+            ))}
+          </div>
+        </div>
         <Field label="Libellé">
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="ex : Burger + frites au resto" autoFocus />
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="ex : Burger + frites au resto" />
         </Field>
         <div className="grid-2">
           <Field label="Kcal">
@@ -195,7 +218,9 @@ export function QuickAdd({ date, meal: initialMeal }: { date: ISODate; meal: Mea
             </button>
           ))}
         </div>
-        <div className="faint small">Sans kcal, elles sont calculées depuis les macros (4/4/9).</div>
+        <div className="faint small">
+          Sans kcal, elles sont calculées depuis les macros (4/4/9). Au resto, une estimation vaut mieux qu’un repas vide : pour le détail, cherche « resto » dans les aliments (sushi, nem, brochette, rillettes…) et compte les pièces.
+        </div>
       </div>
     </Sheet>
   )

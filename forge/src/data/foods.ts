@@ -226,9 +226,41 @@ const CATEGORIES: Record<string, Row[]> = {
     ['Lasagnes bolognaise', 149, 8, 13, 7, 1.2, [['1 part', 300]]],
     ['Quiche lorraine', 272, 9, 18, 18, 1, [['1 part', 150]]],
     ['Sandwich jambon-beurre', 261, 11, 33, 9, 2, [['1 sandwich', 180]]],
-    ['Chips', 539, 6, 50, 34, 4.5, [['1 petit paquet', 30]]],
+    ['Chips', 539, 6, 50, 34, 4.5, [['1 petit paquet', 30], ['1 bol apéro', 50]]],
+  ],
+  // Au resto (asiatique, brasserie) et à l'apéro : des pièces faciles à compter, valeurs moyennes.
+  'Resto & apéro': [
+    ['California roll', 176, 4.5, 26, 5.7, 1, [['1 pièce', 30]]],
+    ['Sashimi de saumon', 200, 20, 0, 13.5, 0, [['1 tranche', 15]]],
+    ['Nem', 240, 9, 22, 13, 1.5, [['1 nem', 50]]],
+    ['Gyoza (ravioli japonais)', 190, 8, 24, 6.5, 1.5, [['1 pièce', 25]]],
+    ['Beignet de crevette', 250, 10, 22, 13.5, 1, [['1 beignet', 25]]],
+    ['Samoussa', 270, 6, 27, 15.5, 2, [['1 samoussa', 40]]],
+    ['Riz cantonais', 165, 5, 26, 4.5, 1, [['1 assiette', 250]]],
+    ['Nouilles sautées', 170, 5, 25, 5.5, 1.5, [['1 assiette', 250]]],
+    ['Poulet pané sauce aigre-douce', 210, 11, 22, 8.5, 1, [['1 portion', 200]]],
+    ['Bœuf ou poulet sauté aux légumes', 130, 11, 6, 7, 1.5, [['1 portion', 200]]],
+    ['Brochette yakitori (poulet)', 200, 18, 10, 10, 0, [['1 brochette', 40]]],
+    ['Brochette bœuf-fromage', 300, 20, 3, 23.5, 0, [['1 brochette', 40]]],
+    ['Perle de coco', 230, 2.5, 40, 7, 1.5, [['1 perle', 40]]],
+    ['Soupe miso', 25, 2, 2, 1, 0.5, [['1 bol', 200]], 'ml'],
+    ['Poulet rôti avec la peau', 215, 26, 0, 12.3, 0, [['1 cuisse (sans l’os)', 150], ['1 blanc avec la peau', 150]]],
+    ['Rillettes', 430, 15, 0.5, 41, 0, [['1 tartine', 30]]],
+    ['Saucisson sec', 410, 26, 2, 33.5, 0, [['3 rondelles', 20]]],
+    ['Olives vertes', 145, 1, 1, 15, 3, [['1 poignée', 30]]],
   ],
 }
+
+/** Repères pour un repas sans étiquette (resto, apéro) : un geste remplit les champs, à ajuster. */
+export const QUICK_PRESETS: { label: string; kcal: number; protein: number; carbs: number; fat: number }[] = [
+  { label: 'Buffet asiatique copieux', kcal: 2000, protein: 80, carbs: 235, fat: 80 },
+  { label: 'Buffet asiatique raisonnable', kcal: 1300, protein: 55, carbs: 150, fat: 50 },
+  { label: 'Resto : plat + dessert', kcal: 1300, protein: 55, carbs: 130, fat: 60 },
+  { label: 'Burger + frites', kcal: 1100, protein: 40, carbs: 105, fat: 55 },
+  { label: 'Pizza entière', kcal: 960, protein: 40, carbs: 120, fat: 34 },
+  { label: 'Kebab + frites', kcal: 1200, protein: 50, carbs: 120, fat: 57 },
+  { label: 'Apéro (chips, saucisson…)', kcal: 500, protein: 15, carbs: 30, fat: 35 },
+]
 
 const slug = (s: string) => normalize(s).replace(/ /g, '-')
 
